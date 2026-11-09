@@ -2,7 +2,8 @@
 // and the run's choices once the person accepts it (decision 548). The advisor runs only when the
 // button is pressed (decision 549).
 import type { AgentOption, WorkspaceSuggestion } from '@symbiote/core';
-import { AGENT_NAMES, keptEffort, keptModel, type RunChoices } from './workspaces.js';
+import { AGENT_NAMES } from './workspaces.js';
+import { keptEffort, keptModel, type RunChoices } from './run-choices.js';
 
 /** Why Suggest settings cannot be pressed now, in the words its tip shows; null when it can. */
 export function suggestBlocked({

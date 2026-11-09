@@ -2,7 +2,8 @@
 // words, and only keys measured to answer it; or what the agent does, or who drives. Never a
 // button that answers the agent's prompt for the person. Kept pure.
 import type { ThreadEntry, WorkspaceSummary } from '@symbiote/core';
-import { AGENT_NAMES, mergedForCard, type WorkspaceNext } from './workspaces.js';
+import { AGENT_NAMES } from './workspaces.js';
+import { mergedForCard, type WorkspaceNext } from './workspace-next.js';
 
 /** A key, or a chord, and what it does. */
 export interface BarKey {

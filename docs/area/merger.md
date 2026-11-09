@@ -1,7 +1,7 @@
 # The merger
 
 [Index](../PLAN.md) · [Its decisions](../decisions.md#the-merger) · Checked against the code on
-2026-11-03
+2026-11-10
 
 This page says how Symbiote's merger works today. Read it before you change the merger. The plans
 listed in the index under "The merger" say why each part was built, as it was decided then. If a
@@ -168,7 +168,7 @@ stops during a merge, the entry is merged again from the start when Symbiote run
 | A project's rules for the merger agent | `symbiote/merge.md`, committed with the project |
 | **Merge into ▾** | `packages/viewer/src/workspaces/MergeControl.tsx` |
 | Which workspaces show in the sidenav only as their Merging row | `mergingAlone` in `packages/viewer/src/workspaces/merges.ts` (`test/merges.test.ts`) |
-| The merge page: state, files, log | `packages/viewer/src/workspaces/Merge.tsx`; its words from `merge-steps.ts` (pure, `test/merge-steps.test.ts`); the pipeline card `ui/Pipeline.tsx` |
+| The merge page: state, files, log | `packages/viewer/src/workspaces/Merge.tsx` (its state, head and output card), its steps card `MergeStepsCard.tsx`, a conflict's files and regions `MergeFiles.tsx`; its words from `merge-steps.ts` (pure, `test/merge-steps.test.ts`); the pipeline card `ui/Pipeline.tsx` |
 | HTTP | `/api/merges…` in `packages/cli/src/server-merges.ts`; the log as server-sent events |
 | Command line | `symbiote merge <branch>`, with `--into`, `--strategy`, `--land`, `--approve` and `--again` |
 | MCP tools | `merges`, `merge_log`, `queue_merge`, `land_merge`, `merge_resolution`, `retry_merge`, `recheck_merge`, `remove_merge` |

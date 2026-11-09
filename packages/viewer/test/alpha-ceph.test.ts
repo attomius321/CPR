@@ -9,7 +9,7 @@ import { nucleusName } from '../src/shell/names.js';
 import { routeTitle } from '../src/shell/pages.js';
 import { agentName, promptGroups } from '../src/settings/settings.js';
 import { iconCells, Mind } from '../src/ui/hive-art.js';
-import { startedWith } from '../src/workspaces/workspaces.js';
+import { startedWith } from '../src/workspaces/run-choices.js';
 
 describe('nucleusName', () => {
   it('is Alpha Ceph while Hive mode is on, Nucleus with it off', () => {

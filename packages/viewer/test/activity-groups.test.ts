@@ -11,7 +11,8 @@ import type {
   WorkspaceThread,
 } from '@symbiote/core';
 import { activityEvents, rawLines, type ActivityEvent } from '../src/workspaces/activity/events.js';
-import { activityGroups, type ActivityGroup } from '../src/workspaces/activity/groups.js';
+import { activityGroups } from '../src/workspaces/activity/groups.js';
+import type { ActivityGroup } from '../src/workspaces/activity/group-parts.js';
 import { liveActivity } from '../src/workspaces/activity/live.js';
 
 const W = '/home/ada/app.worktrees/feature-x';

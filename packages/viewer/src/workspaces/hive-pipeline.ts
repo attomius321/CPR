@@ -5,7 +5,7 @@
 import type { WorkspaceHiveDetail } from '@symbiote/core';
 import { clockWords, liveWords } from './hive-live.js';
 import type { PipelineStepWords, StepsModel } from './workspace-steps.js';
-import { modelName } from './workspaces.js';
+import { modelName } from './run-choices.js';
 import { plural } from '../ui/plural.js';
 
 /** A round's mark: failed, landed, running, or to come. */

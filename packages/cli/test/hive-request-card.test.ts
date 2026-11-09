@@ -23,7 +23,7 @@ import { symbioteFolder } from '../src/workspace-record.js';
 import type { Workspaces } from '../src/workspace-context.js';
 import { workspaces } from '../src/workspaces.js';
 import type { AgentSession, ClaudeCode } from '../src/claude-code.js';
-import { workspaceNext } from '../../viewer/src/workspaces/workspaces.js';
+import { workspaceNext } from '../../viewer/src/workspaces/workspace-next.js';
 
 const HOOK = '/opt/symbiote/dist/agent-hook.js';
 

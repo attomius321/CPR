@@ -4,10 +4,10 @@
 import type { ActivityEntry, TurnTokens } from '@symbiote/core';
 import { callKind, COMMAND_TOOLS, shortPath, shownCommand, type WorkKind } from './classify.js';
 import { symbioteTool, type ActivityEvent, type RawLine } from './events.js';
+import type { ActivityGroup, GroupKind } from './group-parts.js';
 
 /** Nucleus's web tools (NU2): a line of its activity names its conversation. */
 const NUCLEUS_WEB = new Set(['WebSearch', 'WebFetch', 'webSearch']);
-import type { ActivityGroup, GroupKind } from './groups.js';
 
 const firstLine = (text: string) =>
   (text.split('\n').find((line) => line.trim() !== '') ?? '').trim();

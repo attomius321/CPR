@@ -16,13 +16,13 @@ import {
 import { readStored, writeStored } from '../ui/stored.js';
 import { tip } from '../ui/tip.js';
 import { useSecondsWhile } from '../workspaces/clock.js';
+import { workspaceName } from '../workspaces/workspaces.js';
 import {
   hiveGroups,
   hiveRowWords,
-  workspaceName,
   type HiveRowWords,
   type WorkspaceRow,
-} from '../workspaces/workspaces.js';
+} from '../workspaces/workspace-groups.js';
 
 const ICONS: Record<HiveRowWords['tone'], () => ReactNode> = {
   run: SpinIcon,

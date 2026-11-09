@@ -45,8 +45,10 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   (V8e): view keys, the cache of recent layouts, numbered requests, the main-thread fallback.
   The worker is `new URL('./layout-worker.ts', import.meta.url)`: the two files move together.
 - `src/diff/App.tsx` — state, the page shown (Files first, Graph by `?view=graph`, `g` between
-  them; V60), the view to lay out, toolbar; `Canvas.tsx` the canvas (map mode, reveal/fit);
-  `useDiffGraph.ts` the graph's loading and polling, `useReview.ts` marks and drafts.
+  them; V60), the view to lay out, toolbar; `Canvas.tsx` the canvas (map mode, reveal/fit),
+  `CanvasCard.tsx` its card (the legend and the view's toggles), `DiffHead.tsx` the head's parts;
+  `useDiffGraph.ts` the graph's loading and polling, `useReview.ts` marks and drafts,
+  `useDiffKeys.ts` the keys.
 - `src/diff/FilesPage.tsx` (V60) — the Files page: the change's files (`./api/files`, git's lines)
   drawn with a workspace's `FileRow` (`workspaces/ChangesPanel.tsx`), the open file's diff
   (`./api/file`: git's, the whole file as context) and comments under their lines. Its pure part
@@ -64,7 +66,7 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   `comments.ts` (draft comments and anchors), `store.ts` (server or browser state).
 - `src/history/commits.ts` (**pure**: picking, which end is the base, diverged picks' fork point found from
   the shape (V10c; checked against git by `scripts/viewer/compare-check.mjs`), the label, reading `api/graph`'s
-  202/502/404 while a diff is analyzed), `HistoryPage.tsx` (the Git page; never `Commits.tsx` beside `commits.ts`: macOS file systems ignore case), its calls in `api.ts` (the diff's page imports `startDiff` and `fetchGraph` from there), `CommitRow.tsx`, `CompareBar.tsx`. A diff's progress is `diff/DiffProgress.tsx` (V90: the steps as a timeline with their times as the page saw them, `analysis-steps.ts`, pure, the clock kept by `useDiffGraph`; the files from the pair and a workspace's report, commits and brief beside them).
+  202/502/404 while a diff is analyzed), `HistoryPage.tsx` (the Git page; never `Commits.tsx` beside `commits.ts`: macOS file systems ignore case; its sections `GitHead`, `CommitsHead`, `CommitList`, `GitDetailsPane`, its menus and dialogs `GitMenus.tsx`, a hook per unit of its state, `use*.ts`), its calls in `api.ts` (the diff's page imports `startDiff` and `fetchGraph` from there), `CommitRow.tsx`, `CompareBar.tsx`. A diff's progress is `diff/DiffProgress.tsx` (V90: the steps as a timeline with their times as the page saw them, `analysis-steps.ts`, pure, the clock kept by `useDiffGraph`; the files from the pair and a workspace's report, commits and brief beside them).
 - `src/history/` since V66 (the Git page): `git-api.ts` (`/api/git/…`: a commit, the changes, the
   upstream, a search, git's writes), `details.ts` (**pure** but for the pane's place, kept in the
   browser as the theme is: lines, the changes' words, why Commit is off, the upstream in words, a
@@ -100,7 +102,9 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   included (border-box), and drew up to 8 px more than the box held, which made the scrolling
   Scribe pane's scrollbars come and go every frame. `e2e/terminal-fit.spec.ts` checks it with
   real scrollbars: headless Chromium hides them, and the loop needs one that takes room.
-- A workspace's page (`src/workspaces/Workspace.tsx`, V89): its steps in the head
+- A workspace's page (`src/workspaces/Workspace.tsx`, V89; its head `WorkspaceHead.tsx`, steps card
+  `WorkspacePipeline.tsx`, terminals `TermPanes.tsx`, side card `SideCard.tsx`; its shells, answers
+  and actions the hooks `useShells`, `useRespond`, `useWorkspaceActions`): its steps in the head
   (`HeadSteps.tsx`) and the bar under the terminal (`TerminalBar.tsx`) are derived by pure modules,
   `workspace-steps.ts` and `terminal-bar.ts` (tested per state, both modes): what Symbiote records,
   never guessed; the bar shows only keys measured on a real session (Enter and Esc for Claude
@@ -137,7 +141,7 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   `&run`; `&review` still opens it, `tab-address.ts`) draws `run-timeline.ts`'s rounds (the
   writer's commits split at each check's commit, from the changes read the side card shares) and
   puts `RunFacts` first in the side card; the sidenav's In flight, Stopped, Landed today, Earlier
-  (`shell/HiveSidenav.tsx`, `hiveGroups`/`hiveRowWords` in `workspaces.ts`); Settings' Hive mode
+  (`shell/HiveSidenav.tsx`, `hiveGroups`/`hiveRowWords` in `workspace-groups.ts`); Settings' Hive mode
   page as grouped rows (`settings/HivePage.tsx`; the reviewer's model and effort are set there, not
   on its Reviewer page); Start's New goal (`workspaces/StartHive.tsx`); the question
   (`settings/HiveQuestion.tsx`, its readiness `hiveReadiness` in `hive-switch.ts`). The arrival
@@ -228,6 +232,11 @@ symbol glyph. Measure first paint (`/git`) and Bitwarden's graph after any font 
   of their cards, and V61's restyle of those cards missed it (fix/title-bar-desktop).
 - **Every page fills the main area** (V72, decision 507): no `max-width` or centring of a page,
   nothing added above it on a tall window. A text that would read too wide fills its card.
+- **A page in parts** (refactor/viewer-pages, decisions 955–957): the page's component keeps the
+  state its parts share and draws them; a section is a component named after what it draws, a unit
+  of state with the effects only it uses a hook (`use*.ts`) called where its code was, so effects
+  keep their order; pure derivations go to pure modules by topic, with a test. Pure modules import
+  one way, types included: no cycle (`workspaces.ts`' names at the bottom).
 - **Layout never depends on selection or review state.** Only `decorate` does; the view to lay
   out depends on the graph and the view toggles. Clicking or marking must not move anything (V6:
   this took marking from 1.2 s to 72 ms on a 1,288-symbol graph).

@@ -12,7 +12,7 @@ import {
 } from 'react';
 import { useMarkdown } from '../../ui/markdown.js';
 import type { ActivityEvent, RawLine } from './events.js';
-import type { ActivityGroup } from './groups.js';
+import type { ActivityGroup } from './group-parts.js';
 import type { LiveActivity } from './live.js';
 import { GroupRow } from './GroupRow.js';
 import { LiveStrip } from './LiveStrip.js';

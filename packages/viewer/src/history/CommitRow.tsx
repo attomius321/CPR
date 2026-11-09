@@ -4,7 +4,7 @@ import type { Commit } from '@symbiote/core';
 import { reviewTip, type ReviewMark } from './branchReviews.js';
 import { longDate, relativeDate, rowBadges, shortSha } from './commits.js';
 import { ROW_HEIGHT } from './GraphCell.js';
-import type { AgentChip } from '../workspaces/workspaces.js';
+import type { AgentChip } from '../workspaces/workspace-next.js';
 import { WorkspaceMark } from '../workspaces/WorkspaceMark.js';
 import { MoreIcon } from '../ui/icons.js';
 import { tip } from '../ui/tip.js';

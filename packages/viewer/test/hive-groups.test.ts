@@ -2,7 +2,7 @@
 // and each row's second line.
 import type { HiveLanding, WorkspaceHive, WorkspaceSummary } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
-import { hiveGroups, hiveRowWords } from '../src/workspaces/workspaces.js';
+import { hiveGroups, hiveRowWords } from '../src/workspaces/workspace-groups.js';
 
 const TIP = 'c'.repeat(40);
 const summary = (branch: string, over: Partial<WorkspaceSummary> = {}): WorkspaceSummary => ({

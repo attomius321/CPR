@@ -2,7 +2,7 @@
 // the colours of the kinds of work (V74).
 import { describe, expect, it } from 'vitest';
 import type { ActivityEvent, RawLine, ToolCall } from '../src/workspaces/activity/events.js';
-import type { ActivityGroup } from '../src/workspaces/activity/groups.js';
+import type { ActivityGroup } from '../src/workspaces/activity/group-parts.js';
 import {
   durationText,
   elapsedText,
