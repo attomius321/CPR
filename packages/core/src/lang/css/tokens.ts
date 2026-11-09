@@ -1,10 +1,4 @@
-import { createHash } from 'node:crypto';
 import valueParser, { type Node as ValueNode } from 'postcss-value-parser';
-
-/** 16 hex characters, as for TypeScript symbols. */
-export function hash(parts: readonly string[]): string {
-  return createHash('sha256').update(parts.join('\u0000')).digest('hex').slice(0, 16);
-}
 
 const NUMBER = /^([+-]?)(\d*\.?\d+|\d+\.)(e[+-]?\d+)?([a-z%]*)$/i;
 const HEX = /^#[0-9a-f]{3,8}$/i;

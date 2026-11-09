@@ -1,8 +1,8 @@
-import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { ts } from 'ts-morph';
 import type { ExtractOptions } from '../../adapter.js';
 import type { Range, Shape, SymbolDecl, SymbolId, SymbolKind } from '../../model.js';
+import { hash } from '../hash.js';
 import { isTsSource } from './files.js';
 import { runHook, type ArgumentRoles, type Contract, type PluginSymbol } from './plugins.js';
 import { pluginRevision, type TsRevision } from './project.js';
@@ -882,10 +882,6 @@ function resolveShape(shape: Shape, resolve: (text: string) => string): Shape {
 
 function truncate(text: string): string {
   return text.length > MAX_DISPLAY ? `${text.slice(0, MAX_DISPLAY - 1)}…` : text;
-}
-
-function hash(parts: string[]): string {
-  return createHash('sha256').update(parts.join('\u0000')).digest('hex').slice(0, 16);
 }
 
 /** `(+N overloads)`: overload signatures besides the first, not counting the implementation. */

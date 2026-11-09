@@ -1,7 +1,8 @@
 import type { AtRule, ChildNode, Container, Declaration, Node, Root } from 'postcss';
 import type { Range, Shape, SymbolDecl, SymbolId, SymbolKind } from '../../model.js';
+import { hash } from '../hash.js';
 import { stylesheetLanguage } from './files.js';
-import { canonicalSelector, canonicalValue, hash, splitTopLevel, valueTokens } from './tokens.js';
+import { canonicalSelector, canonicalValue, splitTopLevel, valueTokens } from './tokens.js';
 import { UseCollector, type StyleImport, type StyleUse } from './uses.js';
 
 /** Joins a context (an at-rule, the rule of a custom property) to what it holds in an ID. */
