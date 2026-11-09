@@ -202,46 +202,11 @@ export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayou
     (e) => byId.has(e.from) && byId.has(e.to) && (typeReferences || e.kind !== 'type-reference'),
   );
 
-  // Unchanged neighbours of each changed symbol, by side.
-  const neighbours = new Map<string, Neighbours>();
-  const addNeighbour = (of: string, side: SummaryData['side'], member: string) => {
-    const id = summaryId(side, of);
-    let group = neighbours.get(id);
-    if (!group) neighbours.set(id, (group = { id, of, side, members: new Set() }));
-    group.members.add(member);
-  };
-  for (const edge of candidateEdges) {
-    const from = byId.get(edge.from) as GraphNode;
-    const to = byId.get(edge.to) as GraphNode;
-    if (to.status !== 'unchanged' && from.status === 'unchanged')
-      addNeighbour(to.id, 'users', from.id);
-    if (from.status !== 'unchanged' && to.status === 'unchanged')
-      addNeighbour(from.id, 'uses', to.id);
-  }
-
-  // Few neighbours are drawn; many become a summary. A neighbour another side draws anyway,
-  // or a user a finding names as still using something removed, is drawn too.
-  const drawn = new Set<string>();
-  const grouped = new Set<string>();
-  const summaries: (Neighbours & { expanded: boolean })[] = [];
-  for (const group of neighbours.values()) {
-    for (const member of group.members) grouped.add(member);
-    const big = group.members.size > NEIGHBOUR_LIMIT;
-    const open = expanded.has(group.id);
-    if (!big || open) for (const member of group.members) drawn.add(member);
-    if (big) summaries.push({ ...group, expanded: open });
-  }
-  for (const finding of graph.findings) {
-    if (finding.rule !== 'removed-still-referenced') continue;
-    for (const id of finding.related) if (grouped.has(id)) drawn.add(id);
-  }
-  const hidden = new Map<string, string>();
-  for (const summary of summaries) {
-    if (summary.expanded) continue;
-    for (const member of summary.members) {
-      if (!drawn.has(member) && !hidden.has(member)) hidden.set(member, summary.id);
-    }
-  }
+  const { drawn, grouped, summaries, hidden } = summarize(
+    neighboursOf(candidateEdges, byId),
+    expanded,
+    graph.findings,
+  );
 
   // Unchanged symbols that are nobody's neighbour (deeper context) stay if an edge holds them.
   const kept = (n: GraphNode) => n.status !== 'unchanged' || drawn.has(n.id) || !grouped.has(n.id);
@@ -252,56 +217,11 @@ export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayou
     (n) => candidates.has(n.id) && (n.status !== 'unchanged' || connected.has(n.id)),
   );
 
-  // How many projects a summary's neighbours come from, when more than one.
   const projects = graph.projects ?? [];
-  const spans = new Map<string, number>();
-  if (projects.length > 1) {
-    for (const summary of summaries) {
-      const held = new Set<Project>();
-      for (const member of summary.members) {
-        const { file } = groupOf(byId.get(member) as GraphNode);
-        const project = file === undefined ? undefined : projectOf(file, projects);
-        if (project) held.add(project);
-      }
-      if (held.size > 1) spans.set(summary.id, held.size);
-    }
-  }
+  const spans = summarySpans(summaries, byId, projects);
   const summaryWidth = (id: string) => (spans.has(id) ? SUMMARY_WIDE : SUMMARY_WIDTH);
 
-  // Boxes: a file or package each; a summary sits in its symbol's box.
-  const boxOf = new Map<string, string>();
-  const boxes = new Map<
-    string,
-    { label: string; file: string | undefined; changed: boolean; members: Member[] }
-  >();
-  const join = (member: Member, box: ReturnType<typeof groupOf>, changed: boolean) => {
-    let entry = boxes.get(box.id);
-    if (!entry) {
-      boxes.set(
-        box.id,
-        (entry = { label: box.label, file: box.file, changed: false, members: [] }),
-      );
-    }
-    entry.changed ||= changed;
-    entry.members.push(member);
-    boxOf.set(member.id, box.id);
-  };
-  for (const node of nodes) {
-    join(
-      { id: node.id, width: nodeWidth(node), changed: node.status !== 'unchanged' },
-      groupOf(node),
-      node.status !== 'unchanged',
-    );
-  }
-  for (const summary of summaries) {
-    const owner = byId.get(summary.of);
-    if (!owner || !boxOf.has(summary.of)) continue;
-    join(
-      { id: summary.id, width: summaryWidth(summary.id), changed: false },
-      groupOf(owner),
-      false,
-    );
-  }
+  const { boxes, boxOf } = fileBoxes(nodes, summaries, byId, summaryWidth);
 
   const summaryEdges: FlowEdge[] = summaries
     .filter((s) => boxOf.has(s.id))
@@ -695,6 +615,135 @@ interface Member {
   id: string;
   width: number;
   changed: boolean;
+}
+
+/** The unchanged neighbours of each changed symbol, by side: one group per summary id. */
+function neighboursOf(
+  edges: readonly GraphEdge[],
+  byId: ReadonlyMap<string, GraphNode>,
+): Map<string, Neighbours> {
+  const neighbours = new Map<string, Neighbours>();
+  const addNeighbour = (of: string, side: SummaryData['side'], member: string) => {
+    const id = summaryId(side, of);
+    let group = neighbours.get(id);
+    if (!group) neighbours.set(id, (group = { id, of, side, members: new Set() }));
+    group.members.add(member);
+  };
+  for (const edge of edges) {
+    const from = byId.get(edge.from) as GraphNode;
+    const to = byId.get(edge.to) as GraphNode;
+    if (to.status !== 'unchanged' && from.status === 'unchanged')
+      addNeighbour(to.id, 'users', from.id);
+    if (from.status !== 'unchanged' && to.status === 'unchanged')
+      addNeighbour(from.id, 'uses', to.id);
+  }
+  return neighbours;
+}
+
+/** A group of neighbours past `NEIGHBOUR_LIMIT`, drawn as one node unless expanded. */
+type Summary = Neighbours & { expanded: boolean };
+
+/**
+ * Few neighbours are drawn; many become a summary. A neighbour another side draws anyway, or a
+ * user a finding names as still using something removed, is drawn too. `grouped` is every
+ * neighbour; `hidden` the symbols drawn only inside a collapsed summary (symbol → summary).
+ */
+function summarize(
+  neighbours: ReadonlyMap<string, Neighbours>,
+  expanded: ReadonlySet<string>,
+  findings: Graph['findings'],
+): { drawn: Set<string>; grouped: Set<string>; summaries: Summary[]; hidden: Map<string, string> } {
+  const drawn = new Set<string>();
+  const grouped = new Set<string>();
+  const summaries: Summary[] = [];
+  for (const group of neighbours.values()) {
+    for (const member of group.members) grouped.add(member);
+    const big = group.members.size > NEIGHBOUR_LIMIT;
+    const open = expanded.has(group.id);
+    if (!big || open) for (const member of group.members) drawn.add(member);
+    if (big) summaries.push({ ...group, expanded: open });
+  }
+  for (const finding of findings) {
+    if (finding.rule !== 'removed-still-referenced') continue;
+    for (const id of finding.related) if (grouped.has(id)) drawn.add(id);
+  }
+  const hidden = new Map<string, string>();
+  for (const summary of summaries) {
+    if (summary.expanded) continue;
+    for (const member of summary.members) {
+      if (!drawn.has(member) && !hidden.has(member)) hidden.set(member, summary.id);
+    }
+  }
+  return { drawn, grouped, summaries, hidden };
+}
+
+/** How many projects a summary's neighbours come from, when more than one: summary → count. */
+function summarySpans(
+  summaries: readonly Summary[],
+  byId: ReadonlyMap<string, GraphNode>,
+  projects: readonly Project[],
+): Map<string, number> {
+  const spans = new Map<string, number>();
+  if (projects.length > 1) {
+    for (const summary of summaries) {
+      const held = new Set<Project>();
+      for (const member of summary.members) {
+        const { file } = groupOf(byId.get(member) as GraphNode);
+        const project = file === undefined ? undefined : projectOf(file, projects);
+        if (project) held.add(project);
+      }
+      if (held.size > 1) spans.set(summary.id, held.size);
+    }
+  }
+  return spans;
+}
+
+/** A file's or a package's box: its symbols and summaries, and whether any of them changed. */
+interface Box {
+  label: string;
+  file: string | undefined;
+  changed: boolean;
+  members: Member[];
+}
+
+/** Boxes: a file or package each; a summary sits in its symbol's box. `boxOf`: member → box. */
+function fileBoxes(
+  nodes: readonly GraphNode[],
+  summaries: readonly Summary[],
+  byId: ReadonlyMap<string, GraphNode>,
+  summaryWidth: (id: string) => number,
+): { boxes: Map<string, Box>; boxOf: Map<string, string> } {
+  const boxOf = new Map<string, string>();
+  const boxes = new Map<string, Box>();
+  const join = (member: Member, box: ReturnType<typeof groupOf>, changed: boolean) => {
+    let entry = boxes.get(box.id);
+    if (!entry) {
+      boxes.set(
+        box.id,
+        (entry = { label: box.label, file: box.file, changed: false, members: [] }),
+      );
+    }
+    entry.changed ||= changed;
+    entry.members.push(member);
+    boxOf.set(member.id, box.id);
+  };
+  for (const node of nodes) {
+    join(
+      { id: node.id, width: nodeWidth(node), changed: node.status !== 'unchanged' },
+      groupOf(node),
+      node.status !== 'unchanged',
+    );
+  }
+  for (const summary of summaries) {
+    const owner = byId.get(summary.of);
+    if (!owner || !boxOf.has(summary.of)) continue;
+    join(
+      { id: summary.id, width: summaryWidth(summary.id), changed: false },
+      groupOf(owner),
+      false,
+    );
+  }
+  return { boxes, boxOf };
 }
 
 /**
