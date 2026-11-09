@@ -39,19 +39,14 @@ import { shortSha } from '../history/commits.js';
 import {
   ArrowRightIcon,
   AttachIcon,
-  BellIcon,
   ChevronIcon,
   ChoreIcon,
   MarkdownIcon,
-  MergeIcon,
-  PencilIcon,
   PlusIcon,
-  ReviewIcon,
   ShuffleIcon,
   HexagonIcon,
 } from '../ui/icons.js';
 import { PageHead } from '../ui/PageHead.js';
-import { markdownNodes, useMarkdown } from '../ui/markdown.js';
 import { reloadWorkspaces } from './useWorkspaces.js';
 import { beginStart, endStart } from './starting.js';
 import {
@@ -71,16 +66,10 @@ import { StartKinds } from './StartKinds.js';
 import { SuggestButton, SuggestionCard, useSuggestion } from './StartSuggest.js';
 import { suggestBlocked } from './suggest.js';
 import { tip } from '../ui/tip.js';
-import { whatHappensNext, type NextStep } from './start-next.js';
+import { whatHappensNext } from './start-next.js';
 import { Loading } from '../ui/Loading.js';
-
-/** What happens next's marks (V93, proof 06): the person's violet, the rest faint. */
-const NEXT_ICONS: Record<NextStep['icon'], ReactNode> = {
-  pencil: <PencilIcon />,
-  bell: <BellIcon />,
-  eye: <ReviewIcon />,
-  merge: <MergeIcon />,
-};
+import { GoalPreview } from './StartBrief.js';
+import { NEXT_ICONS } from './NextSteps.js';
 
 /** How long typing pauses before the draft is saved. */
 const SAVE_AFTER_MS = 400;
@@ -208,22 +197,6 @@ function StartHead({
       line="An agent works on a branch of its own; you review it before it merges"
       actions={children}
     />
-  );
-}
-
-/** The goal (or a kind's main part) as Markdown, as the agent's brief will be drawn (V63). */
-function GoalPreview({ text }: { text: string }) {
-  const lexer = useMarkdown();
-  return (
-    <div className="start-preview markdown" tabIndex={0}>
-      {text.trim() === '' ? (
-        <p className="start-preview-empty">Nothing to preview yet.</p>
-      ) : lexer ? (
-        markdownNodes(lexer(text))
-      ) : (
-        <p>{text}</p>
-      )}
-    </div>
   );
 }
 
