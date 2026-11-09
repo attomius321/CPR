@@ -49,7 +49,8 @@ import {
   titleOf,
   type Tab,
 } from './tabs.js';
-import { shownFolders, treeOf, type Tree } from './tree.js';
+import { shownFolders, treeOf } from './tree.js';
+import { pageState, type View } from './state.js';
 
 /** What Symbiote's window gives a page served over http (the desktop app's preload, N1). */
 interface DesktopApp {
@@ -73,45 +74,12 @@ const FRESH_FOR = 10_000;
 
 const desktop = window.symbioteApp;
 
-let tabs: Tab[] = [];
-/** The open tab: a Symbiote's folder, or null: Symbiotes, the list. */
-let selected = selectedFrom(window.location.hash);
-/** The folder typed in the field (a path), kept in the address (`#folders:<path>`); null: none. */
-let browsed = folderFromHash(window.location.hash);
-/** The folder the address named at load: put in the field once home is known. */
-let asked = browsed;
-/** The folders whose tab was opened: their frames are kept, their tabs too once they stop. */
-const opened = new Set<string>();
-const frames = new Map<string, HTMLIFrameElement>();
-let failure: string | null = null;
-let readOnce = false;
-/** Why something asked on Symbiotes did not happen: a stop, a pin, a folder to scan, a copy. */
-let problem: string | null = null;
-/** What the nexus knows besides the running Symbiotes (NX5): null until read. */
-let known: RepositoriesAnswer | null = null;
-/** The field's text. */
-let query = '';
-/**
- * The picked row (decision 913) and its place: kept by its path when the list is drawn again, and
- * by which of its path's rows it is (in the tree too, decision 926).
- */
-let pick: Pick | null = null;
-/** Home's tree, from the last scan (decision 926); null until read. */
-let tree: Tree | null = null;
-/** The tree's folders the person opened. */
-const openFolders = new Set<string>();
+const state = pageState();
+
 /** Folders' listings and repositories' checkouts read, with when. */
 const listings = new Map<string, { answer: FoldersAnswer | { error: string }; at: number }>();
 const checkoutsRead = new Map<string, { checkouts: Found[] | null; at: number }>();
 const reading = new Set<string>();
-/** The repositories whose Symbiote is starting, and why one did not. */
-const starting = new Set<string>();
-const failures = new Map<string, string>();
-/** The stopped tabs whose Symbiote is starting again, and why one did not. */
-const restarting = new Set<string>();
-let restartFailure: { root: string; why: string } | null = null;
-/** The path just copied, for the copy button's check. */
-let copied: string | null = null;
 
 // ---- drawing ----------------------------------------------------------------------------------
 
@@ -137,16 +105,16 @@ const list = listView({
   input: (value) => setQuery(value, { fromField: true }),
   key: onKey,
   pick: (at) => {
-    const row = lastView.rows[at];
-    if (row) pick = pickOf(at);
+    const row = state.lastView.rows[at];
+    if (row) state.pick = pickOf(at);
     render();
   },
   act: (at) => {
-    const row = lastView.rows[at];
+    const row = state.lastView.rows[at];
     if (row) act(row);
   },
   toggle: (at) => {
-    const row = lastView.rows[at];
+    const row = state.lastView.rows[at];
     if (row) toggleFolder(row);
   },
   rescan: () => void rescan(),
@@ -237,14 +205,14 @@ const drawn = { strip: '', stopped: '' };
 
 function drawStrip(): void {
   const key = JSON.stringify([
-    selected,
-    tabs.length,
-    tabs.map((t) => [t.root, t.name, t.url, t.branch, t.head]),
+    state.selected,
+    state.tabs.length,
+    state.tabs.map((t) => [t.root, t.name, t.url, t.branch, t.head]),
   ]);
   if (key === drawn.strip) return;
   drawn.strip = key;
   const focused = (document.activeElement as HTMLElement | null)?.dataset.tab;
-  const running = tabs.filter((tab) => tab.url !== null).length;
+  const running = state.tabs.filter((tab) => tab.url !== null).length;
   const list = tabButton(
     null,
     icon(GRID, true),
@@ -257,10 +225,10 @@ function drawStrip(): void {
     'div',
     { class: 'nexus-own' },
     list,
-    tabs.length > 0 && el('span', { class: 'views-divider', 'aria-hidden': 'true' }),
+    state.tabs.length > 0 && el('span', { class: 'views-divider', 'aria-hidden': 'true' }),
   );
   const children: HTMLElement[] = [own];
-  for (const tab of tabs) {
+  for (const tab of state.tabs) {
     const button = tabButton(
       tab.root,
       el('span', {
@@ -292,7 +260,7 @@ function drawStrip(): void {
 }
 
 function tabButton(root: string | null, ...children: Child[]): HTMLButtonElement {
-  const picked = root === selected;
+  const picked = root === state.selected;
   const button = el(
     'button',
     {
@@ -309,31 +277,6 @@ function tabButton(root: string | null, ...children: Child[]): HTMLButtonElement
   return button;
 }
 
-/** What the list shows now: its groups and rows, what Tab would add, why there are none. */
-interface View {
-  groups: Group[];
-  rows: Row[];
-  ghost: string;
-  hint: string;
-  message: Child;
-  welcome: boolean;
-  /** The folder's entries while a path is typed (what Tab completes from). */
-  entries: Folder[] | null;
-  /** A repository the folder typed is in: the pick goes to it (decision 554). */
-  preferred: string | null;
-}
-
-let lastView: View = {
-  groups: [],
-  rows: [],
-  ghost: '',
-  hint: 'slash',
-  message: null,
-  welcome: false,
-  entries: null,
-  preferred: null,
-};
-
 const groupOf = (key: Group['key'], name: string, order: string, rows: Row[]): Group => ({
   key,
   name,
@@ -349,17 +292,24 @@ const folderName = (path: string, homePath: string) =>
   path === '/' ? '/' : `${shownPath(path, homePath)}/`;
 
 function view(): View {
-  const none: View = { ...lastView, groups: [], rows: [], ghost: '', hint: 'slash', message: null };
-  if (!known) {
+  const none: View = {
+    ...state.lastView,
+    groups: [],
+    rows: [],
+    ghost: '',
+    hint: 'slash',
+    message: null,
+  };
+  if (!state.known) {
     return {
       ...none,
       welcome: false,
       message: loading('Reading the repositories the nexus knows…'),
     };
   }
-  const homePath = known.home;
-  const parts = { tabs, pins: known.pins, known: known.repositories };
-  const typed = typedPath(query, homePath);
+  const homePath = state.known.home;
+  const parts = { tabs: state.tabs, pins: state.known.pins, known: state.known.repositories };
+  const typed = typedPath(state.query, homePath);
   if (typed) {
     const base = { ...none, hint: 'tab', welcome: false };
     const read = listingOf(typed.folder);
@@ -380,12 +330,12 @@ function view(): View {
     }
     if (prefix && others.length > 0)
       groups.push(groupOf('others', `Also in ${where}`, 'by name', rowsOf(others)));
-    const next = inside ? query : completed(query, read.folders);
+    const next = inside ? state.query : completed(state.query, read.folders);
     return {
       ...base,
       groups,
       rows: groups.flatMap((g) => g.rows),
-      ghost: next.startsWith(query) ? next.slice(query.length) : '',
+      ghost: next.startsWith(state.query) ? next.slice(state.query.length) : '',
       message:
         read.folders.length === 0
           ? `${where} holds no folder`
@@ -396,18 +346,18 @@ function view(): View {
       preferred: read.picked,
     };
   }
-  const words = query.trim();
+  const words = state.query.trim();
   const listed = listedFolders();
   // Home (decision 926): as a tree, or every folder of the scan, flat, to search.
-  const homeRowsShown = !tree
+  const homeRowsShown = !state.tree
     ? []
     : words
       ? homeRows(
-          tree.all.map((path) => ({ path })),
+          state.tree.all.map((path) => ({ path })),
           { ...parts, listed },
         )
       : homeRows(
-          shownFolders(tree, openFolders, (path) => {
+          shownFolders(state.tree, state.openFolders, (path) => {
             const answer = folderListing(path);
             return answer?.map((folder) => folder.path);
           }),
@@ -416,13 +366,13 @@ function view(): View {
   const all = groupsOf({ ...parts, tree: homeRowsShown, flat: words !== '' });
   const groups = searched(all, words, homePath);
   const rows = groups.flatMap((g) => g.rows);
-  const total = all.slice(0, 3).reduce((n, g) => n + g.all, 0) + (tree?.all.length ?? 0);
+  const total = all.slice(0, 3).reduce((n, g) => n + g.all, 0) + (state.tree?.all.length ?? 0);
   const firstRun =
-    readOnce &&
+    state.readOnce &&
     words === '' &&
-    !tabs.some((t) => t.url !== null) &&
-    known.pins.length === 0 &&
-    !known.repositories.some((k) => k.opened);
+    !state.tabs.some((t) => t.url !== null) &&
+    state.known.pins.length === 0 &&
+    !state.known.repositories.some((k) => k.opened);
   return {
     ...none,
     welcome: firstRun,
@@ -436,7 +386,7 @@ function view(): View {
         ? null
         : words
           ? `Nothing in home or the lists above has “${words}” in its path`
-          : known.scan === null
+          : state.known.scan === null
             ? loading('Looking in ~…')
             : 'Home holds no folder to show: run symbiote view in a repository, or type a path.',
   };
@@ -454,7 +404,7 @@ function folderListing(path: string): Folder[] | undefined {
 /** The folders listings read, by path: whether each is a repository, for the tree's rows. */
 function listedFolders(): Map<string, Folder> {
   const out = new Map<string, Folder>();
-  for (const path of openFolders) {
+  for (const path of state.openFolders) {
     for (const folder of folderListing(path) ?? []) out.set(folder.path, folder);
   }
   return out;
@@ -462,10 +412,10 @@ function listedFolders(): Map<string, Folder> {
 
 /** The tree's opened folders the scan did not read: listed now (a folder, never deeper, 916). */
 function readOpened(): void {
-  if (!tree) return;
-  const read = new Set(tree.all);
-  for (const path of openFolders) {
-    if (!read.has(path) || tree.unread.has(path)) listingOf(path);
+  if (!state.tree) return;
+  const read = new Set(state.tree.all);
+  for (const path of state.openFolders) {
+    if (!read.has(path) || state.tree.unread.has(path)) listingOf(path);
   }
 }
 
@@ -528,55 +478,55 @@ function entriesOf(folder: string): Folder[] | null | undefined {
 }
 
 function drawHome(): void {
-  const running = tabs.filter((tab) => tab.url !== null).length;
+  const running = state.tabs.filter((tab) => tab.url !== null).length;
   const now = new Date();
   homeLine.replaceChildren(
-    !readOnce || !known
+    !state.readOnce || !state.known
       ? loading('Looking for running Symbiotes…')
       : [
           `${running === 0 ? 'None' : running} running`,
-          ...(known.pins.length > 0 ? [`${known.pins.length} pinned`] : []),
-          known.scan === null
+          ...(state.known.pins.length > 0 ? [`${state.known.pins.length} pinned`] : []),
+          state.known.scan === null
             ? 'looking in ~'
-            : `${known.scan.repositories} ${known.scan.repositories === 1 ? 'repository' : 'repositories'} in home`,
+            : `${state.known.scan.repositories} ${state.known.scan.repositories === 1 ? 'repository' : 'repositories'} in home`,
         ].join(' · '),
   );
-  const shownProblem = failure ?? problem;
+  const shownProblem = state.failure ?? state.problem;
   homeProblem.textContent = shownProblem ?? '';
   homeProblem.hidden = shownProblem === null;
 
   readOpened();
   const v = view();
-  lastView = v;
+  state.lastView = v;
   // The pick (decision 913): kept by its path and place; at first the repository a typed folder
   // is in, else the first row.
   const preferred = v.preferred ? v.rows.findIndex((row) => row.path === v.preferred) : -1;
   const next =
-    pick !== null
-      ? keptPick(v.rows, pick)
+    state.pick !== null
+      ? keptPick(v.rows, state.pick)
       : preferred >= 0
         ? pickOf(preferred)
         : keptPick(v.rows, null);
   // No pick before both reads: the running Symbiotes would not be first.
-  pick = next === null || !readOnce || !known ? null : next;
-  const row = pick === null ? null : (v.rows[pick.at] ?? null);
-  const homePath = known?.home ?? '';
+  state.pick = next === null || !state.readOnce || !state.known ? null : next;
+  const row = state.pick === null ? null : (v.rows[state.pick.at] ?? null);
+  const homePath = state.known?.home ?? '';
   list.draw({
     groups: v.groups,
-    pick: pick?.at ?? null,
-    words: typedPath(query, homePath) ? '' : query.trim(),
+    pick: state.pick?.at ?? null,
+    words: typedPath(state.query, homePath) ? '' : state.query.trim(),
     home: homePath,
     ghost: v.ghost,
     hint: v.hint,
     message: v.message,
     welcome: v.welcome,
-    scan: known?.scan ?? null,
+    scan: state.known?.scan ?? null,
     now,
-    starting,
+    starting: state.starting,
   });
   const kind = cardKind(row, {
-    starting: row !== null && starting.has(row.path),
-    failed: row === null ? null : (failures.get(row.path) ?? null),
+    starting: row !== null && state.starting.has(row.path),
+    failed: row === null ? null : (state.failures.get(row.path) ?? null),
   });
   const repository = row !== null && row.repository;
   const parent = row ? row.path.slice(0, row.path.lastIndexOf('/')) || '/' : '';
@@ -587,18 +537,22 @@ function drawHome(): void {
     now,
     checkouts: repository && row ? checkoutsOf(row.path) : null,
     listing: row === null || row.missing ? null : entriesOf(repository ? parent : row.path),
-    failed: row === null ? null : (failures.get(row.path) ?? null),
-    starting: row !== null && starting.has(row.path),
+    failed: row === null ? null : (state.failures.get(row.path) ?? null),
+    starting: row !== null && state.starting.has(row.path),
     refused: row === null || row.repository ? null : refusedFor(row.path),
-    copied: row !== null && copied === row.path,
+    copied: row !== null && state.copied === row.path,
     rowOf: (folder) =>
-      entryRow(folder, { tabs, pins: known?.pins ?? [], known: known?.repositories ?? [] }),
+      entryRow(folder, {
+        tabs: state.tabs,
+        pins: state.known?.pins ?? [],
+        known: state.known?.repositories ?? [],
+      }),
   });
 }
 
 function drawStopped(tab: Tab): void {
-  const busy = restarting.has(tab.root);
-  const why = restartFailure?.root === tab.root ? restartFailure.why : null;
+  const busy = state.restarting.has(tab.root);
+  const why = state.restartFailure?.root === tab.root ? state.restartFailure.why : null;
   const key = JSON.stringify([tab.root, tab.name, busy, why]);
   if (key === drawn.stopped) return;
   drawn.stopped = key;
@@ -632,21 +586,21 @@ function drawStopped(tab: Tab): void {
 
 /** Shows the open tab: its frame (made once, kept), Symbiotes, or a stopped one's panel. */
 function show(): void {
-  const tab = tabs.find((t) => t.root === selected);
+  const tab = state.tabs.find((t) => t.root === state.selected);
   // Frames of Symbiotes that stopped, or whose tab closed, are unloaded; a restarted one's moves.
-  for (const [root, frame] of frames) {
-    const its = tabs.find((t) => t.root === root);
-    if (!its?.url || !opened.has(root)) {
+  for (const [root, frame] of state.frames) {
+    const its = state.tabs.find((t) => t.root === root);
+    if (!its?.url || !state.opened.has(root)) {
       frame.remove();
-      frames.delete(root);
+      state.frames.delete(root);
     } else if (frame.dataset.url !== its.url) {
       frame.dataset.url = its.url;
       void address(frame, its.url);
     }
   }
   if (tab?.url) {
-    opened.add(tab.root);
-    if (!frames.has(tab.root)) {
+    state.opened.add(tab.root);
+    if (!state.frames.has(tab.root)) {
       const frame = el('iframe', {
         class: 'nexus-frame',
         title: tab.name,
@@ -654,12 +608,12 @@ function show(): void {
         // Copy SHA, an image pasted into a terminal: the clipboard, as in a tab of its own.
         allow: 'clipboard-read; clipboard-write',
       });
-      frames.set(tab.root, frame);
+      state.frames.set(tab.root, frame);
       framesBox.append(frame);
       void address(frame, tab.url);
     }
   }
-  for (const [root, frame] of frames) frame.hidden = root !== selected;
+  for (const [root, frame] of state.frames) frame.hidden = root !== state.selected;
   home.hidden = tab !== undefined;
   stopped.hidden = !(tab && tab.url === null);
   if (tab && tab.url === null) drawStopped(tab);
@@ -689,23 +643,24 @@ function render(): void {
 // ---- what the person does ----------------------------------------------------------------------
 
 function select(root: string | null, { focusFrame = false } = {}): void {
-  selected = root;
+  state.selected = root;
   // The open tab in the address, with no entry of the nexus's own in the history (decision 521);
   // Symbiotes' with the folder the person went to, if any.
-  const hash = root === null ? (browsed === null ? '' : foldersHash(browsed)) : hashOf(root);
+  const hash =
+    root === null ? (state.browsed === null ? '' : foldersHash(state.browsed)) : hashOf(root);
   window.history.replaceState(
     null,
     '',
     `${window.location.pathname}${window.location.search}${hash}`,
   );
   render();
-  if (focusFrame && root !== null) frames.get(root)?.focus();
+  if (focusFrame && root !== null) state.frames.get(root)?.focus();
 }
 
 function closeStopped(root: string): void {
-  opened.delete(root);
-  tabs = closeTab(tabs, root);
-  if (selected === root) select(null);
+  state.opened.delete(root);
+  state.tabs = closeTab(state.tabs, root);
+  if (state.selected === root) select(null);
   else render();
 }
 
@@ -743,13 +698,13 @@ async function startSymbiote(folder: string, init = false): Promise<string | typ
 }
 
 async function startAgain(root: string): Promise<void> {
-  restarting.add(root);
-  restartFailure = null;
+  state.restarting.add(root);
+  state.restartFailure = null;
   render();
   const why = await startSymbiote(root);
-  restarting.delete(root);
-  if (why === INIT) restartFailure = { root, why: `${root} is no git repository now` };
-  else if (why !== null) restartFailure = { root, why };
+  state.restarting.delete(root);
+  if (why === INIT) state.restartFailure = { root, why: `${root} is no git repository now` };
+  else if (why !== null) state.restartFailure = { root, why };
   render();
 }
 
@@ -765,12 +720,13 @@ async function stopSymbiote(tab: Tab, from: HTMLElement): Promise<void> {
       : document.querySelector<HTMLElement>(`button[aria-label="${CSS.escape(label)}"]`);
   again?.focus();
   if (!stop) return;
-  problem = null;
+  state.problem = null;
   try {
     const res = await post('/api/symbiotes/stop', { root: tab.root });
-    if (!res.ok && res.status !== 404) problem = `${tab.name} did not stop: ${await res.text()}`;
+    if (!res.ok && res.status !== 404)
+      state.problem = `${tab.name} did not stop: ${await res.text()}`;
   } catch (error) {
-    problem = `${tab.name} did not stop: ${(error as Error).message}`;
+    state.problem = `${tab.name} did not stop: ${(error as Error).message}`;
   }
   await refresh();
 }
@@ -780,24 +736,24 @@ async function stopSymbiote(tab: Tab, from: HTMLElement): Promise<void> {
  * once it serves. A folder that is no repository is asked about first, then made one (928).
  */
 async function openSymbiote(row: Row): Promise<void> {
-  starting.add(row.path);
-  failures.delete(row.path);
+  state.starting.add(row.path);
+  state.failures.delete(row.path);
   render();
   let why = await startSymbiote(row.path);
   if (why === INIT) {
-    starting.delete(row.path);
+    state.starting.delete(row.path);
     render();
     const from = document.activeElement as HTMLElement | null;
     const yes = await confirmInit(row);
     from?.focus();
     if (!yes) return;
-    starting.add(row.path);
+    state.starting.add(row.path);
     render();
     why = await startSymbiote(row.path, true);
   }
-  starting.delete(row.path);
+  state.starting.delete(row.path);
   if (why === INIT) why = `${row.name} is no git repository`;
-  if (why !== null) failures.set(row.path, why);
+  if (why !== null) state.failures.set(row.path, why);
   // Its tab is open: back on Symbiotes the whole list shows again.
   if (why === null) setQuery('');
   else render();
@@ -809,7 +765,7 @@ function act(row: Row): void {
     const root = row.tab.root;
     select(root, { focusFrame: true });
     setQuery('');
-  } else if (row.missing || starting.has(row.path)) {
+  } else if (row.missing || state.starting.has(row.path)) {
     return;
   } else if (row.repository || refusedFor(row.path) === null) {
     void openSymbiote(row);
@@ -823,11 +779,11 @@ function act(row: Row): void {
  * decision 928): home, the top, a Windows drive.
  */
 function refusedFor(path: string): string | null {
-  if (!known) return null;
+  if (!state.known) return null;
   if (path === '/') return 'The top folder (/) cannot be made a repository.';
-  if (path === known.home)
+  if (path === state.known.home)
     return 'Your home folder cannot be made a repository: pick a folder in it.';
-  if (known.drives.includes(path)) {
+  if (state.known.drives.includes(path)) {
     return `The drive ${path} cannot be made a repository: pick a folder on it.`;
   }
   return null;
@@ -835,17 +791,17 @@ function refusedFor(path: string): string | null {
 
 /** A picked place in the list. */
 function pickOf(at: number): Pick | null {
-  const row = lastView.rows[at];
+  const row = state.lastView.rows[at];
   if (!row) return null;
-  const nth = lastView.rows.slice(0, at).filter((other) => other.path === row.path).length;
+  const nth = state.lastView.rows.slice(0, at).filter((other) => other.path === row.path).length;
   return { path: row.path, at, ...(nth > 0 ? { nth } : {}) };
 }
 
 /** Opens or closes a folder of home's tree (decision 926). */
 function toggleFolder(row: Row): void {
   if (row.depth === undefined || row.leaf === true) return;
-  if (openFolders.has(row.path)) openFolders.delete(row.path);
-  else openFolders.add(row.path);
+  if (state.openFolders.has(row.path)) state.openFolders.delete(row.path);
+  else state.openFolders.add(row.path);
   render();
 }
 
@@ -854,27 +810,27 @@ function toggleFolder(row: Row): void {
  * field cleared), or typed as a path when the tree does not hold it.
  */
 function goIn(row: Row): void {
-  if (!known) return;
-  const homePath = known.home;
+  if (!state.known) return;
+  const homePath = state.known.home;
   const inTree =
-    tree !== null && row.path.startsWith(`${homePath}/`) && tree.all.includes(row.path);
+    state.tree !== null && row.path.startsWith(`${homePath}/`) && state.tree.all.includes(row.path);
   if (!inTree) {
     typeInField(folderName(row.path, homePath));
     return;
   }
   for (let at = row.path; at.startsWith(`${homePath}/`); at = at.slice(0, at.lastIndexOf('/'))) {
-    openFolders.add(at);
+    state.openFolders.add(at);
   }
-  query = '';
+  state.query = '';
   list.field.value = '';
-  browsed = null;
-  if (selected !== null) select(null);
-  pick = { path: row.path, at: 0 };
+  state.browsed = null;
+  if (state.selected !== null) select(null);
+  state.pick = { path: row.path, at: 0 };
   render();
   // The same row, now in the tree: its last place (the tree is below the groups).
-  const places = lastView.rows.flatMap((r, n) => (r.path === row.path ? [n] : []));
+  const places = state.lastView.rows.flatMap((r, n) => (r.path === row.path ? [n] : []));
   const last = places.at(-1);
-  if (last !== undefined) pick = pickOf(last);
+  if (last !== undefined) state.pick = pickOf(last);
   render();
   list.reveal();
   list.field.focus();
@@ -888,27 +844,27 @@ async function answerOf<T>(res: Response): Promise<T | { error: string }> {
 
 /** Pins or unpins a row (NX4, decision 620): kept in Symbiote's settings folder. */
 async function setPin(row: Row, pinned: boolean): Promise<void> {
-  problem = null;
+  state.problem = null;
   try {
     const answer = await answerOf<{ pinned: Pin[] }>(
       await post('/api/pinned', { path: row.path, pinned }),
     );
     if ('error' in answer)
-      problem = `${row.name} was not ${pinned ? 'pinned' : 'unpinned'}: ${answer.error}`;
-    else if (known) known = { ...known, pins: answer.pinned };
+      state.problem = `${row.name} was not ${pinned ? 'pinned' : 'unpinned'}: ${answer.error}`;
+    else if (state.known) state.known = { ...state.known, pins: answer.pinned };
   } catch (error) {
-    problem = `${row.name} was not ${pinned ? 'pinned' : 'unpinned'}: ${(error as Error).message}`;
+    state.problem = `${row.name} was not ${pinned ? 'pinned' : 'unpinned'}: ${(error as Error).message}`;
   }
   render();
 }
 
 /** Scans home again: the foot's button, the one way but the start (decision 925). */
 async function rescan(): Promise<void> {
-  problem = null;
+  state.problem = null;
   try {
     await post('/api/scan', {});
   } catch (error) {
-    problem = `Home was not scanned: ${(error as Error).message}`;
+    state.problem = `Home was not scanned: ${(error as Error).message}`;
   }
   await readKnown();
 }
@@ -917,15 +873,15 @@ async function rescan(): Promise<void> {
 function copyPath(row: Row): void {
   navigator.clipboard.writeText(row.path).then(
     () => {
-      copied = row.path;
+      state.copied = row.path;
       render();
       setTimeout(() => {
-        if (copied === row.path) copied = null;
+        if (state.copied === row.path) state.copied = null;
         render();
       }, 1500);
     },
     (error: unknown) => {
-      problem = `The path was not copied: ${(error as Error).message}`;
+      state.problem = `The path was not copied: ${(error as Error).message}`;
       render();
     },
   );
@@ -936,18 +892,18 @@ function copyPath(row: Row): void {
  * address names a folder typed, so a reload keeps it.
  */
 function setQuery(value: string, { fromField = false }: { fromField?: boolean } = {}): void {
-  query = value;
+  state.query = value;
   if (!fromField && list.field.value !== value) list.field.value = value;
-  pick = null;
-  const typed = known ? typedPath(value, known.home) : null;
-  browsed = typed ? typed.folder : null;
-  if (selected === null) select(null);
+  state.pick = null;
+  const typed = state.known ? typedPath(value, state.known.home) : null;
+  state.browsed = typed ? typed.folder : null;
+  if (state.selected === null) select(null);
   else render();
 }
 
 /** Puts `text` in the field, the caret at its end, the focus in it. */
 function typeInField(text: string): void {
-  if (selected !== null) select(null);
+  if (state.selected !== null) select(null);
   setQuery(text);
   list.field.focus();
   list.field.setSelectionRange(text.length, text.length);
@@ -956,17 +912,17 @@ function typeInField(text: string): void {
 /** The field's keys: the pick, Enter, Esc, and a path's Tab, → and Backspace (decision 910). */
 function onKey(event: KeyboardEvent): void {
   const field = list.field;
-  const row = pick === null ? null : (lastView.rows[pick.at] ?? null);
+  const row = state.pick === null ? null : (state.lastView.rows[state.pick.at] ?? null);
   const atEnd =
     field.selectionStart === field.value.length && field.selectionEnd === field.value.length;
-  const typed = known ? typedPath(query, known.home) : null;
+  const typed = state.known ? typedPath(state.query, state.known.home) : null;
   switch (event.key) {
     case 'ArrowDown':
     case 'ArrowUp':
     case 'PageDown':
     case 'PageUp': {
       event.preventDefault();
-      pick = movedPick(lastView.rows, pick, event.key);
+      state.pick = movedPick(state.lastView.rows, state.pick, event.key);
       render();
       list.reveal();
       return;
@@ -976,27 +932,27 @@ function onKey(event: KeyboardEvent): void {
       if (row) act(row);
       return;
     case 'Escape':
-      if (query === '') return;
+      if (state.query === '') return;
       event.preventDefault();
       setQuery('');
       return;
     case 'Tab': {
-      if (event.shiftKey || !typed || !lastView.entries) return;
-      const next = completed(query, lastView.entries);
-      if (next === query) return;
+      if (event.shiftKey || !typed || !state.lastView.entries) return;
+      const next = completed(state.query, state.lastView.entries);
+      if (next === state.query) return;
       event.preventDefault();
       setQuery(next);
       return;
     }
     case 'ArrowRight':
       // Home's tree, the field empty (decision 926): → opens the picked folder, then goes in.
-      if (query === '' && row?.depth !== undefined && row.leaf !== true) {
+      if (state.query === '' && row?.depth !== undefined && row.leaf !== true) {
         event.preventDefault();
         if (!row.open) toggleFolder(row);
         else {
-          const nextRow = lastView.rows[(pick?.at ?? 0) + 1];
+          const nextRow = state.lastView.rows[(state.pick?.at ?? 0) + 1];
           if (nextRow?.depth !== undefined && nextRow.depth > row.depth) {
-            pick = pickOf((pick?.at ?? 0) + 1);
+            state.pick = pickOf((state.pick?.at ?? 0) + 1);
             render();
             list.reveal();
           }
@@ -1005,22 +961,22 @@ function onKey(event: KeyboardEvent): void {
       }
       if (!typed || !atEnd || !row || row.repository || row.missing) return;
       event.preventDefault();
-      setQuery(into(query, row));
+      setQuery(into(state.query, row));
       return;
     case 'ArrowLeft': {
       // ← closes the picked folder, or goes to the folder holding it.
-      if (query !== '' || row?.depth === undefined) return;
+      if (state.query !== '' || row?.depth === undefined) return;
       event.preventDefault();
       if (row.open) {
         toggleFolder(row);
         return;
       }
-      const at = pick?.at ?? 0;
+      const at = state.pick?.at ?? 0;
       for (let n = at - 1; n >= 0; n--) {
-        const above = lastView.rows[n];
+        const above = state.lastView.rows[n];
         if (above?.depth === undefined) break;
         if (above.depth < row.depth) {
-          pick = pickOf(n);
+          state.pick = pickOf(n);
           render();
           list.reveal();
           break;
@@ -1030,7 +986,7 @@ function onKey(event: KeyboardEvent): void {
     }
     case 'Backspace': {
       if (!typed || !atEnd) return;
-      const above = up(query);
+      const above = up(state.query);
       if (above === null) return;
       event.preventDefault();
       setQuery(above);
@@ -1059,7 +1015,7 @@ function confirmStop(name: string): Promise<boolean> {
  * cancels.
  */
 function confirmInit(row: Row): Promise<boolean> {
-  const where = known ? shownPath(row.path, known.home) : row.path;
+  const where = state.known ? shownPath(row.path, state.known.home) : row.path;
   return ask({
     question: `Make ${row.name} a git repository?`,
     detail: [
@@ -1143,8 +1099,8 @@ strip.addEventListener('keydown', (event) => {
 window.addEventListener('hashchange', () => {
   const next = selectedFrom(window.location.hash);
   const path = folderFromHash(window.location.hash);
-  if (next === null && path !== null && path !== browsed && known) {
-    setQuery(folderName(path, known.home));
+  if (next === null && path !== null && path !== state.browsed && state.known) {
+    setQuery(folderName(path, state.known.home));
   }
   select(next);
 });
@@ -1156,13 +1112,13 @@ document.addEventListener('keydown', (event) => {
   const typing = !!target?.closest('input, textarea, select, [contenteditable]');
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
     event.preventDefault();
-    if (selected !== null) select(null);
+    if (state.selected !== null) select(null);
     list.field.focus();
     list.field.select();
   } else if (
     event.key === '/' &&
     !typing &&
-    selected === null &&
+    state.selected === null &&
     !event.ctrlKey &&
     !event.metaKey
   ) {
@@ -1173,32 +1129,28 @@ document.addEventListener('keydown', (event) => {
 
 // ---- reading ------------------------------------------------------------------------------------
 
-/** The running Symbiotes' folders at the last read: a change reads what the nexus knows again. */
-let runningKey = '';
-
 /** Reads what the nexus knows besides the running Symbiotes (NX5): pins, history, the scan. */
-let readingKnown: Promise<void> | null = null;
 function readKnown(): Promise<void> {
-  readingKnown ??= (async () => {
+  state.readingKnown ??= (async () => {
     try {
       const res = await fetch('/api/repositories', { cache: 'no-store' });
       if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
-      known = (await res.json()) as RepositoriesAnswer;
-      if (known.scan && known.scan.at !== tree?.at) await readTree();
-      if (asked !== null) {
-        setQuery(folderName(asked, known.home));
-        asked = null;
+      state.known = (await res.json()) as RepositoriesAnswer;
+      if (state.known.scan && state.known.scan.at !== state.tree?.at) await readTree();
+      if (state.asked !== null) {
+        setQuery(folderName(state.asked, state.known.home));
+        state.asked = null;
       }
     } catch (error) {
-      problem = `What the nexus knows could not be read: ${(error as Error).message}`;
+      state.problem = `What the nexus knows could not be read: ${(error as Error).message}`;
     }
     render();
   })().finally(() => {
-    readingKnown = null;
+    state.readingKnown = null;
     // Home's first scan runs: asked again until it answers.
-    if (known && !known.scan) setTimeout(() => void readKnown(), 500);
+    if (state.known && !state.known.scan) setTimeout(() => void readKnown(), 500);
   });
-  return readingKnown;
+  return state.readingKnown;
 }
 
 /** Reads home's tree (decision 926): once per scan, when its time changes. */
@@ -1207,9 +1159,9 @@ async function readTree(): Promise<void> {
     const res = await fetch('/api/tree', { cache: 'no-store' });
     if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
     const answer = (await res.json()) as { tree: TreeAnswer | null };
-    tree = answer.tree ? treeOf(answer.tree) : null;
+    state.tree = answer.tree ? treeOf(answer.tree) : null;
   } catch (error) {
-    problem = `Home's folders could not be read: ${(error as Error).message}`;
+    state.problem = `Home's folders could not be read: ${(error as Error).message}`;
   }
 }
 
@@ -1219,26 +1171,26 @@ async function refresh(): Promise<void> {
     const res = await fetch('/api/symbiotes', { cache: 'no-store' });
     if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
     const { symbiotes } = (await res.json()) as { symbiotes: Symbiote[] };
-    tabs = nextTabs(tabs, symbiotes, opened);
+    state.tabs = nextTabs(state.tabs, symbiotes, state.opened);
     const key = symbiotes
       .map((s) => s.root)
       .sort()
       .join('\n');
-    if (key !== runningKey) {
-      runningKey = key;
+    if (key !== state.runningKey) {
+      state.runningKey = key;
       void readKnown();
     }
-    failure = null;
-    const first = !readOnce;
-    readOnce = true;
+    state.failure = null;
+    const first = !state.readOnce;
+    state.readOnce = true;
     // A tab asked for by the address that is not there (any more): the list.
-    const gone = selected !== null && !tabs.some((t) => t.root === selected);
+    const gone = state.selected !== null && !state.tabs.some((t) => t.root === state.selected);
     if (gone) select(null);
     else render();
-    if (first && selected !== null) frames.get(selected)?.focus();
+    if (first && state.selected !== null) state.frames.get(state.selected)?.focus();
     else if (first) list.field.focus();
   } catch (error) {
-    failure = `The running Symbiotes could not be read: ${(error as Error).message}`;
+    state.failure = `The running Symbiotes could not be read: ${(error as Error).message}`;
     render();
   }
 }
