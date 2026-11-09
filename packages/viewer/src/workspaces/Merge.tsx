@@ -5,7 +5,6 @@ import { hrefOf } from '../shell/pages.js';
 import { postJson } from '../ui/http.js';
 import { removeMerge } from './cleanup.js';
 import {
-  failedCheck,
   mergeButtons,
   mergeLive,
   mergeState,
@@ -15,19 +14,14 @@ import {
 } from './merges.js';
 import { MergeLog } from './MergeLog.js';
 import {
-  AgentIcon,
   AlertIcon,
   CheckIcon,
   ChecksIcon,
   CloseIcon,
-  CommitIcon,
-  FailedIcon,
   FileIcon,
   MergeIcon,
   MergingIcon,
   PushIcon,
-  ReviewIcon,
-  ShieldIcon,
   SpinIcon,
   TerminalIcon,
 } from '../ui/icons.js';
@@ -35,14 +29,7 @@ import { Pipeline } from '../ui/Pipeline.js';
 import { StatusLabel } from '../ui/StatusLabel.js';
 import { useSecondsWhile } from './clock.js';
 import { FileRow, useChanges } from './ChangesPanel.js';
-import {
-  expectedCheck,
-  mergePage,
-  type MergeCommand,
-  type MergeStep,
-  type MergeStepState,
-} from './merge-steps.js';
-import { ChecksMark, Item, type ItemState } from './RunItem.js';
+import { expectedCheck, mergePage, type MergeStep, type MergeStepState } from './merge-steps.js';
 import { PageHead } from '../ui/PageHead.js';
 import { MoreActions, type MenuAction } from '../ui/MoreActions.js';
 import { reloadWorkspaces, useWorkspaces } from './useWorkspaces.js';
@@ -50,6 +37,7 @@ import { replyMode } from './thread-items.js';
 import { tip } from '../ui/tip.js';
 import { Loading } from '../ui/Loading.js';
 import { MergeFiles } from './MergeFiles.js';
+import { MergeStepsCard } from './MergeStepsCard.js';
 
 const ACTION_NAMES: Record<MergeAction, string> = {
   land: 'Land',
@@ -121,7 +109,6 @@ function MergeEntryView({ entry, send = false }: { entry: MergeEntry; send?: boo
   const { merges, list, reviews } = useWorkspaces();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [output, setOutput] = useState(false);
   const [changing, setChanging] = useState(false);
   const [comments, setComments] = useState('');
   // Its log has the check's whole output (V46a): the entry's last lines only without one.
@@ -212,17 +199,11 @@ function MergeEntryView({ entry, send = false }: { entry: MergeEntry; send?: boo
       : picked === 'changes' && !changed
         ? 'log'
         : (picked ?? (files.length > 0 && resolved ? 'files' : 'log'));
-  const shown = !logged && entry.check?.output && entry.check.ok === false;
-  const ran = entry.check ? failedCheck(entry.check) : null;
   // Approve lands a resolution whatever its check said: the button says so when it failed.
   const approveTitle =
     entry.check?.ok === false
       ? `Land the merge, though its check failed (${entry.check.failed ?? ''})`
       : undefined;
-  const check = entry.check;
-  const checkState = (state: MergeStepState): ItemState =>
-    state === 'done' ? 'ok' : state === 'now' ? 'run' : state === 'bad' ? 'fail' : 'todo';
-  const [, mergeStep, checkStep, land] = page.steps as [MergeStep, MergeStep, MergeStep, MergeStep];
   return (
     <section
       className={`merge-row merge-page merge-tone-${mergeState(entry).tone}`}
@@ -384,117 +365,7 @@ function MergeEntryView({ entry, send = false }: { entry: MergeEntry; send?: boo
         ]}
       />
       <div className="merge-body">
-        <section className="card merge-steps-card" aria-label="Steps">
-          <div className="card-head merge-steps-card-head">
-            <h2>Steps</h2>
-            <span className="merge-rules-file">
-              <FileIcon />
-              symbiote/merge.md
-            </span>
-          </div>
-          <ol className="run-items merge-items">
-            <Item
-              name="Approved"
-              state="ok"
-              icon={<ReviewIcon />}
-              words={page.approval.words}
-              end={<span>{page.approval.at}</span>}
-            >
-              {page.approval.quote && <p className="run-quote">“{page.approval.quote}”</p>}
-            </Item>
-            <Item
-              name="Merge"
-              state={checkState(mergeStep.state)}
-              icon={<MergeIcon />}
-              words={mergeStep.state === 'bad' ? mergeStep.detail : "in Symbiote's merge worktree"}
-              end={
-                entry.mergeMs !== undefined ? <span>{mergeTook(entry.mergeMs)}</span> : undefined
-              }
-            >
-              {entry.merge && (
-                <p className="merge-commit-line">
-                  <CommitIcon />
-                  <code>{entry.head.slice(0, 7)}</code>
-                  <span>into</span>
-                  <code>{entry.into}</code>
-                  {entry.base && (
-                    <>
-                      <span>at</span>
-                      <code>{entry.base.slice(0, 7)}</code>
-                    </>
-                  )}
-                  <span className="merge-arrow">→</span>
-                  <code>{entry.merge.slice(0, 7)}</code>
-                </p>
-              )}
-            </Item>
-            {(entry.state === 'resolving' || entry.resolution) && (
-              <Item
-                name="Merger agent"
-                state={
-                  entry.state === 'resolving'
-                    ? 'run'
-                    : entry.resolution?.needsYou
-                      ? 'warning'
-                      : 'ok'
-                }
-                icon={entry.state === 'resolving' ? <SpinIcon /> : <AgentIcon />}
-                words={
-                  entry.state === 'resolving'
-                    ? `answers ${entry.conflicts?.length ?? 0} conflicting file${entry.conflicts?.length === 1 ? '' : 's'}`
-                    : entry.resolution?.needsYou
-                      ? 'asks you'
-                      : `wrote ${entry.resolution?.regions.length ?? 0} region${entry.resolution?.regions.length === 1 ? '' : 's'}`
-                }
-                end={entry.resolution ? <span>{mergeTook(entry.resolution.ms)}</span> : undefined}
-              />
-            )}
-            <Item
-              name="Check"
-              state={checkState(checkStep.state)}
-              icon={checkStep.state === 'now' ? <SpinIcon /> : <ChecksIcon />}
-              words={
-                check
-                  ? check.source.replace(/^symbiote\/config\.json \((.+)\)$/, '$1')
-                  : checkStep.detail
-              }
-              end={page.checkTime ? <span>{page.checkTime}</span> : undefined}
-            >
-              {page.commands.length > 0 && <MergeCommands commands={page.commands} />}
-              {(ran || shown) && (
-                <p className="merge-run small">
-                  {ran}
-                  {shown && (
-                    <button
-                      type="button"
-                      className="link small"
-                      onClick={() => setOutput((o) => !o)}
-                    >
-                      {output ? 'Hide its output' : 'Its output'}
-                    </button>
-                  )}
-                </p>
-              )}
-              {shown && output && <pre className="merge-output">{entry.check?.output}</pre>}
-            </Item>
-            <Item
-              name="Land"
-              state={checkState(land.state)}
-              icon={<PushIcon />}
-              words={page.landWords}
-              end={entry.landed ? <span>{approvedAt(entry.landed)}</span> : undefined}
-              last
-            />
-          </ol>
-          <p className="merge-note">
-            <ShieldIcon />
-            {entry.by === 'hive'
-              ? "A failed check goes back to Hive's writer, with its output."
-              : send
-                ? "A failed check goes back to the workspace's agent, with its output."
-                : 'A failed check waits here for you, with its output.'}
-          </p>
-        </section>
+        <MergeStepsCard entry={entry} page={page} send={send} logged={logged} />
         <section className="card merge-output-card" aria-label="Its output">
           <div className="merge-tabs" role="tablist" aria-label="The merge">
             <button
@@ -570,16 +441,6 @@ function MergeEntryView({ entry, send = false }: { entry: MergeEntry; send?: boo
   );
 }
 
-/** "12:51". */
-const approvedAt = (iso: string) => {
-  const date = new Date(iso);
-  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-};
-
-/** The merge step's time: "0.4 s". */
-const mergeTook = (ms: number) =>
-  ms < 10_000 ? `${(ms / 1000).toFixed(1)} s` : `${Math.round(ms / 1000)} s`;
-
 /** Each step's mark in its hexagon (the proof's: a check once done, a spinner while it runs). */
 const STEP_ICONS: Record<MergeStep['name'], (state: MergeStepState) => ReactElement> = {
   Approved: () => <CheckIcon />,
@@ -597,49 +458,6 @@ const STEP_ICONS: Record<MergeStep['name'], (state: MergeStepState) => ReactElem
     ),
   Land: (state) => (state === 'done' ? <CheckIcon /> : <PushIcon />),
 };
-
-/** The check's commands, each with its time; the running one with its bar (decision 881). */
-function MergeCommands({ commands }: { commands: readonly MergeCommand[] }) {
-  return (
-    <ul className="run-commands" aria-label="Its commands">
-      {commands.map((row, i) => (
-        <li key={i} className={`run-command is-${row.mark}`}>
-          <span className="run-mark" aria-label={row.mark === 'skipped' ? 'not run' : row.mark}>
-            {row.mark === 'passed' ? (
-              <ChecksMark />
-            ) : row.mark === 'failed' ? (
-              <FailedIcon />
-            ) : row.mark === 'running' ? (
-              <span className="run-spinner" />
-            ) : null}
-          </span>
-          <code>{row.command}</code>
-          <span className="run-command-note">
-            {row.mark === 'failed' ? (
-              'failed'
-            ) : row.mark === 'skipped' ? (
-              'not run'
-            ) : row.share !== undefined ? (
-              <span
-                className="run-bar"
-                role="progressbar"
-                aria-label={`${row.command}, against its last passing run`}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={Math.round(row.share * 100)}
-              >
-                <i style={{ width: `${row.share * 100}%` }} />
-              </span>
-            ) : (
-              ''
-            )}
-          </span>
-          <span className="run-time">{row.time ?? ''}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
 
 /** A merge's two views, when it had conflicts (V46c). */
 type Tab = 'files' | 'log' | 'changes';
