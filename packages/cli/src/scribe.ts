@@ -14,12 +14,8 @@ import type { GitRepo, PromptKey } from '@symbiote/core';
 import type { LibraryService } from './library.js';
 import { fillPrompt, readPrompts } from './prompts.js';
 import { readWorkspaceConfig } from './workspaces.js';
-import {
-  pageAgent,
-  type PageAgentOptions,
-  type PageAgentSpec,
-  type PageAgent,
-} from './page-agent.js';
+import { pageAgent, type PageAgentOptions, type PageAgent } from './page-agent.js';
+import { type PageAgentSpec } from './page-agent-context.js';
 import { real } from './thread.js';
 import { CLAUDE_SKILLS, CODEX_SKILLS } from './skills.js';
 

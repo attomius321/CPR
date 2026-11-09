@@ -6,7 +6,7 @@ import { EXPORT_FORMATS, type ActivityExport, type ExportFormat } from './activi
 import { WorkspaceRefused } from './workspace-record.js';
 import { MergeRefused } from './merge-context.js';
 import { PromptRefused } from './prompts.js';
-import { PageAgentRefused } from './page-agent.js';
+import { PageAgentRefused } from './page-agent-context.js';
 import { SkillRefused } from './skills.js';
 import { McpRefused } from './mcp.js';
 import type { ServerContext } from './server-context.js';

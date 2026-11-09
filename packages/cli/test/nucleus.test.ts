@@ -8,14 +8,14 @@ import { codexServer, readProfile } from '../src/app-server.js';
 import { codexFolders, type Codex } from '../src/codex.js';
 import { DEFAULT_PROMPTS, fillPrompt, nucleusInstructions } from '../src/prompts.js';
 import { NUCLEUS_NAME, nucleus as nucleusAgent } from '../src/nucleus.js';
+import { type PageAgent } from '../src/page-agent.js';
 import {
   findPageAgentSession,
   newPageAgentSession,
-  PageAgentRefused,
-  pageAgentSettings,
   pageAgentState,
-  type PageAgent,
-} from '../src/page-agent.js';
+} from '../src/page-agent-conversation.js';
+import { PageAgentRefused } from '../src/page-agent-context.js';
+import { pageAgentSettings } from '../src/page-agent-files.js';
 import { libraryService, type LibraryService } from '../src/library.js';
 import { scribe as scribeAgent, scribePrompt } from '../src/scribe.js';
 import { viewFile } from '../src/mcp-bridge.js';

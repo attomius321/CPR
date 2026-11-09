@@ -5,141 +5,48 @@
 // finds it again by its recorded ID (never by its folder, where the person's own sessions run too,
 // decision 239), and opens it in a terminal. Since V50 a conversation can start with no question,
 // its instructions its system prompt and its terminal taking the first.
-import { readFile, rm } from 'node:fs/promises';
+import { rm } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
 import {
-  EFFORT_LEVEL,
   mainWorktree,
   MODEL_ID,
-  type AgentEfforts,
-  type AgentKind,
-  type AgentModels,
-  type DefaultModel,
   type GitRepo,
-  type InstalledAgent,
   type NucleusActivity,
   type NucleusActivityLine,
   type PageAgentAsk,
-  type PageAgentConversation,
   type EffortChange,
   type AgentLevels,
   type ModelChange,
   type PageAgentOpen,
   type PageAgentState,
-  type PageAgentStateName,
   type PageAgentTerminalRequest,
   type WorkspaceTerminalOpened,
 } from '@symbiote/core';
-import { AppServerError, AppServerStartFailed, type CodexServer } from './app-server.js';
-import { asksTrust, codexFolders, type Codex } from './codex.js';
-import { PromptRefused, readPrompts, writeConfig } from './prompts.js';
+import { AppServerError } from './app-server.js';
+import { asksTrust, type Codex } from './codex.js';
+import { PromptRefused, writeConfig } from './prompts.js';
 import { prepareSymbioteFolder, reviewPlace, type ReviewPlace } from './reviews.js';
 import { TerminalRefused, type Terminals } from './terminal.js';
 import { real } from './thread.js';
-import { readWorkspaceConfig } from './workspaces.js';
-import { shellWord, type AgentSession, type ClaudeCode } from './claude-code.js';
+import type { ClaudeCode } from './claude-code.js';
 import { viewFile } from './mcp-bridge.js';
-import {
-  AGENT_NAMES,
-  effortOnProblem,
-  effortWordProblem,
-  levelsOn,
-  modelProblem,
-  modelWordProblem,
-} from './agent-levels.js';
-import { writeFileWhole } from './file-write.js';
+import { AGENT_NAMES, effortWordProblem, modelProblem, modelWordProblem } from './agent-levels.js';
 import { appendActivity, readNucleusActivity, rotateActivity } from './nucleus-activity.js';
 import { exportActivity, type ActivityExport, type ExportFormat } from './activity-export.js';
 import { secretsOf } from './nucleus-record.js';
 import { codexLines, rolloutTokens, seenOf } from './nucleus-codex.js';
+import {
+  type PageAgentSpec,
+  type PageAgentRecord,
+  type PageAgentContext,
+  PageAgentRefused,
+} from './page-agent-context.js';
+import { isLevel, modelsOf, pageAgentLevels, PAGE_AGENTS } from './page-agent-levels.js';
+import { pageAgentFiles } from './page-agent-files.js';
+import { pageAgentConversation, findPageAgentSession } from './page-agent-conversation.js';
 
 /** Longest question: it goes on Claude Code's command line with Nucleus's prompt (8,000 at most). */
 export const MAX_QUESTION = 20_000;
-
-/** What makes a page's agent Nucleus or Scribe (V41): its name, record, tools, gate and prompt. */
-export interface PageAgentSpec {
-  /** Its session's and thread's name, and how it speaks of itself. */
-  name: string;
-  /**
-   * Its name while Hive mode is on (Nucleus's, Alpha Ceph, decision 682): what it is called and
-   * calls itself; its session and thread keep `name`, how Symbiote finds them.
-   */
-  hiveName?: string;
-  /** Its record's first key. */
-  about: string;
-  /** Its record and its settings file, in `symbiote/`. */
-  record: string;
-  settings: string;
-  /** Claude Code's tools and mode for it, read at each start (Nucleus's web, NU1). */
-  tools(root: string): readonly string[];
-  permissionMode: 'dontAsk' | 'default';
-  /**
-   * What its gate is given after its script, at each start and wake: Scribe's, the skills' folder
-   * and `folders`; Nucleus's, the checkout and the workspaces' records, whose worktrees it opens
-   * (V80, decision 596), `--web` when it has the web (NU1), and the conversation's name when not
-   * its own (Alpha Ceph, decision 686).
-   */
-  gateArgs(root: string, where: ReviewPlace, name: string): string[];
-  /**
-   * Folders outside the checkout it works in too, read at each start (Scribe: the skill library,
-   * SK1): Claude Code's `--add-dir`, folders Codex's sandbox may also write.
-   */
-  folders?(root: string): string[];
-  /** Claude Code's settings besides the gate (Scribe: its edits in the checkout). */
-  claudeSettings?: Readonly<Record<string, unknown>>;
-  /** Its first prompt: the person's words; in the project's text when it has no `instructions`. */
-  prompt(root: string, text: string): string;
-  /**
-   * Its system prompt (Nucleus, V50, decision 383; Scribe, V78, 570): Claude Code's appended one,
-   * Codex's developer instructions. With it a conversation starts with no question (`open`), its
-   * terminal taking the first; without it a conversation starts with what the person asks.
-   */
-  instructions?(root: string, name: string): string;
-  /**
-   * Where Codex's thread runs: in the checkout read-only (Nucleus), or writing in that folder and
-   * nowhere else (Scribe, its skills; decision 275).
-   */
-  codex(root: string): { cwd: string; writes: boolean };
-  /**
-   * The folders Codex's read-only thread reads (Nucleus, V80, decision 599), Codex's own program's
-   * added: a permission profile given at its start and at each message and load; absent, Codex's
-   * read-only mode, which reads every folder.
-   */
-  codexReads?(root: string, where: ReviewPlace): string[];
-  /** Made before a start: Scribe's skills folder. */
-  prepare?(root: string): Promise<void>;
-  /**
-   * The project's level in its config (`nucleus.effort`, `scribe.effort`), where it is set, and
-   * where it was before a rename (`scout.effort`): removed in the same write (decision 590).
-   */
-  effort: ConfigSetting;
-  /** The project's model in its config (`nucleus.model`, `scribe.model`, V47), as `effort`. */
-  model: ConfigSetting;
-  /**
-   * Symbiote's MCP server for it (MC1): Claude Code's file in `symbiote/`, and who the bridge says
-   * calls (`--as nucleus`); absent, none.
-   */
-  mcp?: { file: string; as: string };
-  /** Codex's thread's own configuration besides Symbiote's server, at each start and resume. */
-  codexConfig?(root: string): Readonly<Record<string, unknown>>;
-  /**
-   * Its name, record and files in `symbiote/` before a rename (NU1: Scout's, decision 591): that
-   * record is its conversation while it has none of its own; New conversation removes it all.
-   */
-  former?: { name: string; record: string; files: readonly string[] };
-  /** What it did, recorded beside its record (NU2, decision 604): Nucleus's. */
-  activity?: string;
-}
-
-/** A setting of the project's config: its value, its path, its path before a rename. */
-interface ConfigSetting {
-  read(root: string): string | undefined;
-  key: readonly string[];
-  older?: readonly string[];
-}
-
-/** A name a record may keep (decision 686): letters, digits and spaces, as Alpha Ceph. */
-const NAME = /^[\p{L}\p{N}][\p{L}\p{N} ]{0,39}$/u;
 
 /** How often Codex's thread is read for the activity while it works (NU2, decision 606). */
 const CODEX_EVERY_MS = 2_000;
@@ -149,48 +56,6 @@ const CODEX_TURNS = 5;
 
 /** How long Codex waits on one of Symbiote's tools (MC1): longer than an ask or a `wait`. */
 const TOOL_TIMEOUT_SEC = 660;
-
-/**
- * The agents a page agent runs: Claude Code and Codex.
- */
-const PAGE_AGENTS: readonly AgentKind[] = ['claude', 'codex'];
-
-/** `symbiote/nucleus.json` (or `scout.json`, NU1), or a page agent's record. */
-interface PageAgentRecord {
-  about: string;
-  agent: AgentKind;
-  /** Claude Code: the session's ID (`claude attach`) and its session ID (`--resume`). */
-  id?: string;
-  sessionId?: string;
-  /** Codex: its thread on the app server. */
-  thread?: string;
-  /** The effort level it started at; absent: the agent's own. */
-  effort?: string;
-  /** The model it started on (V47): the project's; absent: its default. */
-  model?: string;
-  /**
-   * Opened with no question (V50), and no turn seen since: Claude Code reads such a session as it
-   * reads one whose turn ended on a refused tool, `blocked` and idle. Gone at the first turn seen.
-   */
-  fresh?: true;
-  /** The name it started under when not its own: Alpha Ceph, in Hive mode (decision 686). */
-  name?: string;
-  started: string;
-}
-
-/** A record as read: `former` when it is the agent's under its name before a rename (NU1). */
-type ReadRecord = PageAgentRecord & { former?: true };
-
-/** A question Nucleus cannot take, or a conversation it cannot act on: its status and why. */
-export class PageAgentRefused extends Error {
-  override name = 'PageAgentRefused';
-  constructor(
-    message: string,
-    readonly status: 400 | 404 | 409 | 502,
-  ) {
-    super(message);
-  }
-}
 
 /** What the server needs of Nucleus, or of Scribe (V41). */
 export interface PageAgent {
@@ -234,127 +99,6 @@ export interface PageAgent {
   close?: () => Promise<void>;
 }
 
-/** The young generation the recording gate starts with, in MB (NU2). */
-const SEMI_SPACE_MB = 4;
-
-/** The events Nucleus's activity records besides the gate's (NU2): Claude Code's, in the background. */
-const RECORDED_EVENTS = [
-  'UserPromptSubmit',
-  'Stop',
-  'StopFailure',
-  'SessionStart',
-  'SessionEnd',
-  'PreCompact',
-  'PostCompact',
-  'Notification',
-  'PostToolUse',
-  'PostToolUseFailure',
-  'PermissionDenied',
-] as const;
-
-/**
- * A page agent's settings file for Claude Code: the gate before every tool. With `activity`
- * (Nucleus's, NU2, decision 605, which revisits 238), the gate records each call and its decision
- * there, and the other events run it in the background (`async`) to record them.
- */
-export function pageAgentSettings(
-  where: { node: string; gate: string; args?: readonly string[]; activity?: string },
-  platform: NodeJS.Platform = process.platform,
-  more: Readonly<Record<string, unknown>> = {},
-): string {
-  const command = [
-    where.node,
-    // Recording takes the gate's heap past V8's first young-generation limit: one 3.5 ms scavenge
-    // on every call (NU2 measured), which a larger start avoids for ~0.7 ms.
-    ...(where.activity ? [`--min-semi-space-size=${SEMI_SPACE_MB}`] : []),
-    where.gate,
-    ...(where.args ?? []),
-    ...(where.activity ? [`--activity=${where.activity}`] : []),
-  ]
-    .map((p) => shellWord(p, platform))
-    .join(' ');
-  const hooks: Record<string, unknown[]> = {
-    PreToolUse: [{ matcher: '*', hooks: [{ type: 'command', command, timeout: 30 }] }],
-  };
-  if (where.activity) {
-    for (const event of RECORDED_EVENTS) {
-      const tools = event.includes('Tool') || event === 'PermissionDenied';
-      hooks[event] = [
-        {
-          ...(tools ? { matcher: '*' } : {}),
-          hooks: [{ type: 'command', command, timeout: 30, async: true }],
-        },
-      ];
-    }
-  }
-  return `${JSON.stringify({ ...more, hooks }, null, 2)}\n`;
-}
-
-/**
- * The session a start made: the background session named `name` in the checkout that
- * `before` did not list (the newest, if two were). `--bg`'s own text is not read (V18).
- */
-export function newPageAgentSession(
-  before: readonly AgentSession[],
-  after: readonly AgentSession[],
-  root: string,
-  real: (path: string) => string,
-  name: string,
-): AgentSession | undefined {
-  const known = new Set(before.map((s) => s.id));
-  const folder = real(root);
-  return after
-    .filter(
-      (s) =>
-        s.kind === 'background' &&
-        s.name === name &&
-        s.id !== undefined &&
-        !known.has(s.id) &&
-        real(s.cwd) === folder,
-    )
-    .sort((a, b) => b.startedAt - a.startedAt)[0];
-}
-
-/** A page agent's session by its recorded ID. */
-export function findPageAgentSession(
-  record: { id?: string },
-  sessions: readonly AgentSession[],
-): AgentSession | undefined {
-  return record.id ? sessions.find((s) => s.id === record.id) : undefined;
-}
-
-/**
- * What Claude Code says of Nucleus's session, in Nucleus's words (V35 spike: `working`/`busy` while it
- * answers, `done`/`idle` after). `working` and idle is a turn ended by Esc (V21); `working` with no
- * process, one that ended mid-turn.
- */
-export function pageAgentState(session: AgentSession | undefined): PageAgentStateName {
-  if (!session) return 'gone';
-  const { state, status, waitingFor } = session;
-  if (status === 'busy') return 'working';
-  if (state === 'failed') return 'failed';
-  if (state === 'stopped') return 'stopped';
-  if (state === 'working') {
-    return status === 'idle' ? 'interrupted' : status === undefined ? 'stopped' : 'working';
-  }
-  return waitingFor ? 'needs-you' : 'answered';
-}
-
-/** Codex's thread in Nucleus's words: one with no turn was opened and asked nothing yet (V50). */
-function threadState(
-  status: string,
-  waiting: string | undefined,
-  turns: number,
-): PageAgentStateName {
-  if (status === 'active') return waiting ? 'needs-you' : 'working';
-  if (status === 'systemError') return 'failed';
-  return turns === 0 ? 'ready' : 'answered';
-}
-
-/** An effort level's word (V30b): what a request may name, before the agent's list is read. */
-const isLevel = (value: unknown): value is string =>
-  typeof value === 'string' && EFFORT_LEVEL.test(value);
-
 /** What a page's agent is given: its agents, its clock, its gate, its terminals. */
 export interface PageAgentOptions {
   claude: () => Promise<ClaudeCode | null>;
@@ -371,32 +115,6 @@ export interface PageAgentOptions {
   terminals?: Terminals;
   /** Whether Hive mode is on (V82): a spec with `hiveName` is called so meanwhile (decision 687). */
   hive?: () => Promise<boolean>;
-}
-
-/** A page agent's MCP servers' file for Claude Code (MC1): Symbiote's, through its bridge. */
-export function symbioteMcpConfig(server: { command: string; args: readonly string[] }): string {
-  const symbiote = { type: 'stdio', command: server.command, args: server.args };
-  return `${JSON.stringify({ mcpServers: { symbiote } }, null, 2)}\n`;
-}
-
-/** The models an agent lists (V47); null unread. */
-async function modelsOf(agent: {
-  claude?: ClaudeCode;
-  codex?: Codex;
-}): Promise<AgentModels | null> {
-  if (agent.codex) return agent.codex.models();
-  const models = (await agent.claude?.models()) ?? null;
-  return models ? { models } : null;
-}
-
-/** The levels an agent takes (V30b): Claude Code's `--help`, Codex's app server; null unread. */
-async function defaultLevelsOf(agent: {
-  claude?: ClaudeCode;
-  codex?: Codex;
-}): Promise<AgentEfforts | null> {
-  if (agent.codex) return agent.codex.efforts();
-  const levels = (await agent.claude?.efforts()) ?? null;
-  return levels ? { levels } : null;
 }
 
 /**
@@ -489,6 +207,41 @@ export function pageAgent(
     return { ...(conversation ? { conversation } : {}), agent: record.agent };
   };
 
+  const ctx: PageAgentContext = {
+    spec,
+    repo,
+    cacheDir,
+    claude,
+    codex,
+    now,
+    env,
+    root,
+    gate,
+    node,
+    terminals,
+    name,
+    called,
+    symbioteServer,
+    codexTools,
+    codexAt,
+    place,
+    folder,
+    recordPath,
+    formerPaths,
+    write,
+    ofRecord,
+  };
+  const levels = pageAgentLevels(ctx);
+  const { installed, efforts, levelProblem } = levels;
+  const files = pageAgentFiles(ctx);
+  const { readRecord, dropFormer, settingsFile, mcpFile } = files;
+  // Its conversation watches a Codex thread with this closure's loop (`watchCodex`).
+  const { serverOf, conversationOf, state, readsOf, start, reply } = pageAgentConversation(ctx, {
+    ...levels,
+    ...files,
+    watchCodex,
+  });
+
   /** What of each Codex thread the activity holds (decision 606): read from the file at first. */
   const codexSeen = new Map<string, Set<string>>();
   /** The thread being read every 2 s, its last change read, and how to read it again now. */
@@ -551,514 +304,6 @@ export function pageAgent(
         watching = undefined;
       }
     })();
-  }
-
-  /** Its record; while there is none, the one under its former name (decision 591). */
-  async function readRecord(where: ReviewPlace): Promise<ReadRecord | null> {
-    const own = await readRecordAt(recordPath(where));
-    if (own || !spec.former) return own;
-    const former = await readRecordAt(join(folder(where), spec.former.record));
-    return former ? { ...former, former: true } : null;
-  }
-
-  async function readRecordAt(path: string): Promise<PageAgentRecord | null> {
-    let value: unknown;
-    try {
-      value = JSON.parse(await readFile(path, 'utf8'));
-    } catch {
-      return null;
-    }
-    const v = (value && typeof value === 'object' ? value : {}) as Partial<PageAgentRecord>;
-    const text = (x: unknown) => (typeof x === 'string' && x !== '' ? x : undefined);
-    const started = text(v.started) ?? '';
-    const level = {
-      ...(isLevel(v.effort) ? { effort: v.effort } : {}),
-      ...(typeof v.model === 'string' && MODEL_ID.test(v.model) ? { model: v.model } : {}),
-      ...(v.fresh === true ? { fresh: true as const } : {}),
-      // A name, words only: it goes into the gate's arguments and the page (decision 686).
-      ...(typeof v.name === 'string' && NAME.test(v.name) ? { name: v.name } : {}),
-    };
-    if (v.agent === 'claude' && text(v.id)) {
-      const sessionId = text(v.sessionId);
-      return {
-        about: spec.about,
-        agent: 'claude',
-        id: v.id,
-        ...(sessionId ? { sessionId } : {}),
-        ...level,
-        started,
-      };
-    }
-    if (v.agent === 'codex' && text(v.thread)) {
-      return { about: spec.about, agent: 'codex', thread: v.thread, ...level, started };
-    }
-    return null;
-  }
-
-  /** Writes a file of Nucleus's in `symbiote/`, its `.gitignore` first: the checkout stays clean. */
-  async function put(where: ReviewPlace, path: string, text: string): Promise<void> {
-    await prepareSymbioteFolder(where, { agents: false });
-    await writeFileWhole(path, text);
-  }
-
-  /**
-   * Nucleus's settings file, written when its text differs or it is gone: a session that wakes reads
-   * it again, and does not start without it (V18c spike); `as`, the name the conversation started
-   * under (decision 686). Its path.
-   */
-  async function settingsFile(where: ReviewPlace, as: string): Promise<string> {
-    const path = join(folder(where), spec.settings);
-    const text = pageAgentSettings(
-      {
-        node,
-        gate,
-        args: spec.gateArgs(root, where, as),
-        ...(spec.activity ? { activity: join(folder(where), spec.activity) } : {}),
-      },
-      process.platform,
-      spec.claudeSettings,
-    );
-    if ((await readFile(path, 'utf8').catch(() => null)) !== text) await put(where, path, text);
-    return path;
-  }
-
-  /**
-   * Its MCP servers' file for Claude Code (MC1), written as the settings file is, before a start
-   * and each wake; its path, or undefined for an agent without Symbiote's server.
-   */
-  async function mcpFile(where: ReviewPlace): Promise<string | undefined> {
-    if (!spec.mcp || !symbioteServer) return undefined;
-    const path = join(folder(where), spec.mcp.file);
-    const text = symbioteMcpConfig(symbioteServer);
-    if ((await readFile(path, 'utf8').catch(() => null)) !== text) await put(where, path, text);
-    return path;
-  }
-
-  /** The agents installed: `agent.kind` first, else Claude Code, else Codex (decision 240). */
-  async function installed(): Promise<{ kind: AgentKind; claude?: ClaudeCode; codex?: Codex }[]> {
-    const first = readWorkspaceConfig(root).agent;
-    // `agent.kind` first when it is one of theirs (a stable sort keeps the others' order).
-    const order = [...PAGE_AGENTS].sort((a, b) => Number(b === first) - Number(a === first));
-    const found: { kind: AgentKind; claude?: ClaudeCode; codex?: Codex }[] = [];
-    for (const kind of order) {
-      if (kind === 'claude') {
-        const agent = await claude();
-        if (agent) found.push({ kind, claude: agent });
-      } else {
-        const agent = await codex();
-        if (agent) found.push({ kind, codex: agent });
-      }
-    }
-    return found;
-  }
-  const commandOf = (agent: { claude?: ClaudeCode; codex?: Codex }) =>
-    agent.claude?.command ?? agent.codex?.command ?? '';
-
-  /**
-   * The model a new conversation starts on (V47): the project's (`nucleus.model`) when its agent
-   * lists it — the box may pick the other agent, whose list will not have it —, else none passed
-   * (Claude Code's `agent.model`, or the agent's own).
-   */
-  async function modelFor(agent: {
-    claude?: ClaudeCode;
-    codex?: Codex;
-  }): Promise<string | undefined> {
-    const project = spec.model.read(root);
-    if (!project) return undefined;
-    return (await modelsOf(agent))?.models.some((m) => m.id === project) ? project : undefined;
-  }
-
-  /** The model an agent runs on without the project's (V47), when Symbiote knows it. */
-  async function defaultModelOf(agent: {
-    kind: AgentKind;
-    codex?: Codex;
-  }): Promise<DefaultModel | undefined> {
-    if (agent.kind === 'claude') {
-      const project = readWorkspaceConfig(root).model;
-      return project ? { id: project, by: 'project' } : undefined;
-    }
-    const listed = await agent.codex?.models();
-    return listed?.default ? { id: listed.default, by: 'agent' } : undefined;
-  }
-
-  /**
-   * The model an agent's new conversation runs on (V47) — `asked` (V50; null: none), else the
-   * project's when it lists it; without one, Claude Code's `agent.model` — and the levels it takes
-   * there; the default's without one.
-   */
-  async function onModel(
-    agent: { kind: AgentKind; claude?: ClaudeCode; codex?: Codex },
-    asked?: string | null,
-  ): Promise<{
-    model: string | undefined;
-    models: AgentModels | null;
-    fallback: AgentEfforts | null;
-  }> {
-    const picked = asked === undefined ? await modelFor(agent) : (asked ?? undefined);
-    const model = picked ?? (agent.kind === 'claude' ? readWorkspaceConfig(root).model : undefined);
-    return {
-      model,
-      models: model ? await modelsOf(agent) : null,
-      fallback: await defaultLevelsOf(agent),
-    };
-  }
-
-  /**
-   * The levels an agent takes on the model its new conversation would start on (V30b, V47), or on
-   * the one asked (V50).
-   */
-  async function levelsOf(
-    agent: { kind: AgentKind; claude?: ClaudeCode; codex?: Codex },
-    asked?: string | null,
-  ): Promise<AgentEfforts | null> {
-    const { model, models, fallback } = await onModel(agent, asked);
-    return levelsOn(models?.models, model, fallback);
-  }
-
-  /** Why `effort` cannot start a conversation of `agent`'s, on its model (or `asked`), or null. */
-  async function levelProblem(
-    agent: { kind: AgentKind; claude?: ClaudeCode; codex?: Codex },
-    effort: string,
-    asked?: string | null,
-  ): Promise<string | null> {
-    const { model, models, fallback } = await onModel(agent, asked);
-    return effortOnProblem(effort, AGENT_NAMES[agent.kind], models?.models, model, fallback);
-  }
-
-  /**
-   * The level a new conversation starts at: the one asked, if the agent lists it; none for null;
-   * else the project's (`nucleus.effort`, `scribe.effort`) when the agent lists it, its own
-   * otherwise — the project's file may name another agent's level, or an older one's.
-   */
-  async function levelFor(
-    agent: { kind: AgentKind; claude?: ClaudeCode; codex?: Codex },
-    effort: string | null | undefined,
-    asked?: string | null,
-  ): Promise<string | undefined> {
-    if (effort === null) return undefined;
-    if (effort === undefined) {
-      const project = spec.effort.read(root);
-      if (!project) return undefined;
-      return (await levelsOf(agent, asked))?.levels.includes(project) ? project : undefined;
-    }
-    const problem = await levelProblem(agent, effort, asked);
-    if (problem) throw new PageAgentRefused(problem, 400);
-    return effort;
-  }
-
-  /** The model asked for (V50): checked against the agent's list; null and absent pass. */
-  async function checkModel(
-    agent: { kind: AgentKind; claude?: ClaudeCode; codex?: Codex },
-    asked: string | null | undefined,
-  ): Promise<void> {
-    if (!asked) return;
-    const problem = modelProblem(asked, AGENT_NAMES[agent.kind], (await modelsOf(agent))?.models);
-    if (problem) throw new PageAgentRefused(problem, 400);
-  }
-
-  async function efforts(): Promise<AgentLevels> {
-    const agents = await Promise.all(
-      (await installed()).map(async (agent) => {
-        const [efforts, listed, defaultModel] = await Promise.all([
-          levelsOf(agent),
-          modelsOf(agent),
-          defaultModelOf(agent),
-        ]);
-        return {
-          kind: agent.kind,
-          ...(efforts ? { efforts } : {}),
-          ...(listed ? { models: listed.models } : {}),
-          ...(defaultModel ? { defaultModel } : {}),
-        };
-      }),
-    );
-    const effort = spec.effort.read(root);
-    const model = spec.model.read(root);
-    return {
-      agents,
-      ...(effort ? { effort } : {}),
-      ...(model ? { model } : {}),
-      file: readPrompts(root).file,
-    };
-  }
-
-  /** Codex's app server, or why Nucleus cannot run on it. */
-  async function serverOf(agent: Codex | null): Promise<CodexServer> {
-    if (!agent) throw new PageAgentRefused('Codex is not installed', 409);
-    const server = await agent.server();
-    if (!server) {
-      throw new PageAgentRefused(
-        `${await called()} runs Codex on its app server, and none runs: \`codex app-server daemon start\` started none (it needs Codex 0.163 or later). Codex's terminal joins a thread there.`,
-        409,
-      );
-    }
-    return server;
-  }
-
-  /** The record written again without `fresh`, where it was read: a turn was seen (V50). */
-  async function asked(where: ReviewPlace, record: ReadRecord): Promise<void> {
-    const rest: ReadRecord = { ...record };
-    delete rest.fresh;
-    delete rest.former;
-    const path =
-      record.former && spec.former ? join(folder(where), spec.former.record) : recordPath(where);
-    await put(where, path, `${JSON.stringify(rest, null, 2)}\n`).catch(() => {});
-  }
-
-  /** A conversation under the former name is over: its record and its files go (decision 591). */
-  async function dropFormer(where: ReviewPlace): Promise<void> {
-    await Promise.all(formerPaths(where).map((path) => rm(path, { force: true })));
-  }
-
-  /** What the conversation is doing; `where` given, a fresh one seen at a turn is recorded so. */
-  async function conversationOf(
-    record: ReadRecord,
-    where?: ReviewPlace,
-  ): Promise<PageAgentConversation> {
-    const head = {
-      kind: record.agent,
-      started: record.started,
-      ...(record.effort ? { effort: record.effort } : {}),
-      ...(record.model ? { model: record.model } : {}),
-      ...(record.former && spec.former ? { startedAs: spec.former.name } : {}),
-      ...(record.name ? { name: record.name } : {}),
-    };
-    const unknown = (error: string): PageAgentConversation => ({
-      ...head,
-      state: 'unknown',
-      error,
-    });
-    if (record.agent === 'claude') {
-      const agent = await claude();
-      if (!agent) return unknown('Claude Code is not installed');
-      const sessions = await agent.sessions();
-      if (!sessions) return unknown('Claude Code could not list its sessions');
-      const session = findPageAgentSession(record, sessions);
-      let state = pageAgentState(session);
-      if (record.fresh && session) {
-        // Asked nothing yet: `blocked` and idle as Claude Code starts it with no prompt (V50).
-        const waits = session.state === 'blocked' && session.status === 'idle';
-        if (waits && !session.waitingFor) state = 'ready';
-        else if (where && !['stopped', 'failed'].includes(state)) await asked(where, record);
-      }
-      return { ...head, state, ...(session ? { id: record.id } : {}) };
-    }
-    const thread = record.thread ?? '';
-    try {
-      const read = await (
-        await serverOf(await codex())
-      ).read(thread, {
-        turns: 1,
-        items: 'summary',
-      });
-      if (where) watchCodex(where, thread, read.status, read.updatedAt);
-      return {
-        ...head,
-        state: threadState(read.status, read.waiting, read.turns.length),
-        id: thread,
-      };
-    } catch (error) {
-      return unknown((error as Error).message);
-    }
-  }
-
-  async function state(): Promise<PageAgentState> {
-    const where = await place();
-    const record = await readRecord(where);
-    const agents: InstalledAgent[] = (await installed()).map((a) => ({
-      kind: a.kind,
-      command: commandOf(a),
-    }));
-    const terminal = await terminals?.available();
-    const conversation = record ? await conversationOf(record, where) : null;
-    return { checkout: root, agents, conversation, ...(terminal ? { terminal } : {}) };
-  }
-
-  /**
-   * Starts Claude Code's session, and finds the one it made: the new background session named
-   * `name` in the checkout (decision 239).
-   */
-  async function claudeStart(
-    where: ReviewPlace,
-    agent: ClaudeCode,
-    request: { prompt?: string; effort?: string; model?: string },
-    as: string,
-  ): Promise<AgentSession & { id: string }> {
-    // Copied: what Claude Code lists after the start is told from what it listed before.
-    const before = [...((await agent.sessions()) ?? [])];
-    const settings = await settingsFile(where, as);
-    const mcpConfig = await mcpFile(where);
-    const instructions = spec.instructions?.(root, as);
-    const addDirs = spec.folders?.(root) ?? [];
-    const result = await agent.startPageAgent({
-      cwd: root,
-      name,
-      ...request,
-      ...(instructions ? { instructions } : {}),
-      settings,
-      ...(mcpConfig ? { mcpConfig } : {}),
-      ...(addDirs.length > 0 ? { addDirs } : {}),
-      tools: spec.tools(root),
-      permissionMode: spec.permissionMode,
-    });
-    if (!result.ok) throw new PageAgentRefused(result.error, 502);
-    const session = newPageAgentSession(before, (await agent.sessions()) ?? [], root, real, name);
-    if (!session?.id) {
-      throw new PageAgentRefused(
-        `Claude Code started no session Symbiote can find: \`claude agents\` lists none named ${name} in ${root}`,
-        502,
-      );
-    }
-    return { ...session, id: session.id };
-  }
-
-  /** How Codex's thread is sandboxed: read-only (Nucleus), or writing in its folder (Scribe). */
-  const codexSandbox = () =>
-    codexAt.writes ? { confined: true as const } : { readOnly: true as const };
-
-  /**
-   * The folders Codex's thread reads now (V80): Codex's program's and the spec's, read again at
-   * each start, message and load; none for a spec without (Codex's read-only mode).
-   */
-  const readsOf = (where: ReviewPlace, agent: Codex | null) =>
-    spec.codexReads
-      ? { reads: [...codexFolders(agent?.command ?? ''), ...spec.codexReads(root, where)] }
-      : {};
-
-  /**
-   * Starts a conversation with `text` as the question (none: it waits for one, V50), at the level
-   * asked (`levelFor`), on the model asked (`asked`; absent: the project's).
-   */
-  async function start(
-    where: ReviewPlace,
-    text: string | undefined,
-    kind: AgentKind | undefined,
-    effort: string | null | undefined,
-    asked?: string | null,
-  ) {
-    const agents = await installed();
-    const agent = kind ? agents.find((a) => a.kind === kind) : agents[0];
-    if (!agent) {
-      throw new PageAgentRefused(
-        kind
-          ? `${AGENT_NAMES[kind]} is not installed`
-          : `${await called()} needs Claude Code or Codex: neither is installed`,
-        409,
-      );
-    }
-    await checkModel(agent, asked);
-    const level = await levelFor(agent, effort, asked);
-    const model = asked === undefined ? await modelFor(agent) : (asked ?? undefined);
-    const at = { ...(level ? { effort: level } : {}), ...(model ? { model } : {}) };
-    const first = text === undefined ? {} : { prompt: spec.prompt(root, text) };
-    // Its name for this conversation, kept in its record when not its own (decision 686).
-    const as = await called();
-    const named = as === name ? {} : { name: as };
-    const instructions = spec.instructions?.(root, as);
-    const config = codexTools();
-    const started = now().toISOString();
-    await spec.prepare?.(root);
-    if (agent.claude) {
-      const session = await claudeStart(where, agent.claude, { ...first, ...at }, as);
-      const record: PageAgentRecord = {
-        about: spec.about,
-        agent: 'claude',
-        ...named,
-        id: session.id,
-        ...(session.sessionId ? { sessionId: session.sessionId } : {}),
-        ...at,
-        ...(text === undefined ? { fresh: true as const } : {}),
-        started,
-      };
-      await put(where, recordPath(where), `${JSON.stringify(record, null, 2)}\n`);
-      await write([{ at: started, ...ofRecord(record), kind: 'opened', ...at }]);
-      return;
-    }
-    const codexAgent = agent.codex ?? null;
-    // Not logged in, Codex fails a turn only after retrying (V20a spike).
-    if ((await codexAgent?.account()) === 'not logged in') {
-      throw new PageAgentRefused('Codex is not logged in: run `codex login`, then ask again', 409);
-    }
-    const server = await serverOf(codexAgent);
-    let thread: string;
-    try {
-      thread = await server.start({
-        cwd: codexAt.cwd,
-        writable: codexAt.writes ? (spec.folders?.(root) ?? []) : [],
-        name,
-        ...first,
-        ...(instructions ? { instructions } : {}),
-        ...codexSandbox(),
-        ...readsOf(where, codexAgent),
-        ...(config ? { config } : {}),
-        ...at,
-      });
-    } catch (error) {
-      // A thread made before the failure goes out of Codex's lists.
-      if (error instanceof AppServerStartFailed) await server.archive(error.thread).catch(() => {});
-      throw new PageAgentRefused(`Codex's app server: ${(error as Error).message}`, 502);
-    }
-    const record: PageAgentRecord = {
-      about: spec.about,
-      agent: 'codex',
-      ...named,
-      thread,
-      ...at,
-      started,
-    };
-    await put(where, recordPath(where), `${JSON.stringify(record, null, 2)}\n`);
-    await write([{ at: started, ...ofRecord(record), kind: 'opened', ...at }]);
-  }
-
-  /** Continues the conversation with `text`: where no terminal runs, the page's box does (V18c). */
-  async function reply(where: ReviewPlace, record: ReadRecord, text: string): Promise<void> {
-    if (record.agent === 'codex') {
-      const config = codexTools();
-      const agent = await codex();
-      try {
-        await (
-          await serverOf(agent)
-        ).send({
-          thread: record.thread ?? '',
-          text,
-          ...(config ? { config } : {}),
-          ...readsOf(where, agent),
-        });
-      } catch (error) {
-        if (error instanceof AppServerError) {
-          throw new PageAgentRefused(`Codex's app server: ${error.message}`, 502);
-        }
-        throw error;
-      }
-      return;
-    }
-    const agent = await claude();
-    if (!agent) throw new PageAgentRefused('Claude Code is not installed', 409);
-    const session = findPageAgentSession(record, (await agent.sessions()) ?? []);
-    const sessionId = record.sessionId ?? session?.sessionId;
-    if (!session || !sessionId) {
-      throw new PageAgentRefused(
-        `${await called()}'s session is gone: start a new conversation`,
-        409,
-      );
-    }
-    // A live process is stopped first: a resume of a running session makes a copy (V18c).
-    const alive = session.status !== undefined;
-    if (alive && (session.status !== 'idle' || session.waitingFor !== undefined)) {
-      throw new PageAgentRefused(
-        `${await called()} is answering: wait for its answer, or type in its terminal`,
-        409,
-      );
-    }
-    if (alive && session.id) {
-      const stopped = await agent.stop(session.id);
-      if (!stopped.ok) throw new PageAgentRefused(stopped.error, 409);
-    }
-    // The session wakes reading its files again: its gate in the name it started under.
-    await settingsFile(where, record.name ?? name);
-    await mcpFile(where);
-    const resumed = await agent.resume({ sessionId, cwd: root, text });
-    if (!resumed.ok) throw new PageAgentRefused(resumed.error, 502);
   }
 
   /** The activity's read (NU2): the file moved to its older one past 4 MB first. */
