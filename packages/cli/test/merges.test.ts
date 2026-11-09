@@ -12,13 +12,10 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
 import { run } from '../src/main.js';
-import {
-  merger,
-  MergeRefused,
-  readMergeConfig,
-  sendFailure,
-  type ChangedSymbols,
-} from '../src/merges.js';
+import type { ChangedSymbols } from '../src/merge-context.js';
+import { merger, sendFailure } from '../src/merges.js';
+import { MergeRefused } from '../src/merge-context.js';
+import { readMergeConfig } from '../src/merge-config.js';
 import type { RunCheck } from '../src/programs.js';
 import { MERGER_INSTRUCTIONS, type MergerAgent } from '../src/merge-agent.js';
 import { MERGER_ANSWER } from '../src/prompts.js';

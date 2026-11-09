@@ -156,7 +156,7 @@ stops during a merge, the entry is merged again from the start when Symbiote run
 
 | What | Where |
 |---|---|
-| The service: queue, merge, check, land | `packages/cli/src/merges.ts` |
+| The service: queue, merge, check, land | `packages/cli/src/merges.ts` (the queue's runner and the operations); the steps in `merge-run.ts` (merge, check), `merge-resolve.ts`, `merge-land.ts`, `merge-targets.ts`; settings and the project's check in `merge-config.ts` |
 | The queue file and its lock | `<cache>/state/<repo-id>/merges.json`, `merges.lock` (`packages/cli/src/merge-queue.ts`) |
 | Each entry's log, one JSON object a line | `<cache>/state/<repo-id>/merges/<id>.jsonl` (`packages/cli/src/merge-log.ts`) |
 | The merge worktree | `<cache>/worktrees/<repo-id>/merge` |
@@ -266,4 +266,4 @@ These no longer hold:
   (`packages/viewer/src/workspaces/merges.ts`) is the one rule
   ([the fix](../journal/fix-failed-merge-hides-workspace.md)).
 - **`symbiote merge --help` lists the default target without the reviewed-against branch**, which
-  the code checks first (`targets` in `merges.ts`). Found while writing this page; not fixed.
+  the code checks first (`targets` in `merge-targets.ts`). Found while writing this page; not fixed.

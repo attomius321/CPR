@@ -16,7 +16,7 @@ import type { DiffStatus, Pair } from '../src/diffs.js';
 import type { McpServices } from '../src/mcp-context.js';
 import { MCP_TOOLS } from '../src/mcp-tools.js';
 import { symbioteMcp } from '../src/mcp.js';
-import { MergeRefused } from '../src/merges.js';
+import { MergeRefused } from '../src/merge-context.js';
 import { ReviewRefused } from '../src/reviews.js';
 import { parseSuggestRequest } from '../src/server-requests.js';
 import { WorkspaceRefused } from '../src/workspace-record.js';

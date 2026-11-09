@@ -3,7 +3,7 @@
 import type { HiveCheck, HiveCheckStep, WorkspaceSummary } from '@symbiote/core';
 import { readHive, type HiveFile } from './hive-record.js';
 import { hiveLogId, hiveLogs } from './hive-live.js';
-import { projectCheck } from './merges.js';
+import { projectCheck } from './merge-config.js';
 import type { ReviewPlace } from './reviews.js';
 import { readThreadEnd } from './thread.js';
 import { symbioteFolder } from './workspace-record.js';

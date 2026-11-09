@@ -1,7 +1,7 @@
 // The check in Settings (fix/settings-page): `merge.checks`, which the merger runs before a merge
 // lands and Hive on every commit (one check for both modes), read and set from the page.
 import { fileGitState, type CheckChange, type CheckSetting, type GitRepo } from '@symbiote/core';
-import { foundCheck, readMergeConfig } from './merges.js';
+import { foundCheck, readMergeConfig } from './merge-config.js';
 import { PromptRefused, readPrompts, writeConfigAt } from './prompts.js';
 
 /** The most commands a check takes, and the longest command (the page says the same). */

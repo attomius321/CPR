@@ -4,7 +4,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { EXPORT_FORMATS, type ActivityExport, type ExportFormat } from './activity-export.js';
 import { WorkspaceRefused } from './workspace-record.js';
-import { MergeRefused } from './merges.js';
+import { MergeRefused } from './merge-context.js';
 import { PromptRefused } from './prompts.js';
 import { PageAgentRefused } from './page-agent.js';
 import { SkillRefused } from './skills.js';
