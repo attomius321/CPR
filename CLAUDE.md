@@ -52,7 +52,9 @@ framework templates) and the calls between them, with findings on the risky part
   extraction, diff, references, detectors, graph JSON and its JSON Schema. See its `CLAUDE.md`.
 - `packages/cli` — `symbiote diff|view|pr`, output formats, plugin loading and framework hints.
   One folder, files named area first (`workspace-record.ts`, `merge-queue.ts`, decision 344):
-  hooks and the Codex runner are found at run time beside their importers.
+  hooks and the Codex runner are found at run time beside their importers. A service's closure
+  (`startViewServer`, `workspaces`, `hiveRunner`, `merger`, `symbioteMcp`, `pageAgent`) builds its
+  modules over one typed context in `<area>-context.ts`; each takes a `Pick<>` of it (962–963).
 - `packages/forge` — GitHub and GitLab APIs (pull/merge requests, comments; issues, read only, IS1).
 - `packages/monitor` — repository monitoring (RM1): a commit's files, their kinds and lines of
   code, for the viewer's Monitor page (`/api/monitor`). See its `CLAUDE.md`.

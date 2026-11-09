@@ -5,7 +5,7 @@ import { openRepo } from '@symbiote/core';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createRepo, type TestRepo } from '../../core/test/helpers/git-repo.js';
 import { checkSettingService, parseCheckChange } from '../src/check-setting.js';
-import { projectCheck, readMergeConfig } from '../src/merges.js';
+import { projectCheck, readMergeConfig } from '../src/merge-config.js';
 
 const repos: TestRepo[] = [];
 afterEach(() => {

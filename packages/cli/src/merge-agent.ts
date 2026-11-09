@@ -4,7 +4,7 @@
 import { isAbsolute, relative } from 'node:path';
 import type { AgentKind, MergeAgentEvent } from '@symbiote/core';
 import { runWithInput, type RunWithInput } from './programs.js';
-import { DEFAULT_PROMPTS, MERGER_ANSWER } from './prompts.js';
+import { DEFAULT_PROMPTS, MERGER_ANSWER } from './prompt-text.js';
 
 /** A conflict region, its lines 0-based in the file: `<<<<<<<` at `start`, `>>>>>>>` at `end`. */
 export interface ConflictRegion {

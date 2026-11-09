@@ -1,13 +1,8 @@
 // A page's agent (V35, V41): Nucleus or Scribe, an agent in the checkout `symbiote view` runs in,
 // opened from its page. Types only; the CLI starts the agent, keeps its record in `symbiote/` and
 // serves its API (`/api/nucleus`, `/api/scribe`).
-import type {
-  AgentEfforts,
-  AgentKind,
-  AgentModel,
-  DefaultModel,
-  TerminalAvailability,
-} from './workspaces.js';
+import type { AgentEfforts, AgentKind, AgentModel, DefaultModel } from './agents.js';
+import type { TerminalAvailability } from './workspaces.js';
 
 /** What Nucleus's agent is doing, as its page and the sidenav say it. */
 export type PageAgentStateName =

@@ -6,16 +6,13 @@
 // V50 its conversation starts with no question, its instructions its system prompt.
 import { fileURLToPath } from 'node:url';
 import { NUCLEUS_NAMES, type GitRepo } from '@symbiote/core';
-import {
-  pageAgent,
-  type PageAgent,
-  type PageAgentOptions,
-  type PageAgentSpec,
-} from './page-agent.js';
+import { pageAgent, type PageAgent, type PageAgentOptions } from './page-agent.js';
+import { type PageAgentSpec } from './page-agent-context.js';
 import { NUCLEUS_ACTIVITY } from './nucleus-activity.js';
 import { NAME_ARG, openWorktrees } from './nucleus-gate.js';
 import { HIVE_ROUNDS } from './hive-record.js';
-import { fillPrompt, nucleusInstructions, readPrompts } from './prompts.js';
+import { readPrompts } from './prompts.js';
+import { fillPrompt, nucleusInstructions } from './prompt-text.js';
 import { workspacesDir } from './workspace-record.js';
 import { readWorkspaceConfig } from './workspaces.js';
 

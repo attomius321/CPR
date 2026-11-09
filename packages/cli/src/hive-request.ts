@@ -28,7 +28,8 @@ import {
 import type { HiveFile } from './hive-record.js';
 import { CONFIG_FILES } from './plugins.js';
 import { postGraphFindings, type PostedFindings } from './post-findings.js';
-import { PromptRefused, writeConfig } from './prompts.js';
+import { PromptRefused } from './prompts.js';
+import { writeConfig } from './config-write.js';
 
 /** The forge's names, for the words a person reads: "pull request #12 on GitHub". */
 export const FORGE_WORDS: Record<ForgeKind, { name: string; request: string; sign: string }> = {

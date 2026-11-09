@@ -54,7 +54,8 @@ import {
   type WorkspaceFile,
   type WorkspaceRefused,
 } from '../src/workspace-record.js';
-import { workspaces, type Workspaces } from '../src/workspaces.js';
+import type { Workspaces } from '../src/workspace-context.js';
+import { workspaces } from '../src/workspaces.js';
 import type { AgentSession, ClaudeCode } from '../src/claude-code.js';
 
 const HOOK = '/opt/symbiote/dist/agent-hook.js';

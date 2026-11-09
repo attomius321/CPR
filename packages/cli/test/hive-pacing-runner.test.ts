@@ -26,7 +26,8 @@ import type { Confine } from '../src/hive-review.js';
 import { reviewPlace, type ReviewPlace } from '../src/reviews.js';
 import { recordEvent } from '../src/thread.js';
 import { readRecord, symbioteFolder } from '../src/workspace-record.js';
-import { workspaces, type Workspaces } from '../src/workspaces.js';
+import type { Workspaces } from '../src/workspace-context.js';
+import { workspaces } from '../src/workspaces.js';
 import type { AgentSession, ClaudeCode } from '../src/claude-code.js';
 import type { ClaudeUsageRead } from '../src/usage.js';
 

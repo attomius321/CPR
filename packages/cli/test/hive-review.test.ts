@@ -24,7 +24,7 @@ import {
 } from '../src/hive-review.js';
 import type { ClaudeCode } from '../src/claude-code.js';
 import { runGroup } from '../src/programs.js';
-import { HIVE_REVIEW_ANSWER } from '../src/prompts.js';
+import { HIVE_REVIEW_ANSWER } from '../src/prompt-text.js';
 
 const folders: string[] = [];
 afterEach(() => {

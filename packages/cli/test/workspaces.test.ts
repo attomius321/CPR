@@ -92,7 +92,7 @@ import {
 import { runProgram, type Run, type RunWithInput } from '../src/programs.js';
 import { appendThread, threadPath } from '../src/thread.js';
 import { reviewPlace } from '../src/reviews.js';
-import { DEFAULT_PROMPTS } from '../src/prompts.js';
+import { DEFAULT_PROMPTS } from '../src/prompt-text.js';
 import { shellOf, type Terminals } from '../src/terminal.js';
 import type { Codex } from '../src/codex.js';
 import { codexServer } from '../src/app-server.js';

@@ -3,235 +3,61 @@
 // project's check run on it, and the target branch moved by fast-forward. No agent and no tokens;
 // one merge at a time per repository.
 import { randomUUID } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
-import { readFile, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import {
-  abortMerge,
-  resolveCommit,
   analyzeGit,
-  commitResolution,
   commitsBetween,
   commitSubject,
-  conflictKinds,
-  defaultBranch,
-  fetchBranch,
-  mergeBase,
-  fastForwardBranch,
   isAncestor,
   listRefs,
-  listWorktrees,
-  mergeInWorktree,
-  MergeStepRefused,
-  pushBranch,
-  pushCommit,
-  resetMergeWorktree,
-  tipsIn,
-  upstreamOf,
   EFFORT_LEVEL,
   MERGE_STRATEGIES,
   MODEL_ID,
-  type AgentEfforts,
-  type AgentModels,
   type GitRepo,
-  type MergeCheckRun,
-  type MergeCheckStep,
-  type AgentKind,
   type MergeEntry,
   type MergeList,
   type MergeLogRead,
-  type MergeConflict,
-  type MergeRegion,
   type MergeRequest,
-  type MergeStrategy,
   type MergeTargets,
-  type RefList,
   type EffortChange,
   type AgentLevels,
   type ModelChange,
-  type Verdict,
   type WorkspaceReplied,
   type WorkspaceReply,
 } from '@symbiote/core';
-import { guessCheck, treeAt } from './check.js';
-import { CONFIG_FILES } from './plugins.js';
-import { readReview, reviewPath, reviewPlace } from './reviews.js';
-import { readWorkspace, workspacePath, type WorkspaceFile } from './workspace-record.js';
-import { branchNames } from './review-base.js';
 import {
   AGENT_NAMES,
   effortOnProblem,
   effortWordProblem,
-  levelsOn,
   modelProblem,
   modelWordProblem,
 } from './agent-levels.js';
-import {
-  aroundOf,
-  applyAnswer,
-  conflictRegions,
-  mergerInstructions,
-  mergerPrompt,
-  parseAnswer,
-  type ConflictRegion,
-  type MergerAgent,
-  type MergerAnswer,
-  type MergerInput,
-} from './merge-agent.js';
 import { mergeLogs } from './merge-log.js';
 import { mergeQueue } from './merge-queue.js';
-import { runShell, type RunCheck } from './programs.js';
-import { fillPrompt, PromptRefused, readPrompts, writeConfig } from './prompts.js';
-
-/**
- * What `symbiote/config.json` says of merges: `merge.checks` (one command or several),
- * `merge.push`, `merge.strategy` (V67), and the merger agent's `merge.agent` and `merge.model`
- * (V26c) and `merge.effort` (V46d).
- */
-export interface MergeConfig {
-  checks?: string[];
-  push: boolean;
-  strategy?: MergeStrategy;
-  agent?: AgentKind;
-  model?: string;
-  effort?: string;
-}
-
-/** The merge section of the config file in `root`; anything unknown is ignored. */
-export function readMergeConfig(root: string): MergeConfig {
-  const file = configFile(root);
-  if (!file) return { push: false };
-  let value: unknown;
-  try {
-    value = JSON.parse(readFileSync(join(root, file), 'utf8'));
-  } catch {
-    return { push: false };
-  }
-  const merge = (value as { merge?: unknown } | null)?.merge;
-  const v = (merge && typeof merge === 'object' ? merge : {}) as {
-    checks?: unknown;
-    push?: unknown;
-    strategy?: unknown;
-    agent?: unknown;
-    model?: unknown;
-    effort?: unknown;
-  };
-  const listed =
-    typeof v.checks === 'string' ? [v.checks] : Array.isArray(v.checks) ? v.checks : [];
-  const checks = listed.filter((c): c is string => typeof c === 'string' && c.trim() !== '');
-  return {
-    ...(checks.length > 0 ? { checks } : {}),
-    push: v.push === true,
-    ...(isStrategy(v.strategy) ? { strategy: v.strategy } : {}),
-    ...(v.agent === 'claude' || v.agent === 'codex' ? { agent: v.agent } : {}),
-    ...(typeof v.model === 'string' && v.model !== '' ? { model: v.model } : {}),
-    ...(typeof v.effort === 'string' && EFFORT_LEVEL.test(v.effort) ? { effort: v.effort } : {}),
-  };
-}
-
-const configFile = (root: string) => CONFIG_FILES.find((name) => existsSync(join(root, name)));
-
-/**
- * The project's check (V26a): `merge.checks` in the config at `root`, else the command guessed from
- * the commit `at` (V24b), a package script after its package manager's install. The merger runs
- * it on a merge, Hive on a workspace's tip (HV2, decision 654); null when there is none.
- */
-export async function projectCheck(
-  repo: GitRepo,
-  root: string,
-  at: string,
-): Promise<Pick<MergeCheckRun, 'commands' | 'source'> | null> {
-  const { checks } = readMergeConfig(root);
-  if (checks) return { commands: checks, source: `${configFile(root)} (merge.checks)` };
-  return foundCheck(repo, at);
-}
-
-/**
- * The check Symbiote finds in the commit `at`'s files (V24b; a SHA or a ref), `merge.checks` aside: what runs
- * when the project sets none, as Settings shows it (fix/settings-page); null when there is none.
- */
-export async function foundCheck(
-  repo: GitRepo,
-  at: string,
-): Promise<Pick<MergeCheckRun, 'commands' | 'source'> | null> {
-  // A ref resolved first: the tree is read by SHA only, and Hive's page asks at HEAD.
-  const sha = /^[0-9a-f]{40,64}$/i.test(at) ? at : await resolveCommit(repo, at);
-  const guess = await guessCheck(await treeAt(repo, sha));
-  if (!guess) return null;
-  // A package script needs the dependencies, which Symbiote's worktree does not have at first.
-  if (guess.source.startsWith('package.json')) {
-    const manager = guess.command.split(' ')[0] ?? 'npm';
-    return {
-      commands: [`${manager} install`, guess.command],
-      source: `${guess.source}, after an install`,
-    };
-  }
-  return { commands: [guess.command], source: guess.source };
-}
-
-const isStrategy = (value: unknown): value is MergeStrategy =>
-  (MERGE_STRATEGIES as readonly unknown[]).includes(value);
-
-/** The model the merger asks Claude Code on without `merge.model` (V26c). */
-const MERGER_CLAUDE_MODEL = 'sonnet';
-
-/** The model the merger agent of `kind` is asked on: `merge.model`, else Symbiote's for Claude Code. */
-const modelOf = (kind: AgentKind, config: MergeConfig): string | undefined =>
-  config.model ?? (kind === 'claude' ? MERGER_CLAUDE_MODEL : undefined);
-
-/** A request the server answers with `status` and the message. */
-export class MergeRefused extends Error {
-  override name = 'MergeRefused';
-  constructor(
-    message: string,
-    readonly status: 400 | 404 | 409 = 409,
-  ) {
-    super(message);
-  }
-}
+import { runShell } from './programs.js';
+import { PromptRefused, readPrompts } from './prompts.js';
+import { fillPrompt } from './prompt-text.js';
+import { writeConfig } from './config-write.js';
+import {
+  type MergerOptions,
+  type MergerContext,
+  MergeRefused,
+  short,
+  lastLines,
+  type ChangedSymbols,
+} from './merge-context.js';
+import { mergeTargets } from './merge-targets.js';
+import { mergeLand } from './merge-land.js';
+import { mergeResolve } from './merge-resolve.js';
+import { mergeRun, cannotFastForward } from './merge-run.js';
+import { readMergeConfig, isStrategy, modelOf } from './merge-config.js';
 
 /** States in which a merge runs: never removed, merged again after a stop. */
 const RUNNING = new Set<MergeEntry['state']>(['merging', 'resolving', 'checking']);
 
-/** Lines of a check's output kept with its entry. */
-const OUTPUT_LINES = 60;
-
-const short = (sha: string) => sha.slice(0, 7);
-
 /** A failed check's characters sent to an agent at most, as Hive sends them (AR2). */
 const SENT_CHARS = 6_000;
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
-/** `4.0 s`, `1 min 21 s`: as the page says a time. */
-const seconds = (ms: number) => {
-  if (ms < 60_000) return `${(ms / 1000).toFixed(1)} s`;
-  const s = Math.round(ms / 1000);
-  return `${Math.floor(s / 60)} min ${s % 60} s`;
-};
-/** Tokens, short: `950`, `3.1K`. */
-const tokens = (n: number) => (n < 1000 ? String(n) : `${(n / 1000).toFixed(1)}K`);
-
-const lastLines = (text: string) =>
-  text.replace(/\n+$/, '').split('\n').slice(-OUTPUT_LINES).join('\n');
-
-/** Why `into` cannot fast-forward to `branch`'s approved commit (V67, decision 486). */
-const cannotFastForward = (into: string, branch: string, behind: number) =>
-  `${into} has ${plural(behind, 'commit')} ${branch} does not: it cannot fast-forward. Merge with a merge commit, or bring ${into} into the branch and review it again`;
-
-/** A symbol a side changed, as Symbiote's analysis names it. */
-export interface ChangedSymbol {
-  path: string;
-  name: string;
-  kind: string;
-  status: string;
-}
-
-/** The symbols `to` changed against `from` in `files` (V26c): Symbiote's analysis of those files.
- * */
-export type ChangedSymbols = (
-  from: string,
-  to: string,
-  files: readonly string[],
-) => Promise<ChangedSymbol[]>;
 
 /** Symbiote's own analysis of only `files` (others ignored), without context around them. */
 function analyzedSymbols(repo: GitRepo, cacheDir: string): ChangedSymbols {
@@ -262,48 +88,6 @@ function analyzedSymbols(repo: GitRepo, cacheDir: string): ChangedSymbols {
       ];
     });
   };
-}
-
-/**
- * Writes the merger agent's answer into the merge's worktree (V26c): in each conflicted file, each
- * region's text in place of its markers, in the answer's order; the regions as the entry keeps
- * them, each with its note.
- */
-async function writeAnswer(
-  worktree: string,
-  perFile: { path: string; text: string; regions: ConflictRegion[] }[],
-  answer: Extract<MergerAnswer, { texts: string[] }>,
-): Promise<MergeRegion[]> {
-  const regions = conflictsOf(perFile);
-  let n = 0;
-  for (const file of perFile) {
-    const texts = file.regions.map((_, i) => answer.texts[n + i] ?? '');
-    n += file.regions.length;
-    await writeFile(join(worktree, file.path), applyAnswer(file.text, file.regions, texts));
-  }
-  return regions.map((region, i) => {
-    const note = answer.notes[i];
-    return { ...region, text: answer.texts[i] ?? '', ...(note ? { note } : {}) };
-  });
-}
-
-/**
- * The regions as the agent was given them, in its prompt's order: each with the lines around it,
- * which stay in the file (fix/merge-viewer-on-conflict).
- */
-function conflictsOf(
-  perFile: { path: string; text: string; regions: ConflictRegion[] }[],
-): MergeConflict[] {
-  return perFile.flatMap((file) =>
-    file.regions.map((region) => ({
-      path: file.path,
-      line: region.start + 1,
-      ours: region.ours,
-      base: region.base,
-      theirs: region.theirs,
-      around: aroundOf(file.text, region, { inFile: true }),
-    })),
-  );
 }
 
 /** What the server and `symbiote merge` need of the merger. */
@@ -371,22 +155,7 @@ export function merger(
     levels = () => Promise.resolve(null),
     models = () => Promise.resolve(null),
     changedSymbols = analyzedSymbols(repo, cacheDir),
-  }: {
-    now?: () => Date;
-    runCheck?: RunCheck;
-    /** Where `symbiote/config.json` is read. */
-    root?: string;
-    /** Each change of an entry, as it is written (`symbiote merge` prints them). */
-    onChange?: (entry: MergeEntry) => void;
-    /** The merger agent of `kind` (`merge.agent`, else the default), when installed (V26c). */
-    mergerAgent?: (kind?: AgentKind) => Promise<MergerAgent | null>;
-    /** An agent's effort levels (V46d): Claude Code's `--help`, Codex's models; null unread. */
-    levels?: (kind: AgentKind) => Promise<AgentEfforts | null>;
-    /** An agent's models (V47); null unread. */
-    models?: (kind: AgentKind) => Promise<AgentModels | null>;
-    /** The symbols a side changed in the conflicting files; Symbiote's analysis by default. */
-    changedSymbols?: ChangedSymbols;
-  } = {},
+  }: MergerOptions = {},
 ): Merger {
   const stateDir = join(cacheDir, 'state', repo.id);
   const queue = mergeQueue(stateDir);
@@ -427,633 +196,30 @@ export function merger(
     mergeMs: undefined,
   };
 
-  /** A branch's tip: the local branch's, else a remote's (`origin` first); null when none. */
-  function tipOf(refs: RefList, branch: string): { sha: string; local: boolean } | null {
-    const local = refs.branches.find((b) => b.name === branch);
-    if (local) return { sha: local.sha, local: true };
-    const remote = refs.remotes
-      .filter((r) => r.branch === branch)
-      .sort((a, b) => Number(b.remote === 'origin') - Number(a.remote === 'origin'))[0];
-    return remote ? { sha: remote.sha, local: false } : null;
-  }
-
-  /** The branch's last verdict and its workspace's record, where Symbiote keeps them. */
-  async function recordsOf(branch: string): Promise<{
-    verdict?: Verdict;
-    workspace: WorkspaceFile | null;
-  }> {
-    const where = await reviewPlace(repo, cacheDir);
-    const review = await readReview(reviewPath(where.dir, branch, where.reviewer));
-    const workspace = await readWorkspace(
-      workspacePath(join(dirname(where.dir), 'workspaces'), branch),
-    );
-    const verdict = review?.verdicts.at(-1);
-    return { ...(verdict ? { verdict } : {}), workspace };
-  }
-
-  async function targets(branch: string): Promise<MergeTargets & { tip?: string }> {
-    const refs = await listRefs(repo);
-    const branches = branchNames(refs).filter((name) => name !== branch);
-    const { verdict, workspace } = await recordsOf(branch);
-    const preselected = [
-      workspace?.against,
-      workspace?.from,
-      verdict?.into,
-      await defaultBranch(repo, refs),
-    ];
-    const into = preselected.find((name) => name && branches.includes(name)) ?? null;
-    const entry = (await queue.read()).find((e) => e.branch === branch && e.state !== 'landed');
-    const tip = refs.branches.find((b) => b.name === branch)?.sha;
-    const approved = verdict?.event === 'approve' ? verdict.head : undefined;
-    const strategy = readMergeConfig(root).strategy ?? 'merge';
-    // The targets whose tip is in the approved commit (V67): one git call for every branch.
-    let fastForward: string[] | undefined;
-    if (approved) {
-      const tips = await tipsIn(repo, approved);
-      fastForward = branches.filter((name) => tips.has(tipOf(refs, name)?.sha ?? ''));
-    }
-    const blocked = !tip
-      ? `no branch ${branch}`
-      : !approved
-        ? `${branch} is not approved: approve its review in Symbiote first`
-        : tip !== approved
-          ? `${branch} has commits after the approved commit ${approved.slice(0, 7)}: they were not reviewed`
-          : undefined;
-    return {
-      branches,
-      into,
-      ...(approved ? { head: approved } : {}),
-      strategy,
-      ...(fastForward ? { fastForward } : {}),
-      ...(blocked ? { blocked } : {}),
-      ...(entry ? { entry } : {}),
-      ...(tip ? { tip } : {}),
-    };
-  }
-
-  /**
-   * Merges, checks and, when the check passed, lands one entry, always on `into`'s tip as it is
-   * now: a merge checked again whose target moved since is merged again.
-   */
-  async function mergeOne(entry: MergeEntry): Promise<void> {
-    const { id, merge, base } = entry;
-    let tip = tipOf(await listRefs(repo), entry.into);
-    const recheck = entry.recheck && merge && base ? { merge, base } : null;
-    if (recheck && tip?.sha === recheck.base) {
-      // The same merge checked again: another merge may have used the worktree since.
-      await resetMergeWorktree(repo, worktree, recheck.merge);
-      await set(id, { recheck: undefined, check: undefined });
-      await checkMerge(id, recheck.base, recheck.merge, true);
-      return;
-    }
-    const log = logs.of(id);
-    const fastForward = entry.strategy === 'fast-forward';
-    log.step(
-      'merge',
-      fastForward
-        ? `Fast-forward ${entry.into} to ${short(entry.head)}`
-        : `Merge ${entry.branch} into ${entry.into}`,
-    );
-    if (recheck && tip) {
-      log.out(
-        `${entry.into} moved since the merge (now ${short(tip.sha)}): merging again on its tip\n`,
-      );
-    }
-    if (entry.by === 'hive' && tip?.local) {
-      if (!(await syncTarget(entry, tip.sha))) return;
-      tip = tipOf(await listRefs(repo), entry.into);
-    }
-    if (!tip) {
-      log.out(`No branch ${entry.into}\n`);
-      log.end(false);
-      await set(id, { ...fresh, state: 'failed', message: `no branch ${entry.into}` });
-      return;
-    }
-    if (fastForward) return fastForwardOne(entry, tip.sha);
-    // Asked again, the files asked about stay listed until the merge says which conflict.
-    await set(id, {
-      ...fresh,
-      ...(entry.again ? { conflicts: entry.conflicts } : {}),
-      state: 'merging',
-      base: tip.sha,
-    });
-    // The merge step's time (V93, decision 881): the worktree's reset and the merge.
-    const merging = Date.now();
-    await resetMergeWorktree(repo, worktree, tip.sha);
-    log.out(`Symbiote's merge worktree at ${entry.into} (${short(tip.sha)})\n`);
-    const outcome = await mergeInWorktree(worktree, entry.head, entry.title, { keep: true });
-    if ('conflicts' in outcome) {
-      const n = outcome.conflicts.length;
-      log.out(
-        `${plural(n, 'file')} conflict${n === 1 ? 's' : ''}: ${outcome.conflicts.join(', ')}\n`,
-      );
-      if (entry.by === 'hive') {
-        // No merger agent for Hive's merges (decision 769): its writer merges the target in.
-        log.end(false);
-        await abortMerge(worktree);
-        await set(id, {
-          state: 'needs-you',
-          conflicts: outcome.conflicts,
-          message: `${outcome.conflicts.join(', ')} conflict${n === 1 ? 's' : ''} with ${entry.into}: Hive asks ${entry.branch}'s agent to merge ${entry.into} in`,
-          again: undefined,
-        });
-        return;
-      }
-      log.end(true);
-      const merged = await resolve(entry, tip.sha, outcome.conflicts);
-      if (merged) await checkMerge(id, tip.sha, merged, true);
-      return;
-    }
-    if ('error' in outcome) {
-      log.out(`${outcome.error}\n`);
-      log.end(false);
-      await set(id, { state: 'failed', message: outcome.error, conflicts: undefined });
-      return;
-    }
-    if ('upToDate' in outcome) {
-      log.out(`Already in ${entry.into}: nothing to merge\n`);
-      log.end(true);
-      await set(id, {
-        state: 'landed',
-        landed: now().toISOString(),
-        message: `already in ${entry.into}`,
-        conflicts: undefined,
-        again: undefined,
-      });
-      return;
-    }
-    log.out(`Merged ${short(entry.head)}: ${short(outcome.merged)}\n`);
-    log.end(true);
-    await set(id, { conflicts: undefined, again: undefined, mergeMs: Date.now() - merging });
-    await checkMerge(id, tip.sha, outcome.merged, false);
-  }
-
-  /**
-   * A fast-forward (V67, decisions 485–487): nothing merged. The approved commit itself is
-   * checked in the merge worktree, then landed as a merge is. A target no longer in it waits for
-   * the person, saying how far it moved: never a merge commit unasked.
-   */
-  async function fastForwardOne(entry: MergeEntry, tip: string): Promise<void> {
-    const { id, into, branch, head } = entry;
-    const log = logs.of(id);
-    if (await isAncestor(repo, head, tip)) {
-      log.out(`Already in ${into}: nothing to fast-forward\n`);
-      log.end(true);
-      await set(id, {
-        ...fresh,
-        state: 'landed',
-        landed: now().toISOString(),
-        message: `already in ${into}`,
-        again: undefined,
-      });
-      return;
-    }
-    if (!(await isAncestor(repo, tip, head))) {
-      const { count: behind } = await commitsBetween(repo, head, tip, 1);
-      log.out(
-        `${into} has ${plural(behind, 'commit')} ${branch} does not (now ${short(tip)}): it cannot fast-forward\n`,
-      );
-      log.end(false);
-      await set(id, {
-        ...fresh,
-        state: 'needs-you',
-        base: tip,
-        behind,
-        message: cannotFastForward(into, branch, behind),
-      });
-      return;
-    }
-    await set(id, { ...fresh, state: 'merging', base: tip });
-    log.out(`${into} (${short(tip)}) is in ${short(head)}: no merge commit\n`);
-    const merging = Date.now();
-    await resetMergeWorktree(repo, worktree, head);
-    log.out(`Symbiote's merge worktree at ${short(head)}\n`);
-    log.end(true);
-    await set(id, { mergeMs: Date.now() - merging });
-    await checkMerge(id, tip, head, false);
-  }
-
-  /**
-   * Runs the check on a merge. A clean one that passed lands; a resolved one (V26c) waits for
-   * the person's review either way, its check's result with it.
-   */
-  async function checkMerge(id: string, base: string, merged: string, resolved: boolean) {
-    const log = logs.of(id);
-    const check = await projectCheck(repo, root, base);
-    const hive = (await queue.read()).find((e) => e.id === id)?.by === 'hive';
-    if (!check && hive && !resolved) {
-      // Hive lands without a check when the project has none (decision 767).
-      log.out('No check to run: Hive lands it\n');
-      await landEntry(await set(id, { state: 'ready', merge: merged }));
-      return;
-    }
-    if (!check) {
-      const message = resolved
-        ? 'no check to run: review the resolution, then Approve lands it'
-        : 'no check to run: set merge.checks in symbiote/config.json, or Land once you have checked it';
-      log.out(`${message.charAt(0).toUpperCase()}${message.slice(1)}\n`);
-      await set(id, { state: resolved ? 'needs-you' : 'ready', merge: merged, message });
-      return;
-    }
-    // When it started and each command's time (V93, decision 881): the Merge page's clock and
-    // steps; written as each command ends.
-    const at = now().toISOString();
-    const steps: MergeCheckStep[] = [];
-    await set(id, { state: 'checking', merge: merged, check: { ...check, started: at, steps } });
-    const started = Date.now();
-    let output = '';
-    for (const command of check.commands) {
-      log.step('check', command);
-      const begun = Date.now();
-      // A runner that does not stream gives its output at the end.
-      let streamed = false;
-      const result = await runCheck(command, worktree, (chunk) => {
-        streamed = true;
-        log.out(chunk);
-      });
-      if (!streamed) log.out(result.output);
-      log.end(result.code === 0);
-      output += result.output;
-      steps.push({ command, ms: Date.now() - begun, ok: result.code === 0 });
-      if (result.code !== 0) {
-        await set(id, {
-          state: resolved ? 'needs-you' : 'failed',
-          check: {
-            ...check,
-            started: at,
-            steps: [...steps],
-            ok: false,
-            ms: Date.now() - started,
-            failed: command,
-            output: lastLines(output),
-          },
-        });
-        return;
-      }
-      if (steps.length < check.commands.length) {
-        await set(id, { check: { ...check, started: at, steps: [...steps] } });
-      }
-    }
-    const passed = await set(id, {
-      state: resolved ? 'needs-you' : 'ready',
-      check: {
-        ...check,
-        started: at,
-        steps: [...steps],
-        ok: true,
-        ms: Date.now() - started,
-        output: lastLines(output),
-      },
-    });
-    if (!resolved) await landEntry(passed);
-  }
-
-  /** Each side's title: a workspace's title and goal, else its last commit's subject. */
-  async function sidesOf(entry: MergeEntry, base: string): Promise<MergerInput['sides']> {
-    const { workspace } = await recordsOf(entry.branch);
-    const goal = workspace?.parts?.goal?.trim().split('\n')[0];
-    const branch = workspace?.title
-      ? `${workspace.title}${goal ? ` — ${goal}` : ''}`
-      : await commitSubject(repo, entry.head);
-    return { into: await commitSubject(repo, base), branch };
-  }
-
-  /** The symbols both sides changed in `files` since their merge base; none when unknown. */
-  async function bothChanged(
-    base: string,
-    head: string,
-    files: string[],
-  ): Promise<NonNullable<MergerInput['symbols']>> {
-    try {
-      const ancestor = await mergeBase(repo, base, head);
-      if (!ancestor) return [];
-      const [ours, theirs] = await Promise.all([
-        changedSymbols(ancestor, base, files),
-        changedSymbols(ancestor, head, files),
-      ]);
-      return ours.flatMap((o) => {
-        const t = theirs.find((x) => x.path === o.path && x.name === o.name);
-        return t
-          ? [{ path: o.path, name: o.name, kind: o.kind, into: o.status, branch: t.status }]
-          : [];
-      });
-    } catch {
-      return [];
-    }
-  }
-
-  /**
-   * The merger agent's resolution of a conflicted merge left in the worktree (V26c): its answer
-   * written between each region's markers and the merge committed, its SHA; else the merge
-   * aborted and the entry at `needs-you`, saying why, and null.
-   */
-  async function resolve(
-    entry: MergeEntry,
-    base: string,
-    conflicts: string[],
-  ): Promise<string | null> {
-    const { id } = entry;
-    const log = logs.of(id);
-    log.step('resolve', 'Merger agent');
-    /** `said`: the log's words, when they are not the entry's message. */
-    const stop = async (message: string, fields: Partial<MergeEntry> = {}, said = message) => {
-      log.out(`${said.charAt(0).toUpperCase()}${said.slice(1)}\n`);
-      log.end(false);
-      await abortMerge(worktree);
-      await set(id, { state: 'needs-you', conflicts, message, again: undefined, ...fields });
-      return null;
-    };
-    const kinds = await conflictKinds(worktree);
-    const kept = [...kinds].filter(([, kind]) => kind !== 'text');
-    if (kept.length > 0) {
-      const words = {
-        deleted: 'is deleted on one side',
-        submodule: 'is a submodule',
-        binary: 'is binary',
-      };
-      return stop(
-        `${kept.map(([path, kind]) => `${path} ${words[kind as keyof typeof words]}`).join('; ')}: not given to the merger agent. Merge ${entry.into} into ${entry.branch}, resolve it there, and review it again`,
-        {
-          unresolvable: kept.map(([path, kind]) => ({ path, kind: kind as keyof typeof words })),
-        },
-      );
-    }
-    const config = readMergeConfig(root);
-    const agent = await mergerAgent(config.agent);
-    if (!agent) {
-      return stop(
-        `${entry.head.slice(0, 7)} conflicts with ${entry.into}: merge ${entry.into} into ${entry.branch}, resolve it there, and review it again (no merger agent: install Claude Code or Codex)`,
-      );
-    }
-    const model = modelOf(agent.kind, config);
-    await set(id, { state: 'resolving', conflicts });
-    const files = await Promise.all(
-      conflicts.map(async (path) => ({ path, text: await readFile(join(worktree, path), 'utf8') })),
-    );
-    const rules = await readFile(join(root, 'symbiote', 'merge.md'), 'utf8').catch(() => undefined);
-    const analysed = Date.now();
-    const symbols = await bothChanged(base, entry.head, conflicts);
-    log.out(
-      `Symbols both sides changed in ${conflicts.join(', ')}: ${symbols.length} (${seconds(Date.now() - analysed)})\n`,
-    );
-    const prompt = mergerPrompt({
-      branch: entry.branch,
-      into: entry.into,
-      head: entry.head,
-      base,
-      sides: await sidesOf(entry, base),
-      files,
-      symbols,
-      ...(rules ? { rules } : {}),
-      ...(entry.again ? { again: entry.again } : {}),
-    });
-    const regionCount = files.reduce((n, f) => n + conflictRegions(f.text).length, 0);
-    log.out(
-      `Asking ${AGENT_NAMES[agent.kind]}${model ? ` (${model})` : ''}: ${plural(regionCount, 'region')} in ${plural(files.length, 'file')}, ${prompt.length.toLocaleString('en-US')} characters\n`,
-    );
-    const effort = await effortOf(agent.kind, config.effort, model, (line) => log.out(line));
-    const run = await agent.run({
-      cwd: worktree,
-      prompt,
-      ...(model ? { model } : {}),
-      ...(effort ? { effort } : {}),
-      instructions: mergerInstructions(readPrompts(root).text.merger),
-      // What it does as it works (V46b), in its step.
-      onEvent: (event) => log.agent(event),
-    });
-    if (!run.ok) return stop(`the merger agent did not answer: ${run.error}`);
-    log.out(
-      `Answered in ${seconds(run.ms)}${run.usage ? ` · ${tokens(run.usage.input)} tokens in, ${tokens(run.usage.output)} out` : ''}\n`,
-    );
-    const about = {
-      agent: agent.kind,
-      ...(model ? { model } : {}),
-      ...(run.usage ? { usage: run.usage } : {}),
-      ms: run.ms,
-    };
-    const perFile = files.map((file) => ({ ...file, regions: conflictRegions(file.text) }));
-    const count = perFile.reduce((n, f) => n + f.regions.length, 0);
-    const answer = parseAnswer(run.text, count);
-    if ('needsYou' in answer) {
-      // What it asked about is kept for the person to read and answer.
-      const asked = conflictsOf(perFile);
-      return stop(
-        `the merger agent: ${answer.needsYou}`,
-        { resolution: { ...about, regions: [], needsYou: answer.needsYou, asked } },
-        `it says you must decide: ${answer.needsYou}`,
-      );
-    }
-    if ('error' in answer) return stop(`the merger agent's answer: ${answer.error}`);
-    const regions = await writeAnswer(worktree, perFile, answer);
-    let merged: string;
-    try {
-      merged = await commitResolution(worktree, conflicts, entry.title);
-    } catch (error) {
-      if (error instanceof MergeStepRefused) return stop(error.message);
-      throw error;
-    }
-    log.out(
-      `Wrote ${plural(regions.length, 'region')} in ${plural(perFile.length, 'file')}; committed the merge ${short(merged)}\n`,
-    );
-    log.end(true);
-    await set(id, { conflicts, resolution: { ...about, regions }, again: undefined });
-    return merged;
-  }
-
-  /**
-   * The level the merger agent is asked at (V46d): `merge.effort` when the agent takes it on
-   * `model` (V47: that model's levels when the agent lists it, its default's otherwise), none
-   * otherwise, as Nucleus's (the project's file may name another agent's level). `say` is told which.
-   */
-  async function effortOf(
-    kind: AgentKind,
-    effort: string | undefined,
-    model: string | undefined,
-    say: (line: string) => void,
-  ): Promise<string | undefined> {
-    if (!effort) return undefined;
-    const name = AGENT_NAMES[kind];
-    const on = model ? (await models(kind))?.models.find((m) => m.id === model) : undefined;
-    if (on && !on.efforts) {
-      say(`merge.effort is ${effort}, which ${on.name} does not take: its own level\n`);
-      return undefined;
-    }
-    const listed = (on?.efforts ?? (await levels(kind)))?.levels;
-    if (!listed) {
-      say(`Symbiote cannot read ${name}'s effort levels: its own level\n`);
-      return undefined;
-    }
-    if (!listed.includes(effort)) {
-      say(`merge.effort is ${effort}, which ${on?.name ?? name} does not list: its own level\n`);
-      return undefined;
-    }
-    say(`Effort: ${effort} (merge.effort)\n`);
-    return effort;
-  }
-
-  async function efforts(): Promise<AgentLevels> {
-    const config = readMergeConfig(root);
-    const agent = await mergerAgent(config.agent);
-    const about = {
-      ...(config.effort ? { effort: config.effort } : {}),
-      ...(config.model ? { model: config.model } : {}),
-      file: readPrompts(root).file,
-    };
-    if (!agent) return { agents: [], ...about };
-    const [fallback, listed] = await Promise.all([levels(agent.kind), models(agent.kind)]);
-    // Its levels on the model it runs on (V47).
-    const efforts = levelsOn(listed?.models, modelOf(agent.kind, config), fallback);
-    // Without merge.model: Symbiote's for Claude Code (V26c), Codex's configured one.
-    const fixed = agent.kind === 'claude' ? MERGER_CLAUDE_MODEL : listed?.default;
-    const by = agent.kind === 'claude' ? ('symbiote' as const) : ('agent' as const);
-    return {
-      agents: [
-        {
-          kind: agent.kind,
-          ...(efforts ? { efforts } : {}),
-          ...(listed ? { models: listed.models } : {}),
-          ...(listed && fixed ? { defaultModel: { id: fixed, by } } : {}),
-        },
-      ],
-      ...about,
-    };
-  }
-
-  /** Moves `into` to the merge, or says why not; merged again when `into` moved meanwhile. */
-  async function landEntry(entry: MergeEntry): Promise<MergeEntry> {
-    const { id, into, merge, base } = entry;
-    if (!merge || !base) throw new MergeRefused('nothing merged to land', 409);
-    const log = logs.of(id);
-    log.step('land', `Land in ${into}`);
-    const refs = await listRefs(repo);
-    const tip = tipOf(refs, into);
-    if (!tip || tip.sha !== base || !(await isAncestor(repo, base, merge))) {
-      // A fast-forward merged nothing: its target just moved (V67).
-      const fastForward = entry.strategy === 'fast-forward';
-      const moved = fastForward ? `${into} moved` : `${into} moved since the merge`;
-      const again = fastForward ? 'fast-forwarding again from' : 'merging again on';
-      log.out(`${moved} (now ${tip ? short(tip.sha) : 'gone'})\n`);
-      log.end(false);
-      log.run(`${again.charAt(0).toUpperCase()}${again.slice(1)} ${into}'s tip`);
-      return set(id, { ...fresh, state: 'queued', message: `${moved}: ${again} its tip` });
-    }
-    // Read before landing: the landing may bring another config file into `root`. Hive's
-    // landings push whatever it says (decision 768).
-    const pushing = entry.by === 'hive' || readMergeConfig(root).push;
-    const holder = (await listWorktrees(repo)).find((w) => w.branch === into && !w.prunable);
-    try {
-      await fastForwardBranch(repo, {
-        branch: into,
-        to: merge,
-        from: tip.local ? base : null,
-        ...(holder ? { checkedOut: holder.path } : {}),
-      });
-    } catch (error) {
-      if (error instanceof MergeStepRefused) {
-        const where = holder ? ` in ${holder.path}` : '';
-        log.out(`${into} was not moved${where}: ${error.message}\n`);
-        log.end(false);
-        return set(id, {
-          state: 'ready',
-          message: `${into} was not moved${where}: ${error.message}`,
-        });
-      }
-      log.end(false);
-      throw error;
-    }
-    log.out(
-      holder
-        ? `${into} fast-forwarded to ${short(merge)} in ${holder.path}\n`
-        : `${into} set to ${short(merge)}: checked out nowhere\n`,
-    );
-    const landed = await set(id, {
-      state: 'landed',
-      landed: now().toISOString(),
-      message: undefined,
-    });
-    if (!pushing) {
-      log.end(true);
-      return landed;
-    }
-    const pushed = await push(into, merge, entry.by === 'hive');
-    log.out(
-      pushed.ok
-        ? `Pushed to ${pushed.remote}\n`
-        : `Not pushed${pushed.remote ? ` to ${pushed.remote}` : ''}: ${pushed.error}\n`,
-    );
-    log.end(true);
-    return set(id, { pushed });
-  }
-
-  /** Where a branch is pushed and fetched: its upstream, else `origin`, else the first remote. */
-  async function remoteOf(branch: string): Promise<{ remote: string; branch: string } | null> {
-    const upstream = await upstreamOf(repo, branch);
-    if (upstream) return { remote: upstream.remote, branch: upstream.branch };
-    const refs = await listRefs(repo);
-    const remote = refs.remotes.some((r) => r.remote === 'origin')
-      ? 'origin'
-      : refs.remotes[0]?.remote;
-    return remote ? { remote, branch } : null;
-  }
-
-  /**
-   * Pushes the landed branch to its upstream, else to `origin`; Hive's as a network run that never
-   * waits on a prompt (decision 768).
-   */
-  async function push(
-    into: string,
-    sha: string,
-    hive = false,
-  ): Promise<NonNullable<MergeEntry['pushed']>> {
-    const to = await remoteOf(into);
-    if (!to) return { ok: false, remote: '', error: 'no remote to push to' };
-    const { remote, branch } = to;
-    const result = await (hive ? pushBranch : pushCommit)(repo, { remote, sha, branch });
-    return result.ok ? { ok: true, remote } : { ok: false, remote, error: result.error };
-  }
-
-  /**
-   * A Hive entry's target brought up to its remote before the merge (decision 768): fetched, and
-   * fast-forwarded when it is behind, in the checkout that has it as a landing is. Diverged: the
-   * entry fails, saying so, and false; never a force or a rebase. A fetch that fails is said, and
-   * the merge goes on on the local tip (its push will say what the remote thinks of it).
-   */
-  async function syncTarget(entry: MergeEntry, local: string): Promise<boolean> {
-    const log = logs.of(entry.id);
-    const { into } = entry;
-    const to = await remoteOf(into);
-    if (!to) return true;
-    const name = `${to.remote}/${to.branch}`;
-    let theirs: string | null;
-    try {
-      theirs = await fetchBranch(repo, to.remote, to.branch);
-    } catch (error) {
-      log.out(`Not fetched from ${to.remote}: ${(error as Error).message}\n`);
-      return true;
-    }
-    if (!theirs || theirs === local || (await isAncestor(repo, theirs, local))) return true;
-    if (await isAncestor(repo, local, theirs)) {
-      const holder = (await listWorktrees(repo)).find((w) => w.branch === into && !w.prunable);
-      try {
-        await fastForwardBranch(repo, {
-          branch: into,
-          to: theirs,
-          from: local,
-          ...(holder ? { checkedOut: holder.path } : {}),
-        });
-        log.out(`${into} brought up to ${name} (${short(theirs)})\n`);
-      } catch (error) {
-        if (!(error instanceof MergeStepRefused)) throw error;
-        log.out(`${into} was not brought up to ${name}: ${error.message}\n`);
-      }
-      return true;
-    }
-    const message = `${into} and ${name} have diverged: Hive never forces or rebases; bring them together, then Hive lands it again`;
-    log.out(`${message}\n`);
-    log.end(false);
-    await set(entry.id, { ...fresh, state: 'failed', message, diverged: name });
-    return false;
-  }
+  // Its steps, each over what it reads: where a branch merges into, landing, resolving, merging.
+  const ctx: MergerContext = {
+    repo,
+    cacheDir,
+    now,
+    runCheck,
+    root,
+    onChange,
+    mergerAgent,
+    levels,
+    models,
+    changedSymbols,
+    queue,
+    worktree,
+    logs,
+    set,
+    fresh,
+  };
+  const { tipOf, recordsOf, targets } = mergeTargets(ctx);
+  const land = mergeLand(ctx, { tipOf });
+  const { landEntry } = land;
+  const resolving = mergeResolve(ctx, { recordsOf });
+  const { efforts } = resolving;
+  const { mergeOne } = mergeRun(ctx, { ...land, ...resolving, tipOf });
 
   /**
    * States that hold a branch: a later merge into it waits until they land or are removed. A

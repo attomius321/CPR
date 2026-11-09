@@ -156,20 +156,20 @@ stops during a merge, the entry is merged again from the start when Symbiote run
 
 | What | Where |
 |---|---|
-| The service: queue, merge, check, land | `packages/cli/src/merges.ts` |
+| The service: queue, merge, check, land | `packages/cli/src/merges.ts` (the queue's runner and the operations); the steps in `merge-run.ts` (merge, check), `merge-resolve.ts`, `merge-land.ts`, `merge-targets.ts`; settings and the project's check in `merge-config.ts` |
 | The queue file and its lock | `<cache>/state/<repo-id>/merges.json`, `merges.lock` (`packages/cli/src/merge-queue.ts`) |
 | Each entry's log, one JSON object a line | `<cache>/state/<repo-id>/merges/<id>.jsonl` (`packages/cli/src/merge-log.ts`) |
 | The merge worktree | `<cache>/worktrees/<repo-id>/merge` |
 | The merger agent's prompt and answer parsing | `packages/cli/src/merge-agent.ts` |
-| Hive's landing: the approval, the queued entry, what Hive does with its end | `packages/cli/src/hive-runner.ts` (`landing`, `land`, `follow`) |
-| Hive's landing by request (HV8): opened, reviewed, watched | `packages/cli/src/hive-runner.ts` (`openRequest`, `watchRequest`), `hive-request.ts`; the forge's calls in `packages/forge/src` |
+| Hive's landing: the approval, the queued entry, what Hive does with its end | `packages/cli/src/hive-landing.ts` (`landing`, `land`, `follow`) |
+| Hive's landing by request (HV8): opened, reviewed, watched | `packages/cli/src/hive-forge.ts` (`openRequest`, `watchRequest`), `hive-request.ts`; the forge's calls in `packages/forge/src` |
 | A target fetched, a push that never prompts | `fetchBranch`, `pushBranch` in `packages/core/src/git/sync.ts` |
 | Settings: `merge.checks`, `push`, `strategy`, `agent`, `model`, `effort` | `symbiote/config.json`; defaults in [configuration](../reference/configuration.md) |
 | A project's rules for the merger agent | `symbiote/merge.md`, committed with the project |
 | **Merge into ▾** | `packages/viewer/src/workspaces/MergeControl.tsx` |
 | Which workspaces show in the sidenav only as their Merging row | `mergingAlone` in `packages/viewer/src/workspaces/merges.ts` (`test/merges.test.ts`) |
 | The merge page: state, files, log | `packages/viewer/src/workspaces/Merge.tsx` (its state, head and output card), its steps card `MergeStepsCard.tsx`, a conflict's files and regions `MergeFiles.tsx`; its words from `merge-steps.ts` (pure, `test/merge-steps.test.ts`); the pipeline card `ui/Pipeline.tsx` |
-| HTTP | `/api/merges…` in `packages/cli/src/server.ts`; the log as server-sent events |
+| HTTP | `/api/merges…` in `packages/cli/src/server-merges.ts`; the log as server-sent events |
 | Command line | `symbiote merge <branch>`, with `--into`, `--strategy`, `--land`, `--approve` and `--again` |
 | MCP tools | `merges`, `merge_log`, `queue_merge`, `land_merge`, `merge_resolution`, `retry_merge`, `recheck_merge`, `remove_merge` |
 
@@ -266,4 +266,4 @@ These no longer hold:
   (`packages/viewer/src/workspaces/merges.ts`) is the one rule
   ([the fix](../journal/fix-failed-merge-hides-workspace.md)).
 - **`symbiote merge --help` lists the default target without the reviewed-against branch**, which
-  the code checks first (`targets` in `merges.ts`). Found while writing this page; not fixed.
+  the code checks first (`targets` in `merge-targets.ts`). Found while writing this page; not fixed.

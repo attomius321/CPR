@@ -1,6 +1,6 @@
 // Symbiote's merger (V26): approved branches merged in a worktree of Symbiote's own, checked, and
 // landed by fast-forward. What `symbiote view`'s server answers and the viewer reads. Types only.
-import type { AgentKind } from './workspaces.js';
+import type { AgentKind } from './agents.js';
 
 /** Where a queued merge is. */
 export const MERGE_STATES = [

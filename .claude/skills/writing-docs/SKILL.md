@@ -145,7 +145,7 @@ The earlier README rewrite checked these with a script it did not keep
   a heading. GitHub makes an anchor from a heading in lowercase, spaces as hyphens, punctuation
   dropped: "Symbiote's window" is `#symbiotes-window`.
 - **Text that points into the docs**: messages in the code name the README's sections ("see
-  Symbiote's window in the README", in `packages/cli/src/main.ts`, `app.ts` and
+  Symbiote's window in the README", in `packages/cli/src/command-app.ts`, `app.ts` and
   `packages/cli/test/app.test.ts`). Moving or renaming a section changes them:
   `grep -rn README packages/*/src`.
 - **Screenshots**: `docs/images/`, at 1440 × 900 from a fresh build, with nothing personal in

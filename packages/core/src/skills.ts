@@ -2,7 +2,7 @@
 // something; and the skill library (SK1), one folder of skills outside the checkout. Types only;
 // the CLI reads and writes them and serves `/api/skills`.
 import type { FileGitState } from './git/branches.js';
-import type { AgentKind } from './workspaces.js';
+import type { AgentKind } from './agents.js';
 
 /**
  * Where a skill is kept: the checkout's folders, Claude Code's and Codex's (decision 271); or the
