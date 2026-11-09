@@ -7,11 +7,9 @@ import {
   type CSSProperties,
   type DragEvent,
 } from 'react';
-import { flushSync } from 'react-dom';
 import type { Graph } from '@symbiote/core';
 import { BackLink, DiffProgress, analysisState, pairLabel } from './DiffProgress.js';
 import { StatusLabel } from '../ui/StatusLabel.js';
-import { Canvas } from './Canvas.js';
 import { useDiffGraph } from './useDiffGraph.js';
 import { useReview } from './useReview.js';
 import {
@@ -25,18 +23,15 @@ import { DiffShell } from './DiffShell.js';
 import { Shell } from '../shell/Shell.js';
 import { DetailPanel } from './DetailPanel.js';
 import { FilesKeys, FilesPage, useReviewFiles, type FileFocus } from './FilesPage.js';
-import { stepFile } from './file-diff.js';
 import type { Draft } from './comments.js';
 import { decorate } from '../graph/flow.js';
 import {
   changeList,
   filterChanges,
   neighbourhood,
-  nextProject,
   onlyProject,
   projectNeighbourhood,
   reviewStatus,
-  stepChange,
   withoutCollapsed,
 } from './review.js';
 import { Resizer } from '../ui/Resizer.js';
@@ -48,10 +43,10 @@ import { browserStore } from './store.js';
 import { WindowButtons } from '../shell/TitleBar.js';
 import { useLayout } from '../graph/useLayout.js';
 import { loadWidths, saveWidth, withWidth, type Widths } from '../ui/widths.js';
-import { tip } from '../ui/tip.js';
 import { Loading } from '../ui/Loading.js';
 import { DiffName, FindingPills, HeadFacts, PageSwitch } from './DiffHead.js';
-import { DropZone, Legend } from './GraphPage.js';
+import { CanvasCard, DropZone } from './CanvasCard.js';
+import { useDiffKeys } from './useDiffKeys.js';
 
 export function App() {
   const { state, setState, inView, retry } = useDiffGraph();
@@ -188,82 +183,26 @@ export function App() {
     });
   }, []);
 
-  // Keyboard review: j/k walk the changes, r marks reviewed, f focuses, p (P) shows the next
-  // (previous) project only, c comments, o opens in VS Code, / searches, Esc closes, g switches
-  // between the pages. On the Files page, j/k walk the files and c comments on the first change.
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      const target = event.target;
-      if (event.metaKey || event.ctrlKey || event.altKey) return;
-      const typing =
-        target instanceof HTMLTextAreaElement ||
-        target instanceof HTMLSelectElement ||
-        (target instanceof HTMLInputElement && !['checkbox', 'radio'].includes(target.type));
-      if (typing) {
-        // Esc leaves the field (keeping what was typed) instead of closing the panel.
-        if (event.key === 'Escape') target.blur();
-        return;
-      }
-      if (
-        event.key === 'g' &&
-        (state.status === 'ready' || (state.status === 'analyzing' && served))
-      ) {
-        showPage(page === 'files' ? 'graph' : 'files');
-      } else if (page === 'files') {
-        if (event.key === 'j' || event.key === 'k') {
-          setOpenFile((path) =>
-            stepFile(files, path ?? files[0]?.path ?? null, event.key === 'j' ? 1 : -1),
-          );
-          setFileFocus(null);
-        } else if (event.key === 'c') {
-          event.preventDefault();
-          const input = document.getElementById('comment-input');
-          if (input) input.focus();
-          else
-            document
-              .querySelector<HTMLElement>(
-                '.file-code .row-add.pickable, .file-code .row-del.pickable',
-              )
-              ?.click();
-        } else if (event.key === 'o') document.getElementById('open-in-editor')?.click();
-        else if (event.key === 'v' && state.status === 'ready' && forge) {
-          // The file shown, viewed or not (V90, decision 843).
-          const shown = files.find((f) => f.path === openFile) ?? files[0];
-          if (shown) toggleViewed(shown);
-        }
-      } else if (event.key === 'c' && document.getElementById('comment-input')) {
-        event.preventDefault();
-        document.getElementById('comment-input')?.focus();
-      } else if (event.key === 'o') {
-        document.getElementById('open-in-editor')?.click();
-      } else if (event.key === '/') {
-        event.preventDefault();
-        flushSync(() => setTab('changes'));
-        document.getElementById('change-search')?.focus();
-      } else if (event.key === 'j') setSelected((id) => stepChange(walked, id, 1));
-      else if (event.key === 'k') setSelected((id) => stepChange(walked, id, -1));
-      else if (event.key === 'r' && selected) toggleReviewed(selected);
-      else if (event.key === 'f') setFocus((on) => !on);
-      else if (event.key === 'p' || event.key === 'P') {
-        setProject((folder) => nextProject(changes, folder, event.key === 'p' ? 1 : -1));
-      } else if (event.key === 'Escape') setSelected(null);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [
-    changes,
-    walked,
-    selected,
-    toggleReviewed,
-    toggleViewed,
-    state.status,
+  useDiffKeys({
+    state,
+    served,
     page,
     showPage,
     files,
-    served,
+    setOpenFile,
+    setFileFocus,
     forge,
     openFile,
-  ]);
+    toggleViewed,
+    setTab,
+    walked,
+    setSelected,
+    selected,
+    toggleReviewed,
+    setFocus,
+    setProject,
+    changes,
+  });
 
   const load = useCallback(async (file: File) => {
     try {
@@ -567,76 +506,26 @@ export function App() {
                 onOpenDraft={openDraft}
               />
               {sidebarHandle}
-              {/* The canvas a card (V61), its legend at its foot since V72: the cards of the two
-                  pages start and end at the same places. */}
-              <div className="canvas-card">
-                {layout && flowNodes ? (
-                  <Canvas
-                    nodes={flowNodes}
-                    edges={layout.edges}
-                    fileEdges={layout.fileEdges}
-                    layoutNodes={layout.nodes}
-                    pending={pending}
-                    selected={selected}
-                    focus={focus}
-                    scope={project}
-                    resizing={resizing}
-                    onSelect={setSelected}
-                    onToggleSummary={toggleSummary}
-                    reveal={reveal}
-                  />
-                ) : (
-                  // The first layout: the change list and findings are there meanwhile.
-                  <Loading className="hint canvas-waiting layout-pending" status>
-                    Laying out…
-                  </Loading>
-                )}
-                {layout && (
-                  <Legend frames={layout.nodes[0]?.type === 'project'}>
-                    {/* The view's toggles at the legend's end (V90, decision 838). */}
-                    {state.graph.since && (
-                      <label
-                        className="toggle"
-                        {...tip('Leave out symbols changed the same way as in the earlier version')}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={sinceOnly}
-                          onChange={(e) => setSinceOnly(e.target.checked)}
-                        />
-                        Only changes since {state.graph.since.sha.slice(0, 7)}
-                      </label>
-                    )}
-                    <label
-                      className="toggle"
-                      {...tip('Show only the selected symbol and its neighbours', { keys: 'f' })}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={focus}
-                        onChange={(e) => setFocus(e.target.checked)}
-                      />
-                      Focus
-                    </label>
-                    <label className="toggle" {...tip('Show unchanged neighbours and packages')}>
-                      <input
-                        type="checkbox"
-                        checked={context}
-                        onChange={(e) => setContext(e.target.checked)}
-                      />
-                      Context
-                    </label>
-                    <label className="toggle" {...tip('Show the uses of types')}>
-                      <input
-                        type="checkbox"
-                        checked={typeReferences}
-                        onChange={(e) => setTypeReferences(e.target.checked)}
-                      />
-                      Type references
-                    </label>
-                  </Legend>
-                )}
-              </div>
+              <CanvasCard
+                state={state}
+                layout={layout}
+                flowNodes={flowNodes}
+                pending={pending}
+                selected={selected}
+                setSelected={setSelected}
+                focus={focus}
+                setFocus={setFocus}
+                project={project}
+                resizing={resizing}
+                toggleSummary={toggleSummary}
+                reveal={reveal}
+                sinceOnly={sinceOnly}
+                setSinceOnly={setSinceOnly}
+                context={context}
+                setContext={setContext}
+                typeReferences={typeReferences}
+                setTypeReferences={setTypeReferences}
+              />
               {selected && (
                 <Resizer
                   gutter
