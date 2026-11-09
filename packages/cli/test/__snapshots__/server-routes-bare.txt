@@ -1,0 +1,374 @@
+GET / → 200 <!doctype html><title>viewer</title>
+GET /index.html → 200 <!doctype html><title>viewer</title>
+GET /assets/none.js → 404 not found
+GET /%E0%A4%A → 400 not a path
+GET /api/capabilities → 200 {"sources":false,"review":null,"state":false,"commits":true}
+GET /api/graph → 404 no graph here: pick two commits
+GET /api/source?side=head&file=src/math.ts → 404 unknown source
+GET /api/source?side=head&file=none.ts → 404 unknown source
+GET /api/files → 404 no files here
+GET /api/file?path=src/math.ts → 404 unknown file
+GET /api/file?path=none.ts → 404 unknown file
+GET /api/review → 404 reviews are posted from symbiote pr
+GET /api/merge → 404 not a branch review
+GET /api/state/review → 404 not found
+GET /api/state/nope → 404 not found
+GET /api/open → 404 files open from symbiote view and symbiote pr
+GET /api/nope → 404 not found
+GET /api/logs → 405 method not allowed
+GET /api/events → 200 text/event-stream
+GET /api/events/ping → 405 method not allowed
+GET /api/events/listen → 405 method not allowed
+GET /api/intro → 404 not found
+GET /api/hive → 404 not found
+GET /api/hive/state → 404 not found
+GET /api/hive/landing → 404 not found
+GET /api/hive/pacing → 404 not found
+GET /api/hive/reviewer/efforts → 404 not found
+GET /api/hive/reviewer/effort → 404 not found
+GET /api/hive/reviewer/model → 404 not found
+GET /diff/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb → 308 → /diff/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/
+GET /diff/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/ → 200 <!doctype html><title>viewer</title>
+GET /diff/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/api/graph → 404 {"base":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","head":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+GET /diff/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/api/files → 404 no files here
+GET /diff/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/api/capabilities → 200 {"sources":true,"review":null,"state":false,"commits":true}
+GET /review/fix%2Fa → 404 not found
+GET /review/fix%2Fa/api/graph → 404 not found
+GET /review/%E0%A4%A/ → 400 not a path
+GET /api/reviews → 404 not found
+GET /git → 200 <!doctype html><title>viewer</title>
+GET /history → 200 <!doctype html><title>viewer</title>
+GET /overview → 200 <!doctype html><title>viewer</title>
+GET /api/history?scope=all&from=0&to=10 → 200 {"fake":"page"}
+GET /api/history?scope=none → 400 scope: all or current
+GET /api/history/shape?scope=all&version=v1 → 200 {"fake":"shape"}
+GET /api/history/refs?scope=all&version=v1 → 200 {"version":"v1","branches":[],"remotes":[]}
+GET /api/history/rows?scope=all&version=v1&sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa → 200 {"rows":{"fake":"tips"}}
+GET /api/git/commit?sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&path=a.ts&scope=all&version=v1&q=x → 404 not found
+GET /api/git/commit/lines?sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&path=a.ts&scope=all&version=v1&q=x → 404 not found
+GET /api/git/commit/file?sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&path=a.ts&scope=all&version=v1&q=x → 404 not found
+GET /api/git/changes?sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&path=a.ts&scope=all&version=v1&q=x → 404 not found
+GET /api/git/changes/lines?sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&path=a.ts&scope=all&version=v1&q=x → 404 not found
+GET /api/git/changes/file?sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&path=a.ts&scope=all&version=v1&q=x → 404 not found
+GET /api/git/sync?sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&path=a.ts&scope=all&version=v1&q=x → 404 not found
+GET /api/git/stashes?sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&path=a.ts&scope=all&version=v1&q=x → 404 not found
+GET /api/git/hidden?sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&path=a.ts&scope=all&version=v1&q=x → 404 not found
+GET /api/git/leaving?sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&path=a.ts&scope=all&version=v1&q=x → 404 not found
+GET /api/git/file/history?sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&path=a.ts&scope=all&version=v1&q=x → 404 not found
+GET /api/git/file/blame?sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&path=a.ts&scope=all&version=v1&q=x → 404 not found
+GET /api/git/find?sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&path=a.ts&scope=all&version=v1&q=x → 404 not found
+GET /api/git/open?sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&path=a.ts&scope=all&version=v1&q=x → 404 not found
+GET /api/git/stage?sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&path=a.ts&scope=all&version=v1&q=x → 404 not found
+GET /api/git/push?sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&path=a.ts&scope=all&version=v1&q=x → 404 not found
+GET /api/git/nope?sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&path=a.ts&scope=all&version=v1&q=x → 404 not found
+GET /api/git/commit → 404 not found
+GET /api/status → 200 {"fake":"status"}
+GET /api/refs → 200 {"branches":[],"remotes":[],"tags":[]}
+GET /api/checkout → 405 method not allowed
+GET /api/workspaces/findings → 200 {"graphs":[]}
+GET /api/diffs → 405 method not allowed
+GET /api/diffs/stop → 405 method not allowed
+GET /api/mcp → 405 method not allowed
+GET /api/mcp/asks → 200 {"asks":[]}
+GET /api/mcp/answer → 405 method not allowed
+GET /api/mcp/nope → 404 not found
+GET /api/nucleus/start-confirm → 404 not found
+GET /workspaces → 404 not found
+GET /features → 404 not found
+GET /start → 404 not found
+GET /workspace-history → 404 not found
+GET /api/workspaces/day?since=2026-11-09T00:00:00.000Z → 404 not found
+GET /api/workspaces/day?since=never → 404 not found
+GET /api/workspaces/hive?branch=fix%2Fa → 404 not found
+GET /api/workspaces/hive/test?branch=fix%2Fa&round=1&path=a.test.ts → 404 not found
+GET /api/workspaces/hive/log?branch=fix%2Fa&log=check-1&from=0 → 404 not found
+GET /api/workspaces/hive/log → 404 not found
+GET /api/workspaces/hive/nope → 404 not found
+GET /api/workspaces → 404 not found
+GET /api/workspaces/options → 404 not found
+GET /api/workspaces/history → 404 not found
+GET /api/workspaces/history?branch=fix%2Fa → 404 not found
+GET /api/workspaces/draft → 404 not found
+GET /api/workspaces/documents → 404 not found
+GET /api/workspaces/suggest → 404 not found
+GET /api/workspaces/advisor/claude/efforts → 404 not found
+GET /api/workspaces/advisor/codex/effort → 404 not found
+GET /api/workspaces/advisor/claude/model → 404 not found
+GET /api/workspaces/check?at=main → 404 not found
+GET /api/workspaces/check → 404 not found
+GET /api/workspaces/start → 404 not found
+GET /api/workspaces/stop → 404 not found
+GET /api/workspaces/open → 404 not found
+GET /api/workspaces/diff → 404 not found
+GET /api/workspaces/changes?branch=fix%2Fa → 404 not found
+GET /api/workspaces/changes → 404 not found
+GET /api/workspaces/prompt?branch=fix%2Fa → 404 not found
+GET /api/workspaces/merge?branch=fix%2Fa → 404 not found
+GET /api/workspaces/against?branch=fix%2Fa → 404 not found
+GET /api/workspaces/thread?branch=fix%2Fa → 404 not found
+GET /api/workspaces/activity?branch=fix%2Fa → 404 not found
+GET /api/workspaces/activity/export?branch=fix%2Fa → 404 not found
+GET /api/workspaces/activity/export?branch=fix%2Fa&format=pdf → 404 not found
+GET /api/workspaces/activity/export → 404 not found
+GET /api/workspaces/reply → 404 not found
+GET /api/workspaces/sent → 404 not found
+GET /api/workspaces/clean → 404 not found
+GET /api/workspaces/terminal → 404 not found
+GET /api/workspaces/shell → 404 not found
+GET /api/workspaces/shells?branch=fix%2Fa → 404 not found
+GET /api/workspaces/nope → 404 not found
+GET /nucleus → 404 not found
+GET /scout → 404 not found
+GET /api/nucleus → 404 not found
+GET /api/nucleus/ask → 404 not found
+GET /api/nucleus/open → 404 not found
+GET /api/nucleus/new → 404 not found
+GET /api/nucleus/terminal → 404 not found
+GET /api/nucleus/activity → 404 not found
+GET /api/nucleus/activity/export → 404 not found
+GET /api/nucleus/efforts → 404 not found
+GET /api/nucleus/effort → 404 not found
+GET /api/nucleus/model → 404 not found
+GET /api/nucleus/nope → 404 not found
+GET /api/nucleus/activity/export?format=pdf → 404 not found
+GET /api/scribe → 404 not found
+GET /api/scribe/ask → 404 not found
+GET /api/scribe/open → 404 not found
+GET /api/scribe/new → 404 not found
+GET /api/scribe/terminal → 404 not found
+GET /api/scribe/activity → 404 not found
+GET /api/scribe/activity/export → 404 not found
+GET /api/scribe/efforts → 404 not found
+GET /api/scribe/effort → 404 not found
+GET /api/scribe/model → 404 not found
+GET /api/scribe/nope → 404 not found
+GET /skills → 404 not found
+GET /api/skills → 404 not found
+GET /api/skills/open → 404 not found
+GET /api/skills/library?folder=%2Ftmp → 404 not found
+GET /api/skills/library → 404 not found
+GET /monitor → 404 not found
+GET /api/monitor → 404 not found
+GET /api/monitor/open → 404 not found
+GET /issues → 404 not found
+GET /api/issues → 404 not found
+GET /api/issues?state=closed&cursor=nope → 404 not found
+GET /api/issues/12 → 404 not found
+GET /api/usage → 404 not found
+GET /settings → 404 not found
+GET /api/settings/prompts → 404 not found
+GET /api/settings/checks → 404 not found
+GET /api/merges → 404 not found
+GET /api/merges/targets?branch=fix%2Fa → 404 not found
+GET /api/merges/log?id=m1&from=0 → 404 not found
+GET /api/merges/log → 404 not found
+GET /api/merges/efforts → 404 not found
+GET /api/merges/effort → 404 not found
+GET /api/merges/model → 404 not found
+GET /api/merges/approve → 404 not found
+GET /api/merges/recheck → 404 not found
+GET /api/merges/send → 404 not found
+GET /api/merges/merge-commit → 404 not found
+GET /api/merges/request-changes → 404 not found
+GET /api/merges/land → 404 not found
+GET /api/merges/retry → 404 not found
+GET /api/merges/remove → 404 not found
+GET /api/merges/nope → 404 not found
+GET /api/terminals/abc123 → 404 not found
+GET /api/terminals/abc123/in → 404 not found
+GET /api/terminals/abc123/resize → 404 not found
+GET /api/terminals/abc123/close → 404 not found
+GET /api/terminals/abc123/image → 404 not found
+GET /api/terminals/abc123/paths → 404 not found
+GET /api/terminals/abc123/open → 404 not found
+GET /api/terminals/abc123/nope → 404 not found
+POST / → 405 method not allowed
+POST /index.html → 405 method not allowed
+POST /assets/none.js → 405 method not allowed
+POST /%E0%A4%A → 405 method not allowed
+POST /api/capabilities → 405 method not allowed
+POST /api/graph → 405 method not allowed
+POST /api/source?side=head&file=src/math.ts → 405 method not allowed
+POST /api/source?side=head&file=none.ts → 405 method not allowed
+POST /api/files → 405 method not allowed
+POST /api/file?path=src/math.ts → 405 method not allowed
+POST /api/file?path=none.ts → 405 method not allowed
+POST /api/review → 404 reviews are posted from symbiote pr
+POST /api/merge → 404 not a branch review
+POST /api/state/review → 404 not found
+POST /api/state/nope → 404 not found
+POST /api/open → 404 files open from symbiote view and symbiote pr
+POST /api/nope → 405 method not allowed
+POST /api/logs → 400 level: error or warn
+POST /api/events → 405 method not allowed
+POST /api/events/ping → 204
+POST /api/events/listen → 400 stream: the stream's ID; terminal: a terminal's ID
+POST /api/intro → 405 method not allowed
+POST /api/hive → 405 method not allowed
+POST /api/hive/state → 405 method not allowed
+POST /api/hive/landing → 405 method not allowed
+POST /api/hive/pacing → 405 method not allowed
+POST /api/hive/reviewer/efforts → 405 method not allowed
+POST /api/hive/reviewer/effort → 405 method not allowed
+POST /api/hive/reviewer/model → 405 method not allowed
+POST /diff/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb → 308 → /diff/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/
+POST /diff/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/ → 405 method not allowed
+POST /diff/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/api/graph → 405 method not allowed
+POST /diff/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/api/files → 405 method not allowed
+POST /diff/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/api/capabilities → 405 method not allowed
+POST /review/fix%2Fa → 405 method not allowed
+POST /review/fix%2Fa/api/graph → 405 method not allowed
+POST /review/%E0%A4%A/ → 405 method not allowed
+POST /api/reviews → 405 method not allowed
+POST /git → 405 method not allowed
+POST /history → 405 method not allowed
+POST /overview → 405 method not allowed
+POST /api/history?scope=all&from=0&to=10 → 405 method not allowed
+POST /api/history?scope=none → 405 method not allowed
+POST /api/history/shape?scope=all&version=v1 → 405 method not allowed
+POST /api/history/refs?scope=all&version=v1 → 405 method not allowed
+POST /api/history/rows?scope=all&version=v1&sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa → 405 method not allowed
+POST /api/git/commit?sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&path=a.ts&scope=all&version=v1&q=x → 405 method not allowed
+POST /api/git/commit/lines?sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&path=a.ts&scope=all&version=v1&q=x → 405 method not allowed
+POST /api/git/commit/file?sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&path=a.ts&scope=all&version=v1&q=x → 405 method not allowed
+POST /api/git/changes?sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&path=a.ts&scope=all&version=v1&q=x → 405 method not allowed
+POST /api/git/changes/lines?sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&path=a.ts&scope=all&version=v1&q=x → 405 method not allowed
+POST /api/git/changes/file?sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&path=a.ts&scope=all&version=v1&q=x → 405 method not allowed
+POST /api/git/sync?sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&path=a.ts&scope=all&version=v1&q=x → 405 method not allowed
+POST /api/git/stashes?sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&path=a.ts&scope=all&version=v1&q=x → 405 method not allowed
+POST /api/git/hidden?sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&path=a.ts&scope=all&version=v1&q=x → 405 method not allowed
+POST /api/git/leaving?sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&path=a.ts&scope=all&version=v1&q=x → 405 method not allowed
+POST /api/git/file/history?sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&path=a.ts&scope=all&version=v1&q=x → 405 method not allowed
+POST /api/git/file/blame?sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&path=a.ts&scope=all&version=v1&q=x → 405 method not allowed
+POST /api/git/find?sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&path=a.ts&scope=all&version=v1&q=x → 405 method not allowed
+POST /api/git/open?sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&path=a.ts&scope=all&version=v1&q=x → 405 method not allowed
+POST /api/git/stage?sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&path=a.ts&scope=all&version=v1&q=x → 405 method not allowed
+POST /api/git/push?sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&path=a.ts&scope=all&version=v1&q=x → 405 method not allowed
+POST /api/git/nope?sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&path=a.ts&scope=all&version=v1&q=x → 405 method not allowed
+POST /api/git/commit → 405 method not allowed
+POST /api/status → 405 method not allowed
+POST /api/refs → 405 method not allowed
+POST /api/checkout → 400 kind: branch, remote, tag or commit
+POST /api/workspaces/findings → 405 method not allowed
+POST /api/diffs → 400 base: not a full SHA
+POST /api/diffs/stop → 400 base: not a full SHA
+POST /api/mcp → 200 {"jsonrpc":"2.0","id":null,"error":{"code":-32600,"message":"not a JSON-RPC request"}}
+POST /api/mcp/asks → 405 method not allowed
+POST /api/mcp/answer → 400 id: an ask
+POST /api/mcp/nope → 404 not found
+POST /api/nucleus/start-confirm → 405 method not allowed
+POST /workspaces → 405 method not allowed
+POST /features → 405 method not allowed
+POST /start → 405 method not allowed
+POST /workspace-history → 405 method not allowed
+POST /api/workspaces/day?since=2026-11-09T00:00:00.000Z → 405 method not allowed
+POST /api/workspaces/day?since=never → 405 method not allowed
+POST /api/workspaces/hive?branch=fix%2Fa → 405 method not allowed
+POST /api/workspaces/hive/test?branch=fix%2Fa&round=1&path=a.test.ts → 405 method not allowed
+POST /api/workspaces/hive/log?branch=fix%2Fa&log=check-1&from=0 → 405 method not allowed
+POST /api/workspaces/hive/log → 405 method not allowed
+POST /api/workspaces/hive/nope → 405 method not allowed
+POST /api/workspaces → 405 method not allowed
+POST /api/workspaces/options → 405 method not allowed
+POST /api/workspaces/history → 405 method not allowed
+POST /api/workspaces/history?branch=fix%2Fa → 405 method not allowed
+POST /api/workspaces/draft → 405 method not allowed
+POST /api/workspaces/documents → 405 method not allowed
+POST /api/workspaces/suggest → 405 method not allowed
+POST /api/workspaces/advisor/claude/efforts → 405 method not allowed
+POST /api/workspaces/advisor/codex/effort → 405 method not allowed
+POST /api/workspaces/advisor/claude/model → 405 method not allowed
+POST /api/workspaces/check?at=main → 405 method not allowed
+POST /api/workspaces/check → 405 method not allowed
+POST /api/workspaces/start → 405 method not allowed
+POST /api/workspaces/stop → 405 method not allowed
+POST /api/workspaces/open → 405 method not allowed
+POST /api/workspaces/diff → 405 method not allowed
+POST /api/workspaces/changes?branch=fix%2Fa → 405 method not allowed
+POST /api/workspaces/changes → 405 method not allowed
+POST /api/workspaces/prompt?branch=fix%2Fa → 405 method not allowed
+POST /api/workspaces/merge?branch=fix%2Fa → 405 method not allowed
+POST /api/workspaces/against?branch=fix%2Fa → 405 method not allowed
+POST /api/workspaces/thread?branch=fix%2Fa → 405 method not allowed
+POST /api/workspaces/activity?branch=fix%2Fa → 405 method not allowed
+POST /api/workspaces/activity/export?branch=fix%2Fa → 405 method not allowed
+POST /api/workspaces/activity/export?branch=fix%2Fa&format=pdf → 405 method not allowed
+POST /api/workspaces/activity/export → 405 method not allowed
+POST /api/workspaces/reply → 405 method not allowed
+POST /api/workspaces/sent → 405 method not allowed
+POST /api/workspaces/clean → 405 method not allowed
+POST /api/workspaces/terminal → 405 method not allowed
+POST /api/workspaces/shell → 405 method not allowed
+POST /api/workspaces/shells?branch=fix%2Fa → 405 method not allowed
+POST /api/workspaces/nope → 405 method not allowed
+POST /nucleus → 405 method not allowed
+POST /scout → 405 method not allowed
+POST /api/nucleus → 405 method not allowed
+POST /api/nucleus/ask → 405 method not allowed
+POST /api/nucleus/open → 405 method not allowed
+POST /api/nucleus/new → 405 method not allowed
+POST /api/nucleus/terminal → 405 method not allowed
+POST /api/nucleus/activity → 405 method not allowed
+POST /api/nucleus/activity/export → 405 method not allowed
+POST /api/nucleus/efforts → 405 method not allowed
+POST /api/nucleus/effort → 405 method not allowed
+POST /api/nucleus/model → 405 method not allowed
+POST /api/nucleus/nope → 405 method not allowed
+POST /api/nucleus/activity/export?format=pdf → 405 method not allowed
+POST /api/scribe → 405 method not allowed
+POST /api/scribe/ask → 405 method not allowed
+POST /api/scribe/open → 405 method not allowed
+POST /api/scribe/new → 405 method not allowed
+POST /api/scribe/terminal → 405 method not allowed
+POST /api/scribe/activity → 405 method not allowed
+POST /api/scribe/activity/export → 405 method not allowed
+POST /api/scribe/efforts → 405 method not allowed
+POST /api/scribe/effort → 405 method not allowed
+POST /api/scribe/model → 405 method not allowed
+POST /api/scribe/nope → 405 method not allowed
+POST /skills → 405 method not allowed
+POST /api/skills → 405 method not allowed
+POST /api/skills/open → 405 method not allowed
+POST /api/skills/library?folder=%2Ftmp → 405 method not allowed
+POST /api/skills/library → 405 method not allowed
+POST /monitor → 405 method not allowed
+POST /api/monitor → 405 method not allowed
+POST /api/monitor/open → 405 method not allowed
+POST /issues → 405 method not allowed
+POST /api/issues → 405 method not allowed
+POST /api/issues?state=closed&cursor=nope → 405 method not allowed
+POST /api/issues/12 → 405 method not allowed
+POST /api/usage → 405 method not allowed
+POST /settings → 405 method not allowed
+POST /api/settings/prompts → 405 method not allowed
+POST /api/settings/checks → 405 method not allowed
+POST /api/merges → 405 method not allowed
+POST /api/merges/targets?branch=fix%2Fa → 405 method not allowed
+POST /api/merges/log?id=m1&from=0 → 405 method not allowed
+POST /api/merges/log → 405 method not allowed
+POST /api/merges/efforts → 405 method not allowed
+POST /api/merges/effort → 405 method not allowed
+POST /api/merges/model → 405 method not allowed
+POST /api/merges/approve → 405 method not allowed
+POST /api/merges/recheck → 405 method not allowed
+POST /api/merges/send → 405 method not allowed
+POST /api/merges/merge-commit → 405 method not allowed
+POST /api/merges/request-changes → 405 method not allowed
+POST /api/merges/land → 405 method not allowed
+POST /api/merges/retry → 405 method not allowed
+POST /api/merges/remove → 405 method not allowed
+POST /api/merges/nope → 405 method not allowed
+POST /api/terminals/abc123 → 405 method not allowed
+POST /api/terminals/abc123/in → 405 method not allowed
+POST /api/terminals/abc123/resize → 405 method not allowed
+POST /api/terminals/abc123/close → 405 method not allowed
+POST /api/terminals/abc123/image → 405 method not allowed
+POST /api/terminals/abc123/paths → 405 method not allowed
+POST /api/terminals/abc123/open → 405 method not allowed
+POST /api/terminals/abc123/nope → 405 method not allowed
+PUT /api/state/review → 404 not found
+PUT /diff/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/api/state/review → 404 not found
+GET /api/status → 421 unknown host
+GET /api/status → 403 forbidden: another site's request
+POST /api/workspaces/stop → 405 method not allowed
+POST /api/workspaces/stop → 405 method not allowed
