@@ -409,7 +409,7 @@ What holds now: [The merger](area/merger.md) · its decisions: [the register](de
 | [Chore](plan/chore-keys-v.md) | The `v` key in commands.md's keys table | planned | | |
 | [Chore](plan/chore-dependency-bumps.md) | Electron 44.9.1 and the patch bumps; the majors listed | planned | | |
 | [Fix](plan/fix-macos-install.md) | ./install.sh on macOS: the app step skipped with a note | planned | | |
-| [Refactor](plan/refactor-cli-services.md) | The CLI's large files in modules with an explicit context: the server, the MCP, workspaces, Hive's runner, the merger, the commands, the page agents, the prompts, and core's workspace types | ready for review | 961–965 | [journal](journal/refactor-cli-services.md) |
+| [Refactor](plan/refactor-cli-services.md) | The CLI's large files in modules with an explicit context: the server, the MCP, workspaces, Hive's runner, the merger, the commands, the page agents, the prompts, and core's workspace types | ✅ | 961–965 | [journal](journal/refactor-cli-services.md) |
 | [Chore](plan/chore-e2e-waits.md) | e2e specs poll instead of fixed waits | planned | | |
 | [Chore](plan/chore-env-docs.md) | configuration.md lists every variable Symbiote reads | planned | | |
 | [Chore](plan/chore-package-claude-md.md) | The packages' CLAUDE.md files name what they hold | planned | | |

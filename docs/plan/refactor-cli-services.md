@@ -3,7 +3,7 @@
 [Index](../PLAN.md) · [Journal](../journal/refactor-cli-services.md) · [The audit](../journal/chore-improvement-audit.md) (finding Q1) ·
 [The refactor it continues](refactor-readability.md)
 
-**Status:** built (2026-11-09), ready for review, on branch `refactor/cli-services` (a workspace
+**Status:** built (2026-11-09), merged into `main` on 2026-11-10, on branch `refactor/cli-services` (a workspace
 started in Symbiote, from `main` at `371be1d`). Planned 2026-11-06 by the improvement audit
 (`chore/improvement-audit`) for after P04, P11–P14 and P31; the person decided on 2026-11-09 not
 to wait for them (decision 961): none has a branch, and they will be built on the new modules

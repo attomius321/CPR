@@ -114,3 +114,15 @@ over 600 lines from 8,582 to 1,847 (the longest now 443); 63 new files, none ove
   `workspaces` one gone); `@symbiote/core` exports the same 432 names.
 - Timings against the baseline: `pnpm check` 105.4 → 109.6 s (+4.0 %), the three long CLI test
   files +2.1 % to +7.5 %, e2e 200.7 → 205.9 s (+2.6 %), the build a second faster: within ±10 %.
+- **The merge into `main`** (2026-11-10): `main` (`6b256671`, the viewer refactor) merged into the
+  branch with one conflict, `docs/area/merger.md` (both sides kept); on the branch, `pnpm check`
+  3,454 tests, build, e2e 436 + 32. The merge commit `eb807773` verified on a `git archive` export:
+  check (the file-names guard, which needs `.git`, run in the checkout), build, nexus e2e 32 of 32.
+  One viewer test failed outside the known `workspaces.spec.ts:2303` stall: `shell.spec.ts:134`
+  ("keys: … w to the workspaces …") failed 2 of 4 full viewer runs on the merge, 0 of 3 on
+  `main`'s export on the same Xvfb; alone 3 of 3, its file 12 of 12, `--repeat-each 16 --workers
+  8` 16 of 16 on both. After `w` the first card is focused, then the cards re-sort by their
+  agents' last action; the test's own comment records the race ("2 of 32 runs failed on main").
+  Not patched here: a fix workspace takes it and the `workspaces.spec.ts:2303` stall.
+
+Merged into main (2026-11-10).
