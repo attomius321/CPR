@@ -63,14 +63,13 @@ import { AskDialog, type After, type Ask } from './AskDialog.js';
 import { stashWords, stoppedNotice } from './actions.js';
 import {
   changesOrder,
-  changesSummary,
   followShown,
   nextMatch,
   rowAfterListing,
   stepShown,
-  syncWords,
   useDetailsPlace,
   type ShownFile,
+  headLine,
 } from './details.js';
 import { CommitDetails, useCommitRead } from './CommitDetails.js';
 import { ChangesDetails, useChangesRead } from './ChangesDetails.js';
@@ -106,6 +105,7 @@ import { GIT_PAGE } from '../shell/pages.js';
 import { useShell, type Notice } from '../shell/shell-context.js';
 import { tip } from '../ui/tip.js';
 import { Loading } from '../ui/Loading.js';
+import { WorkingRow } from './WorkingRow.js';
 
 /** Rows drawn beyond the view, above and below. */
 const OVERSCAN = 10;
@@ -1685,54 +1685,6 @@ function History({
           onCompare={(pair) => void compare(pair)}
         />
       )}
-    </div>
-  );
-}
-
-/** The head's line: the branch, then where it is against its upstream, the name said once. */
-function headLine(branch: string | null, sync: SyncState | null): string {
-  const name = branch ?? 'HEAD detached';
-  if (!sync || !branch) return name;
-  const words = syncWords(sync);
-  return words.startsWith(`${branch} `) ? words : `${name} · ${words}`;
-}
-
-/**
- * The checkout's uncommitted changes as a row above the commits (V66c): its dot hollow on HEAD's
- * lane (lane 0), joined to HEAD's when HEAD is the first commit listed.
- */
-function WorkingRow({
-  changes,
-  spacing,
-  width,
-  joined,
-  cursor,
-  onClick,
-}: {
-  changes: WorkingChanges;
-  spacing: number;
-  width: number;
-  joined: boolean;
-  cursor: boolean;
-  onClick: () => void;
-}) {
-  const x = spacing / 2;
-  const mid = ROW_HEIGHT / 2;
-  return (
-    <div
-      className={`commit working${cursor ? ' cursor' : ''}`}
-      style={{ height: ROW_HEIGHT }}
-      role="button"
-      tabIndex={-1}
-      aria-label={`Uncommitted changes: ${changesSummary(changes)}`}
-      onClick={onClick}
-    >
-      <svg className="graph" width={width} height={ROW_HEIGHT} aria-hidden="true">
-        {joined && <path className="working-line" d={`M${x} ${mid + 4}V${ROW_HEIGHT}`} />}
-        <circle className="working-dot" cx={x} cy={mid} r={4} />
-      </svg>
-      <span className="commit-subject">Uncommitted changes</span>
-      <span className="working-summary">{changesSummary(changes)}</span>
     </div>
   );
 }

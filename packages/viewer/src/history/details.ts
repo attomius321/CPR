@@ -164,3 +164,11 @@ export function rowAfterListing({
   if (wasHead && !shown && head !== null) return head;
   return kept ?? head ?? 0;
 }
+
+/** The head's line: the branch, then where it is against its upstream, the name said once. */
+export function headLine(branch: string | null, sync: SyncState | null): string {
+  const name = branch ?? 'HEAD detached';
+  if (!sync || !branch) return name;
+  const words = syncWords(sync);
+  return words.startsWith(`${branch} `) ? words : `${name} · ${words}`;
+}
