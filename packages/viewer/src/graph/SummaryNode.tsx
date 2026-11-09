@@ -1,5 +1,6 @@
 import { Handle, Position, type Node, type NodeProps } from '@xyflow/react';
 import type { SummaryData } from './flow.js';
+import { plural } from '../ui/plural.js';
 import { tip } from '../ui/tip.js';
 
 /** Many unchanged neighbours of one changed symbol, as one node; a click shows or hides them. */
@@ -26,8 +27,4 @@ export function SummaryNode({ data }: NodeProps<Node<SummaryData, 'summary'>>) {
       <Handle type="source" position={Position.Right} />
     </div>
   );
-}
-
-function plural(n: number, word: string, many = `${word}s`): string {
-  return `${n} ${n === 1 ? word : many}`;
 }

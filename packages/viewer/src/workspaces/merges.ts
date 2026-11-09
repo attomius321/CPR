@@ -7,12 +7,12 @@ import type {
   MergeStrategy,
   MergeTargets,
 } from '@symbiote/core';
+import { plural } from '../ui/plural.js';
 
 /** How a row is marked: waiting, the person's turn, done, or something went wrong. */
 export type MergeTone = 'wait' | 'you' | 'done' | 'bad';
 
 const short = (sha: string) => sha.slice(0, 7);
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /** Tokens, short: `950`, `3.1K`. */
 const tokens = (n: number) => (n < 1000 ? String(n) : `${(n / 1000).toFixed(1)}K`);

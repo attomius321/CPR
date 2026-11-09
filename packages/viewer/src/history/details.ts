@@ -4,6 +4,7 @@
 import { useSyncExternalStore } from 'react';
 import type { LineCount, SyncState, WorkingChanges } from '@symbiote/core';
 import { readStored, writeStored } from '../ui/stored.js';
+import { plural } from '../ui/plural.js';
 
 /** Where a commit's details show: beside the rows (the default) or under them. */
 export type DetailsPlace = 'right' | 'below';
@@ -58,8 +59,6 @@ export function withLines<File extends { path: string }>(
     return { ...file, added: count.added, removed: count.removed };
   });
 }
-
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /** The uncommitted row's words: how many files, how many staged, an operation in progress. */
 export function changesSummary({ staged, unstaged, operation }: WorkingChanges): string {

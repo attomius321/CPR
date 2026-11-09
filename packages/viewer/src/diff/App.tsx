@@ -62,6 +62,7 @@ import { useLayout } from '../graph/useLayout.js';
 import { loadWidths, saveWidth, withWidth, type Widths } from '../ui/widths.js';
 import { tip } from '../ui/tip.js';
 import { Loading } from '../ui/Loading.js';
+import { plural } from '../ui/plural.js';
 
 export function App() {
   const { state, setState, inView, retry } = useDiffGraph();
@@ -942,8 +943,4 @@ function Legend({ frames, children }: { frames: boolean; children: ReactNode }) 
       <span className="legend-toggles">{children}</span>
     </footer>
   );
-}
-
-function plural(n: number, word: string): string {
-  return `${n} ${word}${n === 1 ? '' : 's'}`;
 }

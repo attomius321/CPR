@@ -14,6 +14,7 @@ import {
   type LandedRow,
   type WorkspaceRow,
 } from './workspaces.js';
+import { plural } from '../ui/plural.js';
 
 /** A row's icon (`icons.tsx` names them): a merge, a bell, a question, an eye, a spinner… */
 export type RowIcon = 'merge' | 'bell' | 'question' | 'eye' | 'spin' | 'alert' | 'idle' | 'check';
@@ -42,7 +43,6 @@ export interface RowFindings {
   warnings: number;
 }
 
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 const basename = (path: string) => path.slice(path.lastIndexOf('/') + 1) || path;
 const FILE_TOOLS = new Set(['Edit', 'MultiEdit', 'Write', 'Read', 'NotebookEdit']);
 

@@ -5,6 +5,7 @@
 import type { MergeEntry } from '@symbiote/core';
 import { clockWords } from './hive-live.js';
 import { toReview } from './merges.js';
+import { plural } from '../ui/plural.js';
 
 export type MergeStepState = 'done' | 'now' | 'todo' | 'bad';
 
@@ -54,7 +55,6 @@ const hm = (iso: string) => {
   return `${two(date.getHours())}:${two(date.getMinutes())}`;
 };
 const short = (sha: string) => sha.slice(0, 7);
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /** "1st", "2nd", "3rd", "11th". */
 function ordinal(n: number): string {

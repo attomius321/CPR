@@ -2,6 +2,7 @@
 // searched, what became of each branch and how long each ran, in words — and the picked one's tab
 // in the address. Pure: `WorkspaceHistory.tsx` draws what these say.
 import type { FinishedWorkspace, WorkKind } from '@symbiote/core';
+import { plural } from '../ui/plural.js';
 
 /** The kinds in the start page's order (core's `WORK_KINDS`, which the viewer cannot import). */
 const KINDS: readonly WorkKind[] = ['feature', 'fix', 'refactor', 'chore', 'spike'];
@@ -19,8 +20,6 @@ export function outcomeWord(workspace: FinishedWorkspace): string {
   if (workspace.outcome === 'merged') return 'Merged';
   return workspace.outcome === 'kept' ? 'Branch kept' : 'Not merged';
 }
-
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /**
  * How long a workspace ran, from its start to its clean-up: "48 min", "2 h 10 min", "1 day 2 h",

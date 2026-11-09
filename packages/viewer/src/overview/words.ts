@@ -15,10 +15,6 @@ export function medianFigure(ms: number | null): { value: string; unit?: string 
   return { value: hours < 10 ? hours.toFixed(1) : `${Math.round(hours)}`, unit: 'h median' };
 }
 
-/** `n` and its word, plural when not one. */
-export const plural = (n: number, word: string, many = `${word}s`) =>
-  `${n} ${n === 1 ? word : many}`;
-
 /** A usage window's name as the cards say it: "5-hour window", "Week", "30 days". */
 export function windowName(minutes: number): string {
   if (minutes === 300) return '5-hour window';

@@ -6,6 +6,7 @@ import type { WorkspaceHiveDetail } from '@symbiote/core';
 import { clockWords, liveWords } from './hive-live.js';
 import type { PipelineStepWords, StepsModel } from './workspace-steps.js';
 import { modelName } from './workspaces.js';
+import { plural } from '../ui/plural.js';
 
 /** A round's mark: failed, landed, running, or to come. */
 export type RoundMark = 'fail' | 'ok' | 'run' | 'todo';
@@ -17,8 +18,6 @@ export interface HivePipelineWords {
   /** When a stopped run ended: its last check's end, for the time "brief to stop". */
   ended?: string;
 }
-
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /** A check's time: "38 s", "1:10". */
 const tookWords = (ms: number) => (ms < 60_000 ? `${Math.round(ms / 1000)} s` : clockWords(ms));

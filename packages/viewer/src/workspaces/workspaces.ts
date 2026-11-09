@@ -29,6 +29,7 @@ import type {
   ThreadEntry,
   ToolActivity,
 } from '@symbiote/core';
+import { plural } from '../ui/plural.js';
 
 /** Each agent's name (V20a). */
 export const AGENT_NAMES: Record<AgentKind, string> = {
@@ -426,8 +427,6 @@ const chip = (mark: string, tone: AgentChip['tone'], title: string): AgentChip =
   tone,
   title,
 });
-
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /**
  * Merged, as the pages count it: not while Hive's request, merged on its forge, waits for the

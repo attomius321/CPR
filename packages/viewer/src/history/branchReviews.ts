@@ -1,8 +1,7 @@
 import type { BranchReviewList, BranchReviewSummary } from '@symbiote/core';
 import { viaName } from '../workspaces/workspaces.js';
 import { tip, type TipAttributes, type TipTone } from '../ui/tip.js';
-
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+import { plural } from '../ui/plural.js';
 
 /** A reviewed branch's mark on its badges (V16), what it means, and its colour. */
 export interface ReviewMark {

@@ -9,6 +9,7 @@ import type {
   IssueSummary,
 } from '@symbiote/core';
 import { relativeDate } from '../history/commits.js';
+import { plural } from '../ui/plural.js';
 
 export const FORGE_NAMES = { github: 'GitHub', gitlab: 'GitLab' } as const;
 
@@ -40,8 +41,6 @@ export function roleWord(role: IssueAuthorRole | undefined): string | undefined 
 export function authorName(author: IssueAuthor): string {
   return author.bot ? `${author.login} (bot)` : author.login;
 }
-
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /** A row's line under its title: who, when it was updated, how many comments. */
 export function issueLine(issue: IssueSummary, now: number): string {

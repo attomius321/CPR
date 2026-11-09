@@ -5,6 +5,7 @@
 import type { HiveCheck, HiveReview, WorkspaceCommit, WorkspaceHiveDetail } from '@symbiote/core';
 import { clockWords } from './hive-live.js';
 import { costWords } from './hive-rounds.js';
+import { plural } from '../ui/plural.js';
 
 /** A state's tone, as `StatusLabel` and the timeline's marks draw it. */
 export type RunTone = 'run' | 'ok' | 'fail' | 'warn';
@@ -38,7 +39,6 @@ export interface RunRound {
   review?: HiveReview;
 }
 
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 const kept = (review: HiveReview | undefined) => review?.findings.filter((f) => f.kept) ?? [];
 const startOf = (check: HiveCheck | undefined) =>
   check?.started === undefined ? undefined : Date.parse(check.started);

@@ -10,6 +10,7 @@ import type {
   HiveSpend,
   WorkspaceHiveDetail,
 } from '@symbiote/core';
+import { plural } from '../ui/plural.js';
 
 /** One round of the writer's: the checks and running reviews Hive ran on what it committed. */
 export interface HiveRound {
@@ -30,8 +31,6 @@ export function hiveRounds(detail: Pick<WorkspaceHiveDetail, 'checks' | 'reviews
   for (const review of detail.reviews) of(review.round).reviews.push(review);
   return [...rounds.values()].sort((a, b) => b.round - a.round);
 }
-
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /** A time in words: "12 s", "6 min 40 s", "1 h 5 min". */
 export function durationWords(ms: number): string {
