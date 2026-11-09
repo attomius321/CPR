@@ -3,9 +3,9 @@
 [Index](../PLAN.md) · [Journal](../journal/refactor-viewer-pages.md) ·
 [The first round](refactor-readability.md)
 
-**Status:** planned (2026-11-09), on branch `refactor/viewer-pages` (a workspace started in
-Symbiote, from `main` at `371be1d`). The person's OK: "Whatever you plan, do it with your
-recommendations" (2026-11-09).
+**Status:** built (2026-11-09), on branch `refactor/viewer-pages` (a workspace started in Symbiote,
+from `main` at `371be1d`); ready for review. The person's OK: "Whatever you plan, do it with your
+recommendations" (2026-11-09). As built and results at the end.
 
 **Problem** (the brief: "The person finds these files too big and wants all of them done").
 Eleven files of the viewer and the nexus page hold 12,764 lines. The first round
@@ -126,3 +126,93 @@ the way (in the journal, not fixed).
 | 958 | How pure files split | **Into a graph without cycles, types included: the most imported names stay, shared types go to the lowest module** | `workspaces.ts` has 45 importers; the first round left a type-only cycle in History |
 | 959 | The nexus page's 25 module variables | **One state object in `state.ts`; the parts made by factories over a context (as `listView`, `detailView`); `main.ts` makes the elements and wires them** | An ES module cannot assign another's `let`; drawing and acting call each other, which a factory's callbacks resolve without a cycle |
 | 960 | `Workspace.tsx` and refactor/workspace-tabs | **Last; `main` merged in first if that branch landed, else the lines it changes (the tab shown) stay in `WorkspacePanel`** | The brief; that branch changes 39 of its lines |
+
+## As built
+
+- **History: more hooks, and four section components the plan did not name.** With the menus out
+  (`GitMenus.tsx`, 502 lines) and seven hooks (the plan's six and `useCompare`), `HistoryPage.tsx` was still 885
+  lines: History's body was hook calls and 280 lines of JSX. Four more hooks of one unit each
+  (`useHistoryRows`: the reads and the lanes; `useBranchesPanel`; `useWorkspaceChips`;
+  `useSyncRun`) and four sections as components (`GitHead`, `CommitsHead`, `CommitList`,
+  `GitDetailsPane`) took it to 591. `useRowsInView` holds `reveal`; `jump` stayed with the cursor.
+- **The diff: `CanvasCard.tsx`, not `GraphPage.tsx`.** The Graph page's sidebar and detail panel
+  read the state the Files page and the keys share; the canvas card (the canvas, its waiting
+  words, the legend and the view's toggles) is the one section that reads only the view. Moving
+  it, its keys' hook and the head's parts took `App.tsx` to 574.
+- **A workspace's page: `WorkspaceHead.tsx`, `SideCard.tsx` and `useRespond.ts`.** The head's
+  actions went with its whole head (the line too) and its ⋯ menu; the side card's `ChangesPanel`
+  joined its two sections (`SideFacts.tsx` renamed `SideCard.tsx`); responding to the agent
+  (`respond`, `message`, the respond event) is a hook of its own. `openShell` takes its `then`:
+  its default was `showShell`, which the hook cannot see; the one caller without it passes it.
+- **One effect that runs earlier** (decision 956 places a hook where its first line was):
+  `useShells`' read of the shells (its state was at the panel's top, above the tab shown that
+  reads it) now starts before `useChanges`' and `useHiveDetail`'s reads. None of the three reads
+  what another writes. Every other hook sits where its first effect was: History's
+  (`useWorkingChanges`, `useShownFile`, `useHistoryRows`, `useRowsInView`, `useBranchesPanel`,
+  `useWorkspaceChips`, `useCompare`, `useFindRows`, `useRelist`, `useHistoryKeys`), the diff's
+  keys, a workspace's `useRespond` and `useWorkspaceActions`.
+- **State that moved into a section**: the merge's output toggle (`MergeStepsCard`), Start's
+  goal preview and more parts' fold (`StartBrief`), a workspace's reply being typed (`typing`) and
+  the verdict's fill mark (`filled`, both `useWorkspaceActions`). Each section is drawn whenever
+  its parent is, so the state lives as long as it did.
+- **The nexus page**: one `PageState` object (`state.ts`), rewritten by the type checker's symbols;
+  then ten modules made by factories over it (decision 959). `view` and `refusedFor` take the
+  state, `confirmInit` the known repositories; the list's `key` calls `onKey` through an arrow
+  (the field is made after the list); the strip and the stopped panel keep their own "what I
+  drew". Its `main.ts` is 211 lines.
+- **Small things on the way**: 29 helpers the moves had exported went back to module-private;
+  `import { type X }` lines became `import type`; WorkspaceView's doc comment, which sat above
+  `TURN_WORDS` on `main`, is above WorkspaceView again; `WORKING` lives with `WorkingRow`.
+- **refactor/workspace-tabs** was not on `main` when `Workspace.tsx` was split: the lines it
+  changes (the tab shown, `WorkspacePanel`'s `shellNumber` … `shownShell`) are where they were,
+  with the tab state around them; only the shells' state moved out above them (decision 960).
+
+**Results** (`main` at `371be1d` → the branch's 23 code commits):
+
+| File | Lines before | After | Beside it now |
+|---|---|---|---|
+| `history/HistoryPage.tsx` | 1,737 | 591 | `GitMenus.tsx` 502, `git-asks.ts` 81, `WorkingRow.tsx` 47, `GitHead.tsx` 74, `CommitsHead.tsx` 102, `CommitList.tsx` 149, `GitDetailsPane.tsx` 83, eleven `use*.ts` 36–192 |
+| `settings/SettingsPage.tsx` | 1,423 | 538 | `agent-settings.tsx` 197, `AgentPage.tsx` 329, `AppearancePage.tsx` 111, `PromptEditor.tsx` 253 |
+| `workspaces/Workspace.tsx` | 1,320 | 595 | `WorkspaceHead.tsx` 317, `WorkspacePipeline.tsx` 160, `TermPanes.tsx` 166, `SideCard.tsx` 163, `useShells.ts` 91, `useRespond.ts` 55, `useWorkspaceActions.ts` 169, `workspace-words.ts` 26 |
+| `nexus/src/page/main.ts` | 1,265 | 211 | `state.ts` 107, `listings.ts` 107, `home-view.ts` 149, `home.ts` 149, `field.ts` 183, `actions.ts` 190, `reads.ts` 101, `strip-view.ts` 127, `stopped-view.ts` 65, `dialog.ts` 82, `window-buttons.ts` 56 |
+| `workspaces/workspaces.ts` | 1,153 | 105 | `run-choices.ts` 247, `start-branch.ts` 78, `workspace-next.ts` 335, `workspace-groups.ts` 257, `thread-items.ts` 163 |
+| `workspaces/activity/groups.ts` | 1,054 | 135 | `group-parts.ts` 156, `runs.ts` 270, `work-group.ts` 261, `milestones.ts` 306 |
+| `workspaces/Merge.tsx` | 1,034 | 463 | `MergeFiles.tsx` 392, `MergeStepsCard.tsx` 201 |
+| `workspaces/HiveRunTab.tsx` | 1,002 | 287 | `RoundItems.tsx` 449, `RunFacts.tsx` 162, `RunLog.tsx` 96, `useHiveDetail.ts` 39, `run-words.ts` 12 |
+| `skills/SkillsPage.tsx` | 982 | 549 | `SkillEditor.tsx` 270, `NewSkill.tsx` 139, `scribe-agent.tsx` 37; `folderOf` in `library.ts` |
+| `diff/App.tsx` | 946 | 574 | `DiffHead.tsx` 209, `CanvasCard.tsx` 188, `useDiffKeys.ts` 134 |
+| `workspaces/StartPage.tsx` | 848 | 593 | `StartBrief.tsx` 213, `StartSource.tsx` 131, `NextSteps.tsx` 48 |
+
+- **12,764 lines in eleven files → 4,641**, beside 66 new modules of 12–502 lines; none of the
+  eleven over 600.
+- **Tests**: `pnpm check` passes, 3,450 tests in 251 files (3,428 in 245 on `main`): 22 new tests in
+  6 new files for the pure functions that left a component (`headLine`, `gitAsks`, `run-words`,
+  `folderOf`, `mergeOf`/`startedAt`/`briefFirst`, the nexus page's `view`/`refusedFor`/`folderName`).
+  14 existing test files changed, each in its imports only (a script compared each with `main`'s,
+  its import declarations removed): 12 of the viewer's and two of the CLI's, which import
+  `workspaceNext` from the viewer.
+- **e2e**: 436 of 436 (viewer) and 32 of 32 (nexus) on the final viewer and nexus code (`23f96dbb`;
+  the commit after it changes two CLI tests' import lines); earlier runs after
+  the pure splits (436/32), after the component splits (435 of 436: `events.spec.ts`' 500 ms
+  timing at 539 ms under load, 12 of 12 alone) and the Git specs after each History step.
+- **Screenshots**, `main`'s build (a `git archive` copy) against the branch's, the same spec, the
+  same records (fixture commits at one date, mocked records and the page's clock at one instant):
+  23 pages in both themes (Git, Settings and eight of its pages, Skills and its form, Start, a
+  merge, a workspace's Thread, Activity and Brief, Hive's Run tab landed, live and stopped,
+  Hive's Start, a diff's Files and Graph) and the nexus in 4 states, both themes: **54 of 54
+  identical, 0 pixels apart**. Masked: the sidenav's top row (the repository's name is a
+  temporary folder's) and the nexus list's foot (the scan's time and duration, the server's).
+- **First paint**, Bitwarden's `737ee3f` (1,288 symbols, `measure.mjs`, alternated 3 rounds):
+  `main` 348, 329, 331 ms; the branch 333, 346, 331 ms (medians 331 and 333, +0.6 %); the same
+  269 nodes, 135 edges and 3,124 elements. `/git` on zod (3,250 commits), 9 loads each: first
+  contentful paint median 80 ms both; first rows 203 ms (`main`) and 196 ms.
+- **The first script** (`index-*.js`): 1,170,056 → 1,180,498 bytes (+0.9 %); gzipped 363,232 →
+  365,991 (+0.8 %): the hooks' parameters and returns, and the factories' wiring.
+- **Import cycles**: none in the viewer or the nexus, types included (none on `main` either).
+- No dependency, CSS file, class name, text, route or JSON changed; `packages/cli` and
+  `packages/core` untouched.
+
+Not verified: Firefox and Safari; the desktop app's window beyond its e2e specs; screenshots of
+states the spec does not reach (a merge's conflicts, a workspace's terminal with a live session,
+Split, the History page's menus and dialogs open) — the e2e suite drives those, the pixels are
+unchecked.
