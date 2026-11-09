@@ -208,14 +208,7 @@ export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayou
     graph.findings,
   );
 
-  // Unchanged symbols that are nobody's neighbour (deeper context) stay if an edge holds them.
-  const kept = (n: GraphNode) => n.status !== 'unchanged' || drawn.has(n.id) || !grouped.has(n.id);
-  const candidates = new Set(visible.filter(kept).map((n) => n.id));
-  const edges = candidateEdges.filter((e) => candidates.has(e.from) && candidates.has(e.to));
-  const connected = new Set(edges.flatMap((e) => [e.from, e.to]));
-  const nodes = visible.filter(
-    (n) => candidates.has(n.id) && (n.status !== 'unchanged' || connected.has(n.id)),
-  );
+  const { nodes, edges } = drawnSymbols(visible, candidateEdges, drawn, grouped);
 
   const projects = graph.projects ?? [];
   const spans = summarySpans(summaries, byId, projects);
@@ -240,23 +233,7 @@ export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayou
 
   const { boxPositions, frameRects } = placeBoxes(boxSizes, between, frames, placedIn);
 
-  const projectNodes: ProjectFlowNode[] = [...frames].map(([id, { project, changed }]) => {
-    const rect = frameRects.get(id) ?? { x: 0, y: 0, width: 0, height: 0 };
-    return {
-      id,
-      type: 'project',
-      position: { x: rect.x, y: rect.y },
-      width: rect.width,
-      height: rect.height,
-      selectable: false,
-      data: {
-        name: project.name,
-        folder: project.folder,
-        ...(project.kind ? { kind: project.kind } : {}),
-        changed,
-      },
-    };
-  });
+  const projectNodes = projectNodesOf(frames, frameRects);
 
   const fileNodes: FileFlowNode[] = [...boxes].map(([id, box]) => {
     const size = boxSizes.get(id) ?? { width: 0, height: 0 };
@@ -278,29 +255,7 @@ export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayou
     };
   });
 
-  const symbolNodes: SymbolFlowNode[] = nodes.map((node) => ({
-    id: node.id,
-    type: 'symbol',
-    parentId: boxOf.get(node.id) ?? '',
-    extent: 'parent',
-    position: inner.get(node.id) ?? { x: 0, y: 0 },
-    width: nodeWidth(node),
-    height: NODE_HEIGHT,
-    data: {
-      node,
-      tone: tone(node),
-      label: label(node),
-      file: fileOf(node),
-      tags: node.delta
-        ? Object.entries(node.delta)
-            .filter(([, on]) => on)
-            .map(([tag]) => tag)
-        : [],
-      findings: findings.get(node.id) ?? { error: 0, warning: 0, info: 0 },
-      reviewed: false,
-      settled: false,
-    },
-  }));
+  const symbolNodes = symbolNodesOf(nodes, boxOf, inner, findings);
 
   const summaryNodes: SummaryFlowNode[] = summaries
     .filter((s) => boxOf.has(s.id))
@@ -332,60 +287,12 @@ export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayou
     return from !== undefined && to !== undefined && from !== to;
   };
 
-  // A file pair's edge is drawn as its symbols' edges are when they all share a side.
-  const pairs = new Map<
-    string,
-    { source: string; target: string; sides: Set<GraphEdge['side']>; count: number; cross: boolean }
-  >();
-  for (const edge of edges) {
-    const source = boxOf.get(edge.from);
-    const target = boxOf.get(edge.to);
-    if (!source || !target || source === target) continue;
-    const id = `files:${source} → ${target}`;
-    let pair = pairs.get(id);
-    if (!pair) pairs.set(id, (pair = { source, target, sides: new Set(), count: 0, cross: false }));
-    pair.sides.add(edge.side);
-    pair.count++;
-    pair.cross ||= crosses(edge);
-  }
-  const fileEdges: FlowEdge[] = [...pairs].map(([id, pair]) => {
-    const [side = 'both'] = pair.sides.size === 1 ? pair.sides : [];
-    return {
-      id,
-      source: pair.source,
-      target: pair.target,
-      className: [
-        'edge-files',
-        `edge-files-${pair.count >= 10 ? 4 : pair.count >= 4 ? 3 : pair.count >= 2 ? 2 : 1}`,
-        `edge-${side}`,
-        pair.cross ? 'edge-cross' : '',
-      ]
-        .filter(Boolean)
-        .join(' '),
-      data: { edge: null, count: pair.count },
-    };
-  });
+  const fileEdges = fileEdgesOf(edges, boxOf, crosses);
 
   return {
     // Parents before their children, as React Flow requires.
     nodes: [...projectNodes, ...fileNodes, ...symbolNodes, ...summaryNodes],
-    edges: [
-      ...edges.map((edge) => ({
-        id: edge.id,
-        source: edge.from,
-        target: edge.to,
-        className: [
-          `edge-${edge.side}`,
-          `edge-${edge.kind}`,
-          edge.resolution === 'unknown' ? 'edge-unknown' : '',
-          crosses(edge) ? 'edge-cross' : '',
-        ]
-          .filter(Boolean)
-          .join(' '),
-        data: { edge },
-      })),
-      ...summaryEdges,
-    ],
+    edges: [...edges.map((edge) => symbolEdge(edge, crosses(edge))), ...summaryEdges],
     fileEdges,
     hidden,
     members: new Map(summaries.map((s) => [s.id, [...s.members]])),
@@ -578,6 +485,26 @@ function summarize(
     }
   }
   return { drawn, grouped, summaries, hidden };
+}
+
+/**
+ * The symbols drawn and the edges between them: changed ones, neighbours drawn, and unchanged
+ * symbols that are nobody's neighbour (deeper context) if an edge holds them.
+ */
+function drawnSymbols(
+  visible: readonly GraphNode[],
+  candidateEdges: readonly GraphEdge[],
+  drawn: ReadonlySet<string>,
+  grouped: ReadonlySet<string>,
+): { nodes: GraphNode[]; edges: GraphEdge[] } {
+  const kept = (n: GraphNode) => n.status !== 'unchanged' || drawn.has(n.id) || !grouped.has(n.id);
+  const candidates = new Set(visible.filter(kept).map((n) => n.id));
+  const edges = candidateEdges.filter((e) => candidates.has(e.from) && candidates.has(e.to));
+  const connected = new Set(edges.flatMap((e) => [e.from, e.to]));
+  const nodes = visible.filter(
+    (n) => candidates.has(n.id) && (n.status !== 'unchanged' || connected.has(n.id)),
+  );
+  return { nodes, edges };
 }
 
 /** How many projects a summary's neighbours come from, when more than one: summary → count. */
@@ -813,6 +740,123 @@ function placeBoxes(
     }
   }
   return { boxPositions, frameRects };
+}
+
+/** Each frame as a node, at its place on the page. */
+function projectNodesOf(
+  frames: ReadonlyMap<string, Frame>,
+  frameRects: ReadonlyMap<string, Rect>,
+): ProjectFlowNode[] {
+  return [...frames].map(([id, { project, changed }]) => {
+    const rect = frameRects.get(id) ?? { x: 0, y: 0, width: 0, height: 0 };
+    return {
+      id,
+      type: 'project',
+      position: { x: rect.x, y: rect.y },
+      width: rect.width,
+      height: rect.height,
+      selectable: false,
+      data: {
+        name: project.name,
+        folder: project.folder,
+        ...(project.kind ? { kind: project.kind } : {}),
+        changed,
+      },
+    };
+  });
+}
+
+/** Each symbol drawn as a node in its box, with its findings counted; no review state yet. */
+function symbolNodesOf(
+  nodes: readonly GraphNode[],
+  boxOf: ReadonlyMap<string, string>,
+  inner: ReadonlyMap<string, { x: number; y: number }>,
+  findings: ReadonlyMap<string, Record<Severity, number>>,
+): SymbolFlowNode[] {
+  return nodes.map((node) => ({
+    id: node.id,
+    type: 'symbol',
+    parentId: boxOf.get(node.id) ?? '',
+    extent: 'parent',
+    position: inner.get(node.id) ?? { x: 0, y: 0 },
+    width: nodeWidth(node),
+    height: NODE_HEIGHT,
+    data: {
+      node,
+      tone: tone(node),
+      label: label(node),
+      file: fileOf(node),
+      tags: node.delta
+        ? Object.entries(node.delta)
+            .filter(([, on]) => on)
+            .map(([tag]) => tag)
+        : [],
+      findings: findings.get(node.id) ?? { error: 0, warning: 0, info: 0 },
+      reviewed: false,
+      settled: false,
+    },
+  }));
+}
+
+/** A symbol's edge, styled by its side, kind and resolution, and whether it crosses frames. */
+function symbolEdge(edge: GraphEdge, cross: boolean): FlowEdge {
+  return {
+    id: edge.id,
+    source: edge.from,
+    target: edge.to,
+    className: [
+      `edge-${edge.side}`,
+      `edge-${edge.kind}`,
+      edge.resolution === 'unknown' ? 'edge-unknown' : '',
+      cross ? 'edge-cross' : '',
+    ]
+      .filter(Boolean)
+      .join(' '),
+    data: { edge },
+  };
+}
+
+/**
+ * For the map: one edge per pair of linked boxes, as thick as its symbols' edges are many. A file
+ * pair's edge is drawn as its symbols' edges are when they all share a side.
+ */
+function fileEdgesOf(
+  edges: readonly GraphEdge[],
+  boxOf: ReadonlyMap<string, string>,
+  crosses: (edge: GraphEdge) => boolean,
+): FlowEdge[] {
+  const pairs = new Map<
+    string,
+    { source: string; target: string; sides: Set<GraphEdge['side']>; count: number; cross: boolean }
+  >();
+  for (const edge of edges) {
+    const source = boxOf.get(edge.from);
+    const target = boxOf.get(edge.to);
+    if (!source || !target || source === target) continue;
+    const id = `files:${source} → ${target}`;
+    let pair = pairs.get(id);
+    if (!pair) pairs.set(id, (pair = { source, target, sides: new Set(), count: 0, cross: false }));
+    pair.sides.add(edge.side);
+    pair.count++;
+    pair.cross ||= crosses(edge);
+  }
+  return [...pairs].map(([id, pair]) => {
+    const [side = 'both'] = pair.sides.size === 1 ? pair.sides : [];
+    return {
+      id,
+      source: pair.source,
+      target: pair.target,
+      className: [
+        'edge-files',
+        `edge-files-${pair.count >= 10 ? 4 : pair.count >= 4 ? 3 : pair.count >= 2 ? 2 : 1}`,
+        `edge-${side}`,
+        pair.cross ? 'edge-cross' : '',
+      ]
+        .filter(Boolean)
+        .join(' '),
+      data: { edge: null, count: pair.count },
+    };
+  });
 }
 
 /**
