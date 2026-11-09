@@ -3,6 +3,7 @@
 // but for the pane's place, kept in this browser as the theme is.
 import { useSyncExternalStore } from 'react';
 import type { LineCount, SyncState, WorkingChanges } from '@symbiote/core';
+import { readStored, writeStored } from '../ui/stored.js';
 
 /** Where a commit's details show: beside the rows (the default) or under them. */
 export type DetailsPlace = 'right' | 'below';
@@ -17,20 +18,12 @@ export function placeOf(stored: string | null): DetailsPlace {
 const listeners = new Set<() => void>();
 
 function stored(): DetailsPlace {
-  try {
-    return placeOf(window.localStorage.getItem(DETAILS_KEY));
-  } catch {
-    return 'right';
-  }
+  return placeOf(readStored(DETAILS_KEY));
 }
 
 /** Keeps the pane's place for this browser's pages. */
 export function setDetailsPlace(place: DetailsPlace): void {
-  try {
-    window.localStorage.setItem(DETAILS_KEY, place);
-  } catch {
-    // Storage blocked: the choice is not kept.
-  }
+  writeStored(DETAILS_KEY, place);
   for (const listener of listeners) listener();
 }
 

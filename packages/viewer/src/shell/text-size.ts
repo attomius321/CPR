@@ -2,6 +2,7 @@
 // of the default, for this browser; only the text, not the heights. index.html's inline script
 // sets it before the first paint, as the theme (`theme.ts`); this module reads and changes it.
 import { useSyncExternalStore } from 'react';
+import { writeStored } from '../ui/stored.js';
 
 export type TextSize = 'compact' | 'default' | 'large';
 
@@ -28,11 +29,7 @@ const listeners = new Set<() => void>();
 /** Shows `size` now and keeps it for this browser's next pages. */
 export function setTextSize(size: TextSize): void {
   mark(size);
-  try {
-    window.localStorage.setItem(TEXT_SIZE_KEY, size);
-  } catch {
-    // Storage blocked: the choice lasts until the page closes.
-  }
+  writeStored(TEXT_SIZE_KEY, size);
   for (const listener of listeners) listener();
 }
 

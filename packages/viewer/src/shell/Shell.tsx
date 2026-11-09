@@ -28,6 +28,7 @@ import { IssuesPage } from '../issues/IssuesPage.js';
 import { StartPage } from '../workspaces/StartPage.js';
 import { WorkspaceHistory } from '../workspaces/WorkspaceHistory.js';
 import { ConfirmDialog } from '../ui/ConfirmDialog.js';
+import { readStored, writeStored } from '../ui/stored.js';
 import { desktop } from './desktop.js';
 import {
   ShellContext,
@@ -58,19 +59,11 @@ const NARROW = '(max-width: 899px)';
 
 /** Whether the person folded the sidenav to a rail, kept in this browser. */
 function loadFolded(): boolean {
-  try {
-    return window.localStorage.getItem(FOLD_KEY) === 'rail';
-  } catch {
-    return false;
-  }
+  return readStored(FOLD_KEY) === 'rail';
 }
 
 function saveFolded(folded: boolean): void {
-  try {
-    window.localStorage.setItem(FOLD_KEY, folded ? 'rail' : 'open');
-  } catch {
-    // Storage blocked: the choice lasts until the page closes.
-  }
+  writeStored(FOLD_KEY, folded ? 'rail' : 'open');
 }
 
 /** The route at the address, an old or bare one shown as today's (without a new entry). */

@@ -59,6 +59,7 @@ import { workspaceGroups, type WorkspaceRow } from '../workspaces/workspaces.js'
 import { mergingAlone } from '../workspaces/merges.js';
 import { DoneRowItem, MergeRowItem, WorkspaceRowItem } from './SidenavRow.js';
 import { loadWidths, saveWidth } from '../ui/widths.js';
+import { readStored, writeStored } from '../ui/stored.js';
 import { tip } from '../ui/tip.js';
 
 /**
@@ -631,19 +632,11 @@ const FOLD_KEYS = { today: 'symbiote.viewer.done', earlier: 'symbiote.viewer.don
 
 /** Whether the person folded a group: folded until opened. */
 function loadFolded(key: string): boolean {
-  try {
-    return window.localStorage.getItem(key) !== 'open';
-  } catch {
-    return true;
-  }
+  return readStored(key) !== 'open';
 }
 
 function saveFolded(key: string, folded: boolean): void {
-  try {
-    window.localStorage.setItem(key, folded ? 'folded' : 'open');
-  } catch {
-    // Storage blocked: the choice lasts until the page closes.
-  }
+  writeStored(key, folded ? 'folded' : 'open');
 }
 
 /**

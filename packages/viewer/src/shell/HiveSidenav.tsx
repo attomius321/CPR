@@ -13,6 +13,7 @@ import {
   StoppedIcon,
   WaitingIcon,
 } from '../ui/icons.js';
+import { readStored, writeStored } from '../ui/stored.js';
 import { tip } from '../ui/tip.js';
 import { useSecondsWhile } from '../workspaces/clock.js';
 import {
@@ -36,19 +37,11 @@ const EARLIER_KEY = 'symbiote.viewer.hive-earlier';
 
 /** Whether the person opened Earlier (as 859's Done): folded until opened, kept in the browser. */
 function loadEarlierFolded(): boolean {
-  try {
-    return window.localStorage.getItem(EARLIER_KEY) !== 'open';
-  } catch {
-    return true;
-  }
+  return readStored(EARLIER_KEY) !== 'open';
 }
 
 function saveEarlierFolded(folded: boolean): void {
-  try {
-    window.localStorage.setItem(EARLIER_KEY, folded ? 'folded' : 'open');
-  } catch {
-    // Storage blocked: the choice lasts until the page closes.
-  }
+  writeStored(EARLIER_KEY, folded ? 'folded' : 'open');
 }
 
 const two = (n: number) => String(n).padStart(2, '0');

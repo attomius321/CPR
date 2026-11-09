@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { keyIsTaken } from '../ui/keys.js';
+import { readStored, writeStored } from '../ui/stored.js';
 import { loadWidths, saveWidth } from '../ui/widths.js';
 
 const CHANGES_KEY = 'symbiote.viewer.changes';
@@ -7,19 +8,11 @@ const FOCUS_KEY = 'symbiote.viewer.focus';
 
 /** Whether the person turned a workspace's Focus on (V89, decision 830), kept in this browser. */
 function loadFocus(): boolean {
-  try {
-    return window.localStorage.getItem(FOCUS_KEY) === 'on';
-  } catch {
-    return false;
-  }
+  return readStored(FOCUS_KEY) === 'on';
 }
 
 function saveFocus(on: boolean): void {
-  try {
-    window.localStorage.setItem(FOCUS_KEY, on ? 'on' : 'off');
-  } catch {
-    // Storage blocked: the choice lasts until the page closes.
-  }
+  writeStored(FOCUS_KEY, on ? 'on' : 'off');
 }
 
 /**
@@ -41,19 +34,11 @@ export function useFocus(): [boolean, () => void] {
 
 /** Whether the person hid the changes panel (V29d), kept in this browser; shown by default. */
 function loadChangesShown(): boolean {
-  try {
-    return window.localStorage.getItem(CHANGES_KEY) !== 'hidden';
-  } catch {
-    return true;
-  }
+  return readStored(CHANGES_KEY) !== 'hidden';
 }
 
 function saveChangesShown(shown: boolean): void {
-  try {
-    window.localStorage.setItem(CHANGES_KEY, shown ? 'shown' : 'hidden');
-  } catch {
-    // Storage blocked: the choice lasts until the page closes.
-  }
+  writeStored(CHANGES_KEY, shown ? 'shown' : 'hidden');
 }
 
 /**
