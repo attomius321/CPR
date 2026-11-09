@@ -3,7 +3,7 @@
 import type { McpAsk, McpCaller, NucleusActivityLine, WithoutConfirm } from '@symbiote/core';
 import { headOf } from './nucleus-activity.js';
 import { MAX_COMMAND } from './tool-activity.js';
-import type { McpContext } from './mcp-context.js';
+import type { McpContext, McpOptions } from './mcp-context.js';
 import { ToolProblem, type Args } from './mcp-tools.js';
 
 const callerKey = (c: McpCaller) =>
@@ -15,7 +15,9 @@ export function mcpConfirm({
   now,
   askMs,
   held,
-}: Pick<McpContext, 'options' | 'now' | 'askMs' | 'held'>) {
+}: Pick<McpContext, 'now' | 'askMs' | 'held'> & {
+  options: Pick<McpOptions, 'onAsks' | 'record'>;
+}) {
   let asked = 0;
   let recorded = 0;
   /**
