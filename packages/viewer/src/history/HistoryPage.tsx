@@ -2,54 +2,25 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
   type CSSProperties,
 } from 'react';
-import type {
-  Commit,
-  HistoryPage,
-  HistoryRefs,
-  HistoryScope,
-  HistoryShape,
-  PullMode,
-  RepoStatus,
-} from '@symbiote/core';
-import {
-  fetchBranches,
-  fetchJson,
-  fetchRows,
-  fetchRowsOf,
-  fetchShape,
-  StaleHistory,
-} from './api.js';
+import type { Commit, HistoryScope } from '@symbiote/core';
+import { fetchRowsOf, StaleHistory } from './api.js';
 import { BranchesPanel } from './BranchesPanel.js';
-import { CommitRow } from './CommitRow.js';
 import { CompareBar } from './CompareBar.js';
 import { useBranchReviews } from './useBranchReviews.js';
-import { fetchRemotes, pull, push } from './git-api.js';
-import { useDetailsPlace, headLine } from './details.js';
-import { CommitDetails } from './CommitDetails.js';
-import { ChangesDetails } from './ChangesDetails.js';
+import { useDetailsPlace } from './details.js';
 import { GitFile } from './GitFile.js';
-import { FindBox } from './FindBox.js';
-import { SyncBar, type SyncRun } from './SyncBar.js';
-import { workspaceChips, workspacesFirst } from '../workspaces/workspace-groups.js';
-import { useWorkspaces } from '../workspaces/useWorkspaces.js';
-import { BLOCK, blocksAround, parentRows, shortSha } from './commits.js';
-import { GraphCell, ROW_HEIGHT } from './GraphCell.js';
-import { Help } from '../ui/Help.js';
-import { GitIcon } from '../ui/icons.js';
+import { blocksAround, shortSha } from './commits.js';
+import { ROW_HEIGHT } from './GraphCell.js';
 import { Resizer } from '../ui/Resizer.js';
-import { PageHead } from '../ui/PageHead.js';
 import { loadWidths, saveWidth } from '../ui/widths.js';
-import { laneSpacing, layoutLanes } from './lanes.js';
 import { GIT_PAGE } from '../shell/pages.js';
 import { useShell, type Notice } from '../shell/shell-context.js';
-import { tip } from '../ui/tip.js';
 import { Loading } from '../ui/Loading.js';
-import { WorkingRow, WORKING } from './WorkingRow.js';
+import { WORKING } from './WorkingRow.js';
 import { GitMenus, useGitMenus } from './GitMenus.js';
 import { useWorkingChanges } from './useWorkingChanges.js';
 import { useShownFile } from './useShownFile.js';
@@ -58,6 +29,14 @@ import { useCompare } from './useCompare.js';
 import { useFindRows } from './useFindRows.js';
 import { useRelist } from './useRelist.js';
 import { useHistoryKeys } from './useHistoryKeys.js';
+import { useHistoryRows } from './useHistoryRows.js';
+import { useBranchesPanel } from './useBranchesPanel.js';
+import { useWorkspaceChips } from './useWorkspaceChips.js';
+import { useSyncRun } from './useSyncRun.js';
+import { CommitsHead } from './CommitsHead.js';
+import { CommitList } from './CommitList.js';
+import { GitDetailsPane } from './GitDetailsPane.js';
+import { GitHead } from './GitHead.js';
 
 const scopeOfUrl = (): HistoryScope =>
   new URLSearchParams(window.location.search).get('scope') === 'current' ? 'current' : 'all';
@@ -196,21 +175,11 @@ function History({
     onWidth: (width: number | null) => void;
   };
 }) {
-  const [first, setFirst] = useState<HistoryPage | null>(null);
-  const [shape, setShape] = useState<HistoryShape | null>(null);
-  // The branches with their tips' rows (V10b); the panel over the rows under 900 px.
-  const [refs, setRefs] = useState<HistoryRefs | null>(null);
-  const [panelOpen, setPanelOpen] = useState(false);
-  const filterRef = useRef<HTMLInputElement>(null);
-  // A row gone to from the panel flashes.
-  const [flash, setFlash] = useState<number | null>(null);
   // Listing or a menu failed (under the title); a comparison failed (in the compare bar).
   const [error, setError] = useState<string | null>(null);
-  const [stale, setStale] = useState(false);
   // Rows' details by row number, filled block by block; `loaded` re-renders when one arrives.
   const details = useRef(new Map<number, Commit>());
   const asked = useRef(new Set<number>());
-  const [loaded, setLoaded] = useState(0);
   const [cursor, setCursor] = useState(0);
   const placed = useRef(false);
   // Branch reviews (V15): marks on badges, dots on commits added since.
@@ -235,93 +204,31 @@ function History({
   const [resizing, setResizing] = useState(false);
   const place = useDetailsPlace();
 
-  // Listing anew in place (decision 634), defined once the rows are: what a stale answer calls.
-  const relistRef = useRef<() => Promise<void>>(() => Promise.resolve());
-  const failed = useCallback((e: unknown) => {
-    if (e instanceof StaleHistory) void relistRef.current();
-    else setError(`Could not list commits: ${(e as Error).message}`);
-  }, []);
-
-  // The first rows at once, then the shape of the whole history.
-  useEffect(() => {
-    let live = true;
-    fetchRows(scope, 0, BLOCK)
-      .then((page) => {
-        if (!live) return;
-        page.commits.forEach((c, i) => details.current.set(i, c));
-        asked.current.add(0);
-        setFirst(page);
-        fetchBranches(scope, page.version)
-          .then((r) => live && setRefs(r))
-          .catch((e: unknown) => {
-            if (e instanceof StaleHistory) setStale(true);
-            else setError(`Could not list the branches: ${(e as Error).message}`);
-          });
-        return fetchShape(scope, page.version).then((s) => live && setShape(s));
-      })
-      .catch(failed);
-    return () => {
-      live = false;
-    };
-  }, [scope, failed]);
-
-  // A checkout or a commit made elsewhere (a terminal, an editor) shows when the page is back.
-  useEffect(() => {
-    if (!first) return;
-    const check = () => {
-      if (document.visibilityState === 'hidden') return;
-      fetchJson<RepoStatus>('api/status')
-        .then((status) => (status.version !== first.version ? relistRef.current() : readChanges()))
-        .catch(() => {});
-    };
-    window.addEventListener('focus', check);
-    document.addEventListener('visibilitychange', check);
-    return () => {
-      window.removeEventListener('focus', check);
-      document.removeEventListener('visibilitychange', check);
-    };
-  }, [first, readChanges]);
-
-  const parents = useMemo(
-    () => shape?.parents ?? (first ? parentRows(first.commits) : []),
-    [shape, first],
-  );
-  const headRow = useMemo(() => {
-    if (shape) return shape.head;
-    const row = first?.commits.findIndex((c) => c.sha === first.head) ?? -1;
-    return row < 0 ? null : row;
-  }, [shape, first]);
-  const lanes = useMemo(() => layoutLanes(parents, headRow), [parents, headRow]);
-  const widest = useMemo(() => lanes.reduce((w, row) => Math.max(w, row.width), 1), [lanes]);
-  const spacing = laneSpacing(widest);
-  const graphWidth = Math.ceil(widest * spacing);
-  const rows = lanes.length;
+  const {
+    first,
+    setFirst,
+    shape,
+    setShape,
+    refs,
+    setRefs,
+    stale,
+    setStale,
+    loaded,
+    setLoaded,
+    relistRef,
+    parents,
+    headRow,
+    lanes,
+    spacing,
+    graphWidth,
+    rows,
+    loadBlock,
+  } = useHistoryRows({ scope, details, asked, readChanges, setError });
 
   const { view, scroller, list, measure, firstShown, lastShown, reveal } = useRowsInView({
     first,
     rows,
   });
-
-  /** Loads a block of rows' details, unless asked for already. */
-  const loadBlock = useCallback(
-    (block: number) => {
-      if (!first || asked.current.has(block)) return;
-      asked.current.add(block);
-      // Into this listing's rows: listed anew in place meanwhile, they are another's.
-      const into = details.current;
-      const wanted = asked.current;
-      fetchRows(scope, block * BLOCK, Math.min(rows, (block + 1) * BLOCK), first.version)
-        .then((page) => {
-          page.commits.forEach((c, i) => into.set(page.from + i, c));
-          setLoaded((n) => n + 1);
-        })
-        .catch((e: unknown) => {
-          wanted.delete(block);
-          failed(e);
-        });
-    },
-    [first, rows, scope, failed],
-  );
 
   // Details of the rows near the view, a block at a time.
   useEffect(() => {
@@ -337,31 +244,8 @@ function History({
     [reveal],
   );
 
-  // The panel's branches once the whole history is laid out: a tip anywhere can be reached.
-  const branches = shape ? refs : null;
-  /** A branch from the panel: its tip's row, flashed; else every branch, then there. */
-  const goToBranch = useCallback(
-    ({ name, row }: { name: string; row: number | null }) => {
-      setPanelOpen(false);
-      if (row !== null) {
-        jump(row);
-        setFlash(row);
-      } else if (scope === 'current') onGoElsewhere(name);
-    },
-    [jump, scope, onGoElsewhere],
-  );
-  useEffect(() => {
-    if (flash === null) return;
-    const timer = setTimeout(() => setFlash(null), 1200);
-    return () => clearTimeout(timer);
-  }, [flash]);
-  // Listed anew for a branch "This branch" did not hold: go there once it is.
-  useEffect(() => {
-    if (!goTo || !branches) return;
-    onArrived();
-    const tip = [...branches.branches, ...branches.remotes].find((b) => b.name === goTo);
-    if (tip && tip.row !== null) goToBranch(tip);
-  }, [goTo, branches, onArrived, goToBranch]);
+  const { panelOpen, setPanelOpen, filterRef, flash, setFlash, branches, goToBranch } =
+    useBranchesPanel({ shape, refs, jump, scope, onGoElsewhere, goTo, onArrived });
 
   // The cursor starts on HEAD's row, once it is known.
   useLayoutEffect(() => {
@@ -375,26 +259,7 @@ function History({
   const shell = useShell();
   const openWorkspace = useCallback((sha?: string) => shell?.startWorkspace(sha), [shell]);
 
-  // Each workspace's mark on its branch's badges, a link to it (V18b); its agent's commits listed
-  // as they come, in place (decision 634).
-  const { list: workspaces, reviews: workspaceReviews } = useWorkspaces();
-  const chips = useMemo(
-    () => workspaceChips(workspaces?.workspaces ?? [], workspaceReviews, refs?.remotes ?? []),
-    [workspaces, workspaceReviews, refs],
-  );
-  // The workspaces that need the person, first in the branches panel (V23).
-  const firstBranches = useMemo(
-    () => workspacesFirst(workspaces?.workspaces ?? [], workspaceReviews),
-    [workspaces, workspaceReviews],
-  );
-  useEffect(() => {
-    if (!refs || !workspaces) return;
-    const moved = workspaces.workspaces.some((f) => {
-      const listed = refs.branches.find((b) => b.name === f.branch);
-      return f.tip !== null && listed !== undefined && listed.sha !== f.tip;
-    });
-    if (moved) void relistRef.current();
-  }, [workspaces, refs]);
+  const { workspaces, chips, firstBranches } = useWorkspaceChips({ refs, relistRef });
 
   // The row's, a branch's and a stash's menus, and the git writes they ask (V11, V66d; decisions
   // 636–645).
@@ -428,37 +293,7 @@ function History({
     answered,
   } = menus;
 
-  /** Fetch, pull or push (V66e): the status bar says how it ended; the page lists again. */
-  const runSync = useCallback(
-    (run: SyncRun, mode: PullMode = 'ff-only') => {
-      setSyncing(run);
-      const said =
-        run === 'fetch'
-          ? fetchRemotes().then(() => ({ text: 'Fetched every remote' }))
-          : run === 'pull'
-            ? pull(mode).then(({ stopped }) =>
-                stopped ? { text: 'Pulled, with conflicts', warning: stopped } : { text: 'Pulled' },
-              )
-            : push().then(({ upstream, set }) => ({
-                text: set ? `Pushed to ${upstream}, now its upstream` : `Pushed to ${upstream}`,
-              }));
-      said.then(
-        (notice) => {
-          // A pull moves the branch checked out: afresh, on HEAD. Fetch and push move only
-          // remote branches: in place (decision 634).
-          if (run === 'pull') return onRelist(notice);
-          shell?.notify(notice);
-          void relistRef.current().finally(() => setSyncing(null));
-        },
-        (e: unknown) => {
-          setSyncing(null);
-          shell?.notify({ text: `Could not ${run}`, warning: (e as Error).message, error: true });
-          readChanges();
-        },
-      );
-    },
-    [onRelist, shell, readChanges],
-  );
+  const runSync = useSyncRun({ setSyncing, onRelist, shell, relistRef, readChanges });
 
   const {
     picks,
@@ -594,44 +429,21 @@ function History({
       <Loading className="hint">Listing commits…</Loading>
     );
   }
-  const now = Date.now();
-  const picked = new Set(picks.map((p) => p.sha));
-  const shown: number[] = [];
-  for (let row = firstShown; row <= lastShown; row++) shown.push(row);
-  const selected = cursor === WORKING ? undefined : details.current.get(cursor);
   const below = place === 'below';
   return (
     <div className={comparing ? 'commits comparing' : 'commits'}>
-      {/* The page's head (V66; the page frame's since V72): its icon, its name and where the
-          branch is against its upstream; the search and the remotes at its right. */}
-      <PageHead
-        className="git-bar"
-        icon={<GitIcon />}
-        title="Git"
-        line={headLine(first.branch, sync)}
-        actions={
-          <>
-            <FindBox
-              inputRef={findRef}
-              query={find.query}
-              matches={query ? matches : null}
-              at={matches ? matches.indexOf(cursor) : -1}
-              onQuery={find.onQuery}
-              onStep={step}
-            />
-            <SyncBar sync={sync} running={syncing} onRun={runSync} />
-            <button
-              type="button"
-              className="compare-mode details-toggle"
-              aria-pressed={pane.open}
-              {...tip(pane.open ? 'Fold the details' : 'Show the details', { keys: 'd' })}
-              onClick={() => pane.onOpen(!pane.open)}
-            >
-              Details
-              <kbd aria-hidden="true">d</kbd>
-            </button>
-          </>
-        }
+      <GitHead
+        first={first}
+        sync={sync}
+        findRef={findRef}
+        find={find}
+        query={query}
+        matches={matches}
+        cursor={cursor}
+        step={step}
+        syncing={syncing}
+        runSync={runSync}
+        pane={pane}
       />
       <div className="commits-body">
         <BranchesPanel
@@ -661,144 +473,54 @@ function History({
         >
           {/* The header above the box that scrolls (V66): the scrollbar runs beside the rows only. */}
           <div className="commits-card">
-            <div className="card-head commits-title" inert={!!fileShown}>
-              <button
-                type="button"
-                className="branches-toggle"
-                aria-expanded={panelOpen}
-                {...tip('Branches', { keys: '/' })}
-                onClick={() => setPanelOpen((o) => !o)}
-              >
-                Branches
-              </button>
-              <span className="scopes" role="group" aria-label="Branches">
-                <button
-                  type="button"
-                  className={scope === 'all' ? 'scope active' : 'scope'}
-                  aria-pressed={scope === 'all'}
-                  onClick={() => onScope('all')}
-                >
-                  All branches
-                </button>
-                <button
-                  type="button"
-                  className={scope === 'current' ? 'scope active' : 'scope'}
-                  aria-pressed={scope === 'current'}
-                  onClick={() => onScope('current')}
-                >
-                  This branch{first.branch ? ` (${first.branch})` : ''}
-                </button>
-              </span>
-              {first.head && headRow !== null && (
-                <button
-                  type="button"
-                  className="head-chip"
-                  {...tip('Go to HEAD')}
-                  onClick={() => jump(headRow)}
-                >
-                  HEAD → {first.branch ?? `${shortSha(first.head)} (detached)`}
-                </button>
-              )}
-              <span className="commits-tail">
-                <span className="commits-actions">
-                  {/* The keys behind the "?" (V29b), and what compare mode asks (V37: beside the
-                    toggle it wrapped the head onto two lines). */}
-                  <Help label="Git's keys">
-                    <span className="commits-help">
-                      {comparing
-                        ? 'Pick two to compare them, or one against its parent · x picks, Enter compares, Esc leaves'
-                        : 'j/k move · c checks out · x picks to compare · / finds a branch · f finds a commit · d shows or folds the details · a branch: double-click checks it out, right-click for more · a file shown: j/k its files, o its diff in VS Code, Esc back'}
-                    </span>
-                  </Help>
-                  <button
-                    type="button"
-                    className="compare-mode"
-                    aria-pressed={comparing}
-                    {...tip(comparing ? 'Leave compare mode' : 'Pick commits to compare', {
-                      keys: comparing ? 'Esc' : 'x',
-                    })}
-                    onClick={() => (comparing ? stopComparing() : onComparing(true))}
-                  >
-                    Compare mode
-                    <kbd aria-hidden="true">{comparing ? 'Esc' : 'x'}</kbd>
-                  </button>
-                </span>
-              </span>
-            </div>
+            <CommitsHead
+              fileShown={fileShown}
+              panelOpen={panelOpen}
+              setPanelOpen={setPanelOpen}
+              scope={scope}
+              onScope={onScope}
+              first={first}
+              headRow={headRow}
+              jump={jump}
+              comparing={comparing}
+              stopComparing={stopComparing}
+              onComparing={onComparing}
+            />
             {error && (
               <p className="commits-error error" role="alert">
                 {error}
               </p>
             )}
-            <div className="commits-scroll" ref={scroller} onScroll={measure} inert={!!fileShown}>
-              {working && (
-                <WorkingRow
-                  changes={working}
-                  spacing={spacing}
-                  width={graphWidth}
-                  joined={headRow === 0}
-                  cursor={cursor === WORKING}
-                  onClick={() => setCursor(WORKING)}
-                />
-              )}
-              {rows === 0 ? (
-                <p className="hint">No commits yet.</p>
-              ) : (
-                <ol
-                  className="commit-list"
-                  ref={list}
-                  aria-label="Commits"
-                  style={{ height: rows * ROW_HEIGHT }}
-                >
-                  {shown.map((row) => {
-                    const lane = lanes[row];
-                    const commit = details.current.get(row);
-                    return (
-                      <CommitRow
-                        key={row}
-                        row={row}
-                        commit={commit}
-                        now={now}
-                        comparing={comparing}
-                        picked={!!commit && picked.has(commit.sha)}
-                        cursor={row === cursor}
-                        flash={row === flash}
-                        matched={matched.has(row)}
-                        onClick={() => {
-                          setCursor(row);
-                          if (comparing) pickRow(row);
-                        }}
-                        onMenu={(x, y) => openMenu(row, x, y)}
-                        branch={first.branch}
-                        reviewed={marks.marks}
-                        agents={chips}
-                        {...(commit && marks.added.has(commit.sha)
-                          ? { added: marks.added.get(commit.sha) }
-                          : {})}
-                        graph={
-                          lane && (
-                            <GraphCell
-                              row={lane}
-                              index={row}
-                              spacing={spacing}
-                              width={graphWidth}
-                              merge={(parents[row]?.length ?? 0) > 1}
-                              head={row === headRow}
-                              picked={!!commit && picked.has(commit.sha)}
-                              fork={row === forkRow}
-                              onJump={jump}
-                            />
-                          )
-                        }
-                      />
-                    );
-                  })}
-                </ol>
-              )}
-              {!shape && first.listed > 0 && (
-                <Loading className="hint listing">Listing the rest…</Loading>
-              )}
-            </div>
+            <CommitList
+              scroller={scroller}
+              measure={measure}
+              fileShown={fileShown}
+              working={working}
+              spacing={spacing}
+              graphWidth={graphWidth}
+              headRow={headRow}
+              cursor={cursor}
+              setCursor={setCursor}
+              rows={rows}
+              list={list}
+              firstShown={firstShown}
+              lastShown={lastShown}
+              picks={picks}
+              lanes={lanes}
+              details={details}
+              comparing={comparing}
+              flash={flash}
+              matched={matched}
+              pickRow={pickRow}
+              openMenu={openMenu}
+              first={first}
+              marks={marks}
+              chips={chips}
+              parents={parents}
+              forkRow={forkRow}
+              jump={jump}
+              shape={shape}
+            />
             {fileShown && (
               <GitFile
                 key={`${shownHere?.sha ?? 'working'}:${shownStaged}:${fileShown.path}`}
@@ -826,39 +548,23 @@ function History({
             />
           )}
           {pane.open && (
-            <aside
-              className="git-details"
-              aria-label={cursor === WORKING ? 'Uncommitted changes' : 'Commit details'}
-            >
-              {cursor === WORKING && working && changesRead ? (
-                <ChangesDetails
-                  changes={working}
-                  read={changesRead}
-                  open={shownHere}
-                  onOpen={(file) => setOpenFile(file && { ...file, sha: null })}
-                  onChanges={setChanges}
-                  onCommitted={(sha, amend) =>
-                    onRelist({ text: `${amend ? 'Amended' : 'Committed'} ${shortSha(sha)}` })
-                  }
-                  onAsk={setQuestion}
-                  onDone={answered}
-                />
-              ) : selected && commitRead ? (
-                <CommitDetails
-                  key={selected.sha}
-                  read={commitRead}
-                  commit={selected}
-                  parentRows={parents[cursor] ?? []}
-                  starting={starting}
-                  open={shownHere?.path ?? null}
-                  onOpen={(path) => setOpenFile(path ? { sha: selected.sha, path } : null)}
-                  onJump={jump}
-                  onReview={(parent) => void compare({ base: parent, head: selected.sha })}
-                />
-              ) : (
-                <p className="hint git-details-hint">Select a commit to see its details.</p>
-              )}
-            </aside>
+            <GitDetailsPane
+              cursor={cursor}
+              details={details}
+              working={working}
+              changesRead={changesRead}
+              shownHere={shownHere}
+              setOpenFile={setOpenFile}
+              setChanges={setChanges}
+              onRelist={onRelist}
+              setQuestion={setQuestion}
+              answered={answered}
+              commitRead={commitRead}
+              parents={parents}
+              starting={starting}
+              jump={jump}
+              compare={compare}
+            />
           )}
         </div>
       </div>
