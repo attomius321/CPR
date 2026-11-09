@@ -4,65 +4,49 @@ import {
   useEffect,
   useMemo,
   useState,
-  Fragment,
   type CSSProperties,
   type DragEvent,
-  type ReactNode,
 } from 'react';
-import { flushSync } from 'react-dom';
-import type { BranchReviewInfo, Graph, ReviewFile } from '@symbiote/core';
-import {
-  BackLink,
-  DiffProgress,
-  FileTotals,
-  analysisState,
-  pairLabel,
-  reviewSince,
-} from './DiffProgress.js';
+import type { Graph } from '@symbiote/core';
+import { BackLink, DiffProgress, analysisState, pairLabel } from './DiffProgress.js';
 import { StatusLabel } from '../ui/StatusLabel.js';
-import { Canvas } from './Canvas.js';
 import { useDiffGraph } from './useDiffGraph.js';
 import { useReview } from './useReview.js';
 import {
-  diffName,
   diffTitle,
   diffView,
   revisionsLabel,
   withDiffView,
   type DiffView,
 } from '../shell/pages.js';
-import { briefTip, workspaceHref, workspaceName } from '../workspaces/workspaces.js';
 import { DiffShell } from './DiffShell.js';
 import { Shell } from '../shell/Shell.js';
-import { useWorkspaces } from '../workspaces/useWorkspaces.js';
 import { DetailPanel } from './DetailPanel.js';
 import { FilesKeys, FilesPage, useReviewFiles, type FileFocus } from './FilesPage.js';
-import { stepFile } from './file-diff.js';
 import type { Draft } from './comments.js';
 import { decorate } from '../graph/flow.js';
 import {
   changeList,
   filterChanges,
   neighbourhood,
-  nextProject,
   onlyProject,
   projectNeighbourhood,
   reviewStatus,
-  stepChange,
   withoutCollapsed,
 } from './review.js';
 import { Resizer } from '../ui/Resizer.js';
 import { DiffKeys, Sidebar, type SidebarTab } from './Sidebar.js';
 import { Help } from '../ui/Help.js';
 import { PageHead } from '../ui/PageHead.js';
-import { ForwardIcon, ReviewIcon, SpinIcon, SymbioteMark } from '../ui/icons.js';
+import { ReviewIcon, SymbioteMark } from '../ui/icons.js';
 import { browserStore } from './store.js';
 import { WindowButtons } from '../shell/TitleBar.js';
 import { useLayout } from '../graph/useLayout.js';
 import { loadWidths, saveWidth, withWidth, type Widths } from '../ui/widths.js';
-import { tip } from '../ui/tip.js';
 import { Loading } from '../ui/Loading.js';
-import { plural } from '../ui/plural.js';
+import { DiffName, FindingPills, HeadFacts, PageSwitch } from './DiffHead.js';
+import { CanvasCard, DropZone } from './CanvasCard.js';
+import { useDiffKeys } from './useDiffKeys.js';
 
 export function App() {
   const { state, setState, inView, retry } = useDiffGraph();
@@ -199,82 +183,26 @@ export function App() {
     });
   }, []);
 
-  // Keyboard review: j/k walk the changes, r marks reviewed, f focuses, p (P) shows the next
-  // (previous) project only, c comments, o opens in VS Code, / searches, Esc closes, g switches
-  // between the pages. On the Files page, j/k walk the files and c comments on the first change.
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      const target = event.target;
-      if (event.metaKey || event.ctrlKey || event.altKey) return;
-      const typing =
-        target instanceof HTMLTextAreaElement ||
-        target instanceof HTMLSelectElement ||
-        (target instanceof HTMLInputElement && !['checkbox', 'radio'].includes(target.type));
-      if (typing) {
-        // Esc leaves the field (keeping what was typed) instead of closing the panel.
-        if (event.key === 'Escape') target.blur();
-        return;
-      }
-      if (
-        event.key === 'g' &&
-        (state.status === 'ready' || (state.status === 'analyzing' && served))
-      ) {
-        showPage(page === 'files' ? 'graph' : 'files');
-      } else if (page === 'files') {
-        if (event.key === 'j' || event.key === 'k') {
-          setOpenFile((path) =>
-            stepFile(files, path ?? files[0]?.path ?? null, event.key === 'j' ? 1 : -1),
-          );
-          setFileFocus(null);
-        } else if (event.key === 'c') {
-          event.preventDefault();
-          const input = document.getElementById('comment-input');
-          if (input) input.focus();
-          else
-            document
-              .querySelector<HTMLElement>(
-                '.file-code .row-add.pickable, .file-code .row-del.pickable',
-              )
-              ?.click();
-        } else if (event.key === 'o') document.getElementById('open-in-editor')?.click();
-        else if (event.key === 'v' && state.status === 'ready' && forge) {
-          // The file shown, viewed or not (V90, decision 843).
-          const shown = files.find((f) => f.path === openFile) ?? files[0];
-          if (shown) toggleViewed(shown);
-        }
-      } else if (event.key === 'c' && document.getElementById('comment-input')) {
-        event.preventDefault();
-        document.getElementById('comment-input')?.focus();
-      } else if (event.key === 'o') {
-        document.getElementById('open-in-editor')?.click();
-      } else if (event.key === '/') {
-        event.preventDefault();
-        flushSync(() => setTab('changes'));
-        document.getElementById('change-search')?.focus();
-      } else if (event.key === 'j') setSelected((id) => stepChange(walked, id, 1));
-      else if (event.key === 'k') setSelected((id) => stepChange(walked, id, -1));
-      else if (event.key === 'r' && selected) toggleReviewed(selected);
-      else if (event.key === 'f') setFocus((on) => !on);
-      else if (event.key === 'p' || event.key === 'P') {
-        setProject((folder) => nextProject(changes, folder, event.key === 'p' ? 1 : -1));
-      } else if (event.key === 'Escape') setSelected(null);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [
-    changes,
-    walked,
-    selected,
-    toggleReviewed,
-    toggleViewed,
-    state.status,
+  useDiffKeys({
+    state,
+    served,
     page,
     showPage,
     files,
-    served,
+    setOpenFile,
+    setFileFocus,
     forge,
     openFile,
-  ]);
+    toggleViewed,
+    setTab,
+    walked,
+    setSelected,
+    selected,
+    toggleReviewed,
+    setFocus,
+    setProject,
+    changes,
+  });
 
   const load = useCallback(async (file: File) => {
     try {
@@ -578,76 +506,26 @@ export function App() {
                 onOpenDraft={openDraft}
               />
               {sidebarHandle}
-              {/* The canvas a card (V61), its legend at its foot since V72: the cards of the two
-                  pages start and end at the same places. */}
-              <div className="canvas-card">
-                {layout && flowNodes ? (
-                  <Canvas
-                    nodes={flowNodes}
-                    edges={layout.edges}
-                    fileEdges={layout.fileEdges}
-                    layoutNodes={layout.nodes}
-                    pending={pending}
-                    selected={selected}
-                    focus={focus}
-                    scope={project}
-                    resizing={resizing}
-                    onSelect={setSelected}
-                    onToggleSummary={toggleSummary}
-                    reveal={reveal}
-                  />
-                ) : (
-                  // The first layout: the change list and findings are there meanwhile.
-                  <Loading className="hint canvas-waiting layout-pending" status>
-                    Laying out…
-                  </Loading>
-                )}
-                {layout && (
-                  <Legend frames={layout.nodes[0]?.type === 'project'}>
-                    {/* The view's toggles at the legend's end (V90, decision 838). */}
-                    {state.graph.since && (
-                      <label
-                        className="toggle"
-                        {...tip('Leave out symbols changed the same way as in the earlier version')}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={sinceOnly}
-                          onChange={(e) => setSinceOnly(e.target.checked)}
-                        />
-                        Only changes since {state.graph.since.sha.slice(0, 7)}
-                      </label>
-                    )}
-                    <label
-                      className="toggle"
-                      {...tip('Show only the selected symbol and its neighbours', { keys: 'f' })}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={focus}
-                        onChange={(e) => setFocus(e.target.checked)}
-                      />
-                      Focus
-                    </label>
-                    <label className="toggle" {...tip('Show unchanged neighbours and packages')}>
-                      <input
-                        type="checkbox"
-                        checked={context}
-                        onChange={(e) => setContext(e.target.checked)}
-                      />
-                      Context
-                    </label>
-                    <label className="toggle" {...tip('Show the uses of types')}>
-                      <input
-                        type="checkbox"
-                        checked={typeReferences}
-                        onChange={(e) => setTypeReferences(e.target.checked)}
-                      />
-                      Type references
-                    </label>
-                  </Legend>
-                )}
-              </div>
+              <CanvasCard
+                state={state}
+                layout={layout}
+                flowNodes={flowNodes}
+                pending={pending}
+                selected={selected}
+                setSelected={setSelected}
+                focus={focus}
+                setFocus={setFocus}
+                project={project}
+                resizing={resizing}
+                toggleSummary={toggleSummary}
+                reveal={reveal}
+                sinceOnly={sinceOnly}
+                setSinceOnly={setSinceOnly}
+                context={context}
+                setContext={setContext}
+                typeReferences={typeReferences}
+                setTypeReferences={setTypeReferences}
+              />
               {selected && (
                 <Resizer
                   gutter
@@ -693,254 +571,4 @@ export function App() {
   // Only a diff: the shell's own pages are drawn by Shell, and while loading it is not known yet.
   const diff = state.status === 'ready' || state.status === 'analyzing';
   return inView && diff ? <DiffShell repo={inView.repo}>{content}</DiffShell> : content;
-}
-
-/**
- * The diff's two pages (V60, decision 431): Files and Graph, `g` between them; while it is
- * analyzed (`building`, V90) Graph is its steps, a spinner beside its name.
- */
-function PageSwitch({
-  page,
-  onPage,
-  building = false,
-}: {
-  page: DiffView;
-  onPage: (page: DiffView) => void;
-  building?: boolean;
-}) {
-  const views: [DiffView, string, string][] = [
-    ['files', 'Files', 'The changed files and their diffs'],
-    ['graph', 'Graph', 'The changed symbols and the calls between them'],
-  ];
-  return (
-    <div className="scopes page-switch" role="tablist" aria-label="Page">
-      {views.map(([view, name, words]) => (
-        <button
-          key={view}
-          type="button"
-          role="tab"
-          aria-selected={page === view}
-          className={`scope${page === view ? ' active' : ''}`}
-          {...tip(words, { keys: 'g' })}
-          onClick={() => onPage(view)}
-        >
-          {building && view === 'graph' && <SpinIcon />}
-          {name}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-/**
- * What a diff's page reviews, its head's title (V72): "Review of wip" (V15), else its pull or merge
- * request, else its revisions — the window's title without "Symbiote" (`diffName`).
- */
-function DiffName({ graph, review }: { graph: Graph; review: BranchReviewInfo | undefined }) {
-  const request = graph.changeRequest;
-  if (request) {
-    return (
-      <a className="request" href={request.url} target="_blank" rel="noreferrer">
-        {diffName(graph)}
-        {request.draft && <span className="chip">draft</span>}
-        {request.state !== 'open' && <span className="chip">{request.state}</span>}
-      </a>
-    );
-  }
-  if (review) {
-    return (
-      <span className="review-of" {...tip(review.note)}>
-        Review of <strong>{review.branch}</strong>
-      </span>
-    );
-  }
-  return <span className="revisions">{diffName(graph)}</span>;
-}
-
-/**
- * The head's line (V90, decision 839): the workspace this branch is (a link to it, V18b), the
- * branch it goes into, how it stands against the last review (V15), the commits compared, and the
- * change in git's files and lines (else its symbols, for a graph with no server).
- */
-function HeadFacts({
-  review,
-  revisions,
-  files,
-  graph,
-}: {
-  review: BranchReviewInfo | undefined;
-  revisions: string | undefined;
-  files: readonly ReviewFile[];
-  graph?: Graph;
-}) {
-  const lines = files.some((f) => f.added !== undefined);
-  const parts: [string, ReactNode][] = [];
-  if (review?.into) parts.push(['into', <span>into {review.into}</span>]);
-  if (review)
-    parts.push(['since', <span className="review-after">{reviewSince(review.since)}</span>]);
-  if (revisions) parts.push(['revisions', <span className="revisions">{revisions}</span>]);
-  const count = graph?.stats.filesChanged ?? files.length;
-  if (count > 0 || graph) {
-    parts.push([
-      'change',
-      <span className="summary">
-        <span className="summary-files">
-          {count} file{count === 1 ? '' : 's'}
-        </span>
-        {lines ? (
-          <FileTotals files={files} />
-        ) : (
-          graph && (
-            <>
-              <span className="chip-added">+{graph.stats.symbols.added}</span>
-              <span className="chip-removed">−{graph.stats.symbols.removed}</span>
-              <span className="chip-modified">~{graph.stats.symbols.modified}</span>
-            </>
-          )
-        )}
-        {graph?.since && <SinceChip graph={graph} />}
-      </span>,
-    ]);
-  }
-  return (
-    <span className="diff-facts">
-      {/* Only a review reads the workspaces: a diff of two commits asks nothing more. */}
-      {review && <WorkspaceLink branch={review.branch} />}
-      {parts.map(([key, part], i) => (
-        <Fragment key={key}>
-          {i > 0 && (
-            <span className="facts-sep" aria-hidden="true">
-              ·
-            </span>
-          )}
-          {part}
-        </Fragment>
-      ))}
-    </span>
-  );
-}
-
-/** The workspace a reviewed branch is, a link to it (V18b), then the line's next separator. */
-function WorkspaceLink({ branch }: { branch: string }) {
-  const workspace = useWorkspaces().list?.workspaces.find((f) => f.branch === branch);
-  if (!workspace) return null;
-  return (
-    <>
-      <a
-        className="review-workspace"
-        href={workspaceHref(branch)}
-        aria-label={`Workspace: ${workspaceName(workspace)}`}
-        {...tip(briefTip(workspace.brief))}
-      >
-        {workspaceName(workspace)}
-      </a>
-      <span className="facts-sep" aria-hidden="true">
-        ·
-      </span>
-    </>
-  );
-}
-
-/** The change's findings in the head (V90): an error and a warning pill, each its icon and word. */
-function FindingPills({ graph }: { graph: Graph }) {
-  const severity = (s: string) => graph.findings.filter((f) => f.severity === s).length;
-  const errors = severity('error');
-  const warnings = severity('warning');
-  return (
-    <>
-      {errors > 0 && (
-        <StatusLabel tone="error" className="finding-pill pill-error">
-          {plural(errors, 'error')}
-        </StatusLabel>
-      )}
-      {warnings > 0 && (
-        <StatusLabel tone="warning" className="finding-pill pill-warning">
-          {plural(warnings, 'warning')}
-        </StatusLabel>
-      )}
-    </>
-  );
-}
-
-/** How this version compares with the earlier one (`--since`). */
-function SinceChip({ graph }: { graph: Graph }) {
-  const since = graph.since;
-  if (!since) return null;
-  const count = (status: string) => graph.nodes.filter((n) => n.since === status).length;
-  const parts = [
-    ['new', count('new')],
-    ['updated', count('updated')],
-    ['same', count('same')],
-    ['dropped', since.dropped.length],
-  ].filter(([, n]) => n !== 0);
-  return (
-    <span
-      className="chip chip-since"
-      {...tip(
-        since.dropped.length
-          ? `No longer changed\n${since.dropped.join(', ')}`
-          : `Compared with ${since.ref}`,
-      )}
-    >
-      since {since.sha.slice(0, 7)}: {parts.map(([word, n]) => `${n} ${word}`).join(' · ')}
-    </span>
-  );
-}
-
-function DropZone({ error, onFile }: { error?: string | undefined; onFile: (file: File) => void }) {
-  return (
-    <div className="dropzone">
-      <h1>Review a change as a graph</h1>
-      <p>
-        Run <code>symbiote view main</code>, or drop a graph JSON from{' '}
-        <code>symbiote diff main --out graph.json</code> here.
-      </p>
-      <label className="button">
-        Choose a file
-        <input
-          type="file"
-          accept="application/json,.json"
-          hidden
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) onFile(file);
-          }}
-        />
-      </label>
-      {error && <p className="error">{error}</p>}
-    </div>
-  );
-}
-
-/**
- * The canvas's foot (V90): the marks for a change's kinds, the edges, the frames' parts when
- * drawn; the view's toggles (`children`) at its end. `frames`: the canvas draws projects' frames.
- */
-function Legend({ frames, children }: { frames: boolean; children: ReactNode }) {
-  return (
-    <footer className="legend">
-      {(
-        [
-          ['added', '+'],
-          ['removed', '−'],
-          ['modified', '~'],
-          ['moved', null],
-        ] as const
-      ).map(([kind, glyph]) => (
-        <span key={kind} className={`legend-item tone-${kind}`}>
-          <span className={`symbol-mark mark-${kind}`} aria-hidden="true">
-            {glyph ?? <ForwardIcon />}
-          </span>
-          {kind}
-        </span>
-      ))}
-      <span className="legend-item legend-context">unchanged</span>
-      <span className="legend-edge edge-head">added call</span>
-      <span className="legend-edge edge-base">removed call</span>
-      {frames && <span className="legend-edge edge-cross">call between projects</span>}
-      <span className="legend-item legend-summary">many neighbours, grouped</span>
-      {frames && <span className="legend-item legend-project">project (app or library)</span>}
-      <span className="legend-toggles">{children}</span>
-    </footer>
-  );
 }

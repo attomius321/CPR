@@ -5,14 +5,14 @@ import type { AgentKind, AgentOption, PermissionMode } from '@symbiote/core';
 import { ClaudeMark, CodexMark } from '../ui/icons.js';
 import { EffortSegments } from './EffortSegments.js';
 import { StartCard } from './StartCard.js';
+import { AGENT_NAMES } from './workspaces.js';
 import {
-  AGENT_NAMES,
   keptEffort,
   PERMISSION_LABELS,
   type effortChoices,
   type modelChoices,
   type RunChoices,
-} from './workspaces.js';
+} from './run-choices.js';
 import { tip } from '../ui/tip.js';
 
 /** The run's choices at `level`, or at the agent's own level without one. */

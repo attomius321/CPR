@@ -10,7 +10,7 @@ import { SparklesIcon } from '../ui/icons.js';
 import { tip } from '../ui/tip.js';
 import { StartCard } from './StartCard.js';
 import { proposalWords, withProposal } from './suggest.js';
-import type { RunChoices } from './workspaces.js';
+import type { RunChoices } from './run-choices.js';
 import { Loading } from '../ui/Loading.js';
 
 /** Where a suggestion is: none asked, asked, proposed, or failed with the server's words. */

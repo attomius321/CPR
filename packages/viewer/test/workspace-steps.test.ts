@@ -6,7 +6,7 @@ import type {
   WorkspaceSummary,
 } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
-import { workspaceNext } from '../src/workspaces/workspaces.js';
+import { workspaceNext } from '../src/workspaces/workspace-next.js';
 import {
   agentDot,
   agentTabName,

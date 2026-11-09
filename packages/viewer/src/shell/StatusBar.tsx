@@ -3,7 +3,7 @@ import type { RepoStatus } from '@symbiote/core';
 import { relativeDate } from '../history/commits.js';
 import { BellIcon, BranchIcon, MergeIcon, RunningIcon, SpinIcon } from '../ui/icons.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
-import { hiveGroups, workspaceGroups } from '../workspaces/workspaces.js';
+import { hiveGroups, workspaceGroups } from '../workspaces/workspace-groups.js';
 import { useHive } from './hive.js';
 import type { Notice } from './shell-context.js';
 import {

@@ -2,10 +2,13 @@
 // state and its newest call not ended this turn — never a progress guessed. Elapsed from that
 // call's recorded start; none for Codex's untimed items.
 import type { WorkspaceAgentState } from '@symbiote/core';
-import { activityText, askedFor } from '../workspaces.js';
+import { activityText } from '../workspace-next.js';
+import { askedFor } from '../thread-items.js';
 import { COMMAND_TOOLS, shownCommand } from './classify.js';
 import type { ActivityEvent, ToolCall } from './events.js';
-import { questionsOf, waitingAsk, type ActivityGroup, type GroupKind } from './groups.js';
+import { waitingAsk } from './groups.js';
+import { questionsOf } from './milestones.js';
+import type { ActivityGroup, GroupKind } from './group-parts.js';
 
 export interface LiveActivity {
   /** `working`: a call runs; `thinking`: none does; `waiting`: on the person. */

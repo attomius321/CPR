@@ -45,13 +45,9 @@ import { useWorkspaces } from '../workspaces/useWorkspaces.js';
 import { useTellApp, useWaiting } from './useWaiting.js';
 import { waitingCount } from './waiting.js';
 import { transitionNotice } from '../workspaces/transitions.js';
-import {
-  allRows,
-  startedNotice,
-  workspaceGroups,
-  workspaceName,
-  type WorkspaceRow,
-} from '../workspaces/workspaces.js';
+import { workspaceName } from '../workspaces/workspaces.js';
+import { allRows, workspaceGroups, type WorkspaceRow } from '../workspaces/workspace-groups.js';
+import { startedNotice } from '../workspaces/start-branch.js';
 
 const FOLD_KEY = 'symbiote.viewer.sidenav';
 /** Under this width the sidenav is a drawer over the page (styles.css says the same). */

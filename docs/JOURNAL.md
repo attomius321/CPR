@@ -441,3 +441,5 @@ merge commit.
 - 2026-11-08 [Chore — Remove CPR: the old address and the former name's move](journal/chore-remove-cpr.md)
 - 2026-11-08 [Chore — V58's agent removed: Claude Code and Codex only](journal/chore-remove-cpr.md)
 - 2026-11-09 [Chore — One copy of each small helper: core's hash, the viewer's stored choices and plural](journal/chore-dedupe-helpers.md)
+- 2026-11-09 [Refactor plan — where the length is](journal/refactor-viewer-pages.md)
+- 2026-11-09 [Refactor — the eleven files in modules of one concern](journal/refactor-viewer-pages.md)

@@ -18,16 +18,15 @@ import {
 } from '../ui/icons.js';
 import { longAge, useNow } from './clock.js';
 import { HiveNowLine } from './HiveNow.js';
+import { AGENT_NAMES, shortAge } from './workspaces.js';
+import type { WorkspaceRow } from './workspace-groups.js';
 import {
-  AGENT_NAMES,
-  runsOnWords,
-  shortAge,
   workspaceFacts,
   type WorkspaceFact,
   type WorkspaceNext,
-  type WorkspaceRow,
   mergedForCard,
-} from './workspaces.js';
+} from './workspace-next.js';
+import { runsOnWords } from './run-choices.js';
 import { tip } from '../ui/tip.js';
 
 /**

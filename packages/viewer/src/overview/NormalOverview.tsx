@@ -34,16 +34,10 @@ import { MergeControl } from '../workspaces/MergeControl.js';
 import { respondTo } from '../workspaces/respond.js';
 import { openReview } from '../workspaces/review-open.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
-import {
-  activityText,
-  AGENT_NAMES,
-  modelName,
-  runsOnWords,
-  shortAge,
-  workspaceGroups,
-  workspaceName,
-  type WorkspaceRow,
-} from '../workspaces/workspaces.js';
+import { AGENT_NAMES, shortAge, workspaceName } from '../workspaces/workspaces.js';
+import { workspaceGroups, type WorkspaceRow } from '../workspaces/workspace-groups.js';
+import { activityText } from '../workspaces/workspace-next.js';
+import { modelName, runsOnWords } from '../workspaces/run-choices.js';
 import { clockOf, isToday } from './day.js';
 import { normalFeed } from './feed.js';
 import {
@@ -58,13 +52,13 @@ import {
 } from './normal-overview.js';
 import { useFindings } from '../workspaces/useFindings.js';
 import { Empty, Feed, OverviewCard } from './parts.js';
-
-/** An agent's short name on a chip: Claude, Codex. */
-const USAGE_NAMES: Partial<Record<string, string>> = { claude: 'Claude', codex: 'Codex' };
 import { useDay } from './useDay.js';
 import { medianFigure, resetsWords, windowName } from './words.js';
 import { Loading } from '../ui/Loading.js';
 import { plural } from '../ui/plural.js';
+
+/** An agent's short name on a chip: Claude, Codex. */
+const USAGE_NAMES: Partial<Record<string, string>> = { claude: 'Claude', codex: 'Codex' };
 
 export function NormalOverview() {
   const shell = useShell();

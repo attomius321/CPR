@@ -3,7 +3,7 @@
 // a plan that waits (V89, decisions 833, 834), Send reply and Approve plan, which sends the plan's
 // OK; with its terminal, both are typed there and sent.
 import type { WorkspaceThread } from '@symbiote/core';
-import type { replyMode } from './workspaces.js';
+import type { replyMode } from './thread-items.js';
 import { AttachIcon, CheckIcon, SendIcon } from '../ui/icons.js';
 import { tip } from '../ui/tip.js';
 

@@ -1,5 +1,5 @@
 import type { BranchReviewList, BranchReviewSummary } from '@symbiote/core';
-import { viaName } from '../workspaces/workspaces.js';
+import { viaName } from '../workspaces/run-choices.js';
 import { tip, type TipAttributes, type TipTone } from '../ui/tip.js';
 import { plural } from '../ui/plural.js';
 

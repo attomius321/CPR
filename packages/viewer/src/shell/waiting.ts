@@ -1,6 +1,6 @@
 // What waits for the person (N2): counted once for the window's title and the app's icon. Pure.
 import type { McpAsk, MergeEntry, PageAgentState } from '@symbiote/core';
-import { workspaceGroups } from '../workspaces/workspaces.js';
+import { workspaceGroups } from '../workspaces/workspace-groups.js';
 import type { WorkspacesState } from '../workspaces/useWorkspaces.js';
 import { asksBy } from './asks.js';
 

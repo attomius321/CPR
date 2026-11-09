@@ -8,7 +8,7 @@ import type {
   WorkspaceDay,
   WorkspaceSummary,
 } from '@symbiote/core';
-import { workspaceGroups } from '../src/workspaces/workspaces.js';
+import { workspaceGroups } from '../src/workspaces/workspace-groups.js';
 import {
   inbox,
   mergeSteps,
@@ -17,8 +17,9 @@ import {
   type InboxRow,
   type MergedRow,
   type NormalFigures,
+  findingsOf,
+  findingsToRead,
 } from '../src/overview/normal-overview.js';
-import { findingsOf, findingsToRead } from '../src/overview/normal-overview.js';
 
 const zone = process.env.TZ;
 beforeAll(() => {

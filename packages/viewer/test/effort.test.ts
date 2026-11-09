@@ -1,7 +1,7 @@
 import type { AgentEfforts } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import { stopOf, stopWord } from '../src/workspaces/effort.js';
-import { effortChoices } from '../src/workspaces/workspaces.js';
+import { effortChoices } from '../src/workspaces/run-choices.js';
 
 const claude: { kind: 'claude'; efforts: AgentEfforts } = {
   kind: 'claude',

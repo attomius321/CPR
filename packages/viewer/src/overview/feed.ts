@@ -2,7 +2,8 @@
 // Hive's from its own log (`hive/<branch>.jsonl`, decision 695's kinds). In words, the newest
 // first; an event Hive writes for itself (a turn's end, a message sent) is left out. Pure.
 import type { DayEvent, MergeEntry, WorkspaceDay, WorkspaceSummary } from '@symbiote/core';
-import { modelName, workspaceName } from '../workspaces/workspaces.js';
+import { workspaceName } from '../workspaces/workspaces.js';
+import { modelName } from '../workspaces/run-choices.js';
 import { isToday } from './day.js';
 import type { MergedRow } from './normal-overview.js';
 import { plural } from '../ui/plural.js';

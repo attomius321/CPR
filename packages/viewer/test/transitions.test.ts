@@ -1,7 +1,7 @@
 import type { WorkspaceSummary } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import { moves, transitionNotice } from '../src/workspaces/transitions.js';
-import { allRows, workspaceGroups } from '../src/workspaces/workspaces.js';
+import { allRows, workspaceGroups } from '../src/workspaces/workspace-groups.js';
 
 // What the status bar says when an agent moves on while the person is elsewhere (V48), and how
 // a card moves to its new place.

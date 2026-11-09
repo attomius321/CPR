@@ -1,43 +1,30 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { LibraryState, Skill, SkillChange, SkillsState } from '@symbiote/core';
 import { Help } from '../ui/Help.js';
 import { PageHead } from '../ui/PageHead.js';
 import { getJson, postJson } from '../ui/http.js';
 import {
   BackIcon,
-  ChecksIcon,
   DocumentsIcon,
   FolderIcon,
   PlusIcon,
-  SaveIcon,
   SearchIcon,
   SkillsIcon,
   SparklesIcon,
-  TrashIcon,
 } from '../ui/icons.js';
-import { OpenIcon } from '../diff/OpenIcon.js';
 import { useShell } from '../shell/shell-context.js';
 import { hrefOf, type Route } from '../shell/pages.js';
-import { Conversation, type ConversationAgent } from '../nucleus/Conversation.js';
+import { Conversation } from '../nucleus/Conversation.js';
 import { pageAgentStateText } from '../nucleus/page-agent.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
-import {
-  checkParts,
-  isSkillEdited,
-  newSkillProblem,
-  skillChecks,
-  skillGitNote,
-  skillGroups,
-  skillMatches,
-  skillOfUrl,
-  skillSize,
-} from './skills.js';
+import { isSkillEdited, skillGitNote, skillGroups, skillMatches, skillOfUrl } from './skills.js';
 import { tip } from '../ui/tip.js';
-import { libraryGitText, libraryName, librarySync, skillPlace } from './library.js';
+import { libraryGitText, libraryName, librarySync, skillPlace, folderOf } from './library.js';
 import { LibraryPane } from './LibraryPane.js';
-import { PaneHead } from './PaneHead.js';
-import { SkillText } from './SkillText.js';
 import { Loading } from '../ui/Loading.js';
+import { type Notice, SkillEditor } from './SkillEditor.js';
+import { NewSkill } from './NewSkill.js';
+import { scribeAgent } from './scribe-agent.js';
 
 const API = '/api/skills';
 /**
@@ -51,15 +38,6 @@ const LIBRARY = 'library';
 const LIBRARY_SETTINGS: Route = { page: 'settings', prompt: 'skill-library' };
 /** While Scribe works, how often the skills are read again: what it writes shows. */
 const SCRIBE_POLL_MS = 5_000;
-
-/** What the page says after a change, under the skill (or the form) it was made from. */
-interface Notice {
-  at: string;
-  text: string;
-  error?: boolean;
-  /** The file changed since it was read (409): read it again, the drafts kept. */
-  stale?: boolean;
-}
 
 /** The drafts without `path`'s. */
 const without = (drafts: Record<string, string>, path: string) =>
@@ -78,41 +56,6 @@ function toneOf(state: string): string {
   if (state === 'failed' || state === 'gone') return 'tone-failed';
   return 'tone-done';
 }
-
-/**
- * Scribe (V41b) as its conversation shows it; `typed` put in its terminal by Improve with Scribe
- * (V78), then `onTyped`.
- */
-const scribeAgent = (
-  state: ConversationAgent['state'],
-  typed: string | undefined,
-  onTyped: () => void,
-): ConversationAgent => ({
-  name: 'Scribe',
-  api: '/api/scribe',
-  state,
-  className: 'scribe-pane',
-  heading: 'h2',
-  doing: 'Writes skills in .claude/skills of',
-  help: (
-    <>
-      <p>
-        Scribe writes a new skill, or changes one, in .claude/skills, from what you ask. It reads
-        this checkout&apos;s files and git&apos;s history, and writes nothing else.
-      </p>
-      <p>
-        Ask in its terminal. Claude Code asks you before each write into .claude, there too. Scribe
-        never commits: read the skill here, change it, and commit it.
-      </p>
-      <p>
-        Settings sets the model and effort each conversation starts on: a running one keeps its own,
-        and New conversation starts the next on Settings&apos;.
-      </p>
-    </>
-  ),
-  ...(typed === undefined ? {} : { typed }),
-  onTyped,
-});
 
 /**
  * Skills (V41a): the checkout's skills — `.claude/skills/` (Claude Code) and `.agents/skills/`
@@ -589,14 +532,6 @@ export function SkillsPage() {
   );
 }
 
-/** Who reads a skill, in words. */
-const readers = (skill: Skill) =>
-  skill.agents.map((a) => (a === 'claude' ? 'Claude Code' : 'Codex')).join(' and ');
-
-/** The folder a skill's folder is in, as shown: the checkout's, or the library's in full (SK1). */
-const folderOf = (skill: Skill, library: LibraryState | undefined) =>
-  skill.folder === 'library' && library ? library.folder : skill.folder;
-
 /** The library's entry's tip: its git, and how far it is from its upstream. */
 function libraryTip(library: LibraryState): string {
   const sync = library.git ? librarySync(library.git) : '';
@@ -611,372 +546,4 @@ function libraryMark(library: LibraryState) {
   const ahead = library.git?.ahead ?? 0;
   if (ahead > 0) return <span className="skills-mark">{ahead} to push</span>;
   return null;
-}
-
-/**
- * One skill (V64): a card — its icon, name and chip, Open in VS Code, where it is, its `SKILL.md`
- * as tall as the card (`SkillText`), then its size and the actions — and its checks and other files
- * in cards beside it (under it on a narrower area, decision 462).
- */
-function SkillEditor({
-  skill,
-  library,
-  draft,
-  busy,
-  notice,
-  expanded,
-  onDraft,
-  onDiscard,
-  onSave,
-  onDelete,
-  onImprove,
-  onOpen,
-  onExpand,
-  onLoad,
-  onBack,
-}: {
-  skill: Skill;
-  /** The skill library (SK1): where a skill of it is. */
-  library: LibraryState | undefined;
-  draft: string | undefined;
-  busy: boolean;
-  notice: Notice | null;
-  expanded: boolean;
-  onDraft: (text: string) => void;
-  onDiscard: () => void;
-  onSave: (text: string) => void;
-  onDelete: () => void;
-  onImprove: () => void;
-  /** Open in VS Code at `line`; `unsaved`: the text here differs from the file. */
-  onOpen: (line: number, unsaved: boolean) => void;
-  onExpand: (expanded: boolean) => void;
-  onLoad: () => void;
-  onBack: () => void;
-}) {
-  const text = draft ?? skill.text ?? '';
-  const edited = isSkillEdited(skill, draft);
-  const checks = useMemo(() => skillChecks(skill, text), [skill, text]);
-  const [deleting, setDeleting] = useState(false);
-  const area = useRef<HTMLTextAreaElement>(null);
-  const canSave = edited && !busy && !skill.tooLarge;
-  const inLibrary = skill.folder === 'library';
-  /** The caret's line, 1 when the text is not shown. */
-  const caretLine = () => {
-    const at = area.current?.selectionStart ?? 0;
-    return text.slice(0, at).split(/\r\n|\r|\n/).length;
-  };
-
-  return (
-    <section className="skills-editor" aria-label={`Skill: ${skill.name}`}>
-      <div className="skills-skill">
-        <div className="skills-pane skills-card">
-          <button type="button" className="button ghost skills-back" onClick={onBack}>
-            <BackIcon /> All skills
-          </button>
-          <PaneHead
-            icon={<DocumentsIcon />}
-            title={
-              <>
-                {skill.name}
-                {skill.git !== 'none' && (
-                  <span
-                    className={`skills-state${skill.git === 'new' ? ' added' : skill.git === 'committed' ? '' : ' changed'}`}
-                  >
-                    {skill.git === 'new'
-                      ? 'New'
-                      : skill.git === 'changed'
-                        ? 'Changed'
-                        : 'Committed'}
-                  </span>
-                )}
-              </>
-            }
-            actions={
-              <button
-                type="button"
-                className="button secondary"
-                {...tip(
-                  inLibrary
-                    ? `Open it in VS Code, in a window on ${library?.folder ?? 'the library'}`
-                    : 'Open it in VS Code, at the caret’s line',
-                )}
-                onClick={() => onOpen(skill.tooLarge ? 1 : caretLine(), edited)}
-              >
-                <OpenIcon /> Open in VS Code
-              </button>
-            }
-          >
-            <code>{skillPlace(skill, library)}</code> ·{' '}
-            {inLibrary
-              ? `in your skill library · ${library?.git ? skillGitNote(skill.git) : 'A plain folder: no git.'}`
-              : `read by ${readers(skill)} · ${skillGitNote(skill.git)}`}
-          </PaneHead>
-          {skill.tooLarge ? (
-            <p className="skills-warning" role="alert">
-              Its SKILL.md is too large to edit here (over 256 KB): open it in an editor.
-            </p>
-          ) : (
-            <SkillText
-              name={skill.name}
-              text={text}
-              area={area}
-              expanded={expanded}
-              onText={onDraft}
-              onSave={() => canSave && onSave(text)}
-              onExpand={onExpand}
-            />
-          )}
-          <div className="skills-actions">
-            {!skill.tooLarge && <span className="skills-size">{skillSize(text)}</span>}
-            {notice && (
-              <span className={`skills-notice${notice.error ? ' error' : ''}`} role="status">
-                {notice.text}
-                {notice.stale && (
-                  <>
-                    {' '}
-                    <button type="button" className="link" onClick={onLoad}>
-                      Read it again
-                    </button>
-                  </>
-                )}
-              </span>
-            )}
-            {deleting ? (
-              <span className="workspace-confirm">
-                Deletes {folderOf(skill, library)}/{skill.name}
-                {skill.files.length > 0 ? ` and its ${skill.files.length} other files` : ''}
-                {skill.git === 'new' || skill.git === 'none'
-                  ? ', not committed: it is gone for good.'
-                  : ': git keeps it.'}{' '}
-                <button
-                  type="button"
-                  className="button danger"
-                  disabled={busy}
-                  onClick={() => {
-                    setDeleting(false);
-                    onDelete();
-                  }}
-                >
-                  Delete
-                </button>{' '}
-                <button type="button" className="button ghost" onClick={() => setDeleting(false)}>
-                  Keep it
-                </button>
-              </span>
-            ) : (
-              <button
-                type="button"
-                className="button secondary skills-delete"
-                disabled={busy}
-                onClick={() => setDeleting(true)}
-              >
-                <TrashIcon /> Delete…
-              </button>
-            )}
-            <button
-              type="button"
-              className="button secondary"
-              {...tip('Ask Scribe to change this skill')}
-              onClick={onImprove}
-            >
-              <SparklesIcon /> Improve with Scribe
-            </button>
-            {edited && (
-              <button type="button" className="button ghost" disabled={busy} onClick={onDiscard}>
-                Discard changes
-              </button>
-            )}
-            <button
-              type="button"
-              className="button"
-              disabled={!canSave}
-              {...tip(inLibrary ? 'Save it in your skill library' : 'Save it in this checkout', {
-                keys: 'Ctrl+S',
-              })}
-              onClick={() => onSave(text)}
-            >
-              <SaveIcon /> Save
-            </button>
-          </div>
-        </div>
-        <div className="skills-side">
-          {!skill.tooLarge && (
-            <section className="skills-side-card skills-checks-card" aria-label="Checks">
-              <div className="skills-side-head">
-                <ChecksIcon />
-                <h3>Checks</h3>
-                <Help label="About the checks">
-                  The checks are the open standard&apos;s (agentskills.io) and what Claude Code,
-                  Codex and Anthropic&apos;s API refuse or cut. Whether it says the right thing is
-                  yours to read.
-                </Help>
-              </div>
-              {checks.length > 0 ? (
-                <ul className="skills-checks">
-                  {checks.map((check) => {
-                    const [lead, rest] = checkParts(check.text);
-                    return (
-                      <li key={check.text} className={check.level}>
-                        <strong>{lead}</strong>
-                        {rest && ` ${rest}`}
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : (
-                <p className="skills-checks-none">
-                  Nothing the standard or the agents would refuse.
-                </p>
-              )}
-            </section>
-          )}
-          {skill.files.length > 0 && (
-            <section className="skills-side-card" aria-label="Its other files">
-              <div className="skills-side-head">
-                <FolderIcon />
-                <h3>Its other files</h3>
-              </div>
-              <ul className="skills-files">
-                {skill.files.map((file) => (
-                  <li key={file}>{file}</li>
-                ))}
-                {skill.moreFiles && <li className="hint">and more</li>}
-              </ul>
-            </section>
-          )}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/**
- * A new skill: its name and description, written as its frontmatter in `.claude/skills/`, or in the
- * skill library's folder (SK1) when one is set and the person picks it.
- */
-function NewSkill({
-  busy,
-  notice,
-  library,
-  taken,
-  onCreate,
-  onScribe,
-  onBack,
-}: {
-  busy: boolean;
-  notice: Notice | null;
-  /** The library's folder, when a skill can be made there. */
-  library: string | undefined;
-  taken: (name: string, where: 'checkout' | 'library') => boolean;
-  onCreate: (name: string, description: string, where: 'checkout' | 'library') => Promise<boolean>;
-  onScribe: () => void;
-  onBack: () => void;
-}) {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [picked, setPicked] = useState<'checkout' | 'library'>('checkout');
-  const where = library ? picked : 'checkout';
-  const problem = newSkillProblem(
-    name,
-    description,
-    (n) => taken(n, where),
-    where === 'library' && library ? library : '.claude/skills',
-  );
-  // Said once something is typed: an empty form is not wrong yet.
-  const shown = name === '' && description === '' ? null : problem;
-  return (
-    <form
-      className="skills-pane skills-new"
-      aria-label="New skill"
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (problem || busy) return;
-        void onCreate(name, description, where).then((made) => {
-          if (made) {
-            setName('');
-            setDescription('');
-          }
-        });
-      }}
-    >
-      <button type="button" className="button ghost skills-back" onClick={onBack}>
-        <BackIcon /> All skills
-      </button>
-      <PaneHead icon={<PlusIcon />} title="New skill">
-        Its name and description here, its instructions in the editor next; or{' '}
-        <button type="button" className="link" onClick={onScribe}>
-          ask Scribe to write it
-        </button>
-        .
-      </PaneHead>
-      {library && (
-        <div className="skills-field">
-          <span className="field-label" id="skill-where">
-            Where
-          </span>
-          <span className="scopes skills-where-choice" role="group" aria-labelledby="skill-where">
-            {(['checkout', 'library'] as const).map((place) => (
-              <button
-                key={place}
-                type="button"
-                className={where === place ? 'scope active' : 'scope'}
-                aria-pressed={where === place}
-                {...tip(place === 'library' ? library : 'This checkout, read by its agents')}
-                onClick={() => setPicked(place)}
-              >
-                {place === 'library' ? 'Library' : '.claude/skills'}
-              </button>
-            ))}
-          </span>
-        </div>
-      )}
-      <div className="skills-field">
-        <span className="field-label">
-          <label htmlFor="skill-name">Name</label>
-          <Help label="About the name">
-            Lowercase letters, digits and hyphens, 64 at most: the folder&apos;s name in
-            .claude/skills or the library, and the /command in Claude Code. Say the activity:
-            release-notes, reviewing-migrations.
-          </Help>
-        </span>
-        <input
-          id="skill-name"
-          value={name}
-          autoComplete="off"
-          spellCheck={false}
-          placeholder="release-notes"
-          onChange={(event) => setName(event.target.value)}
-        />
-      </div>
-      <div className="skills-field">
-        <span className="field-label">
-          <label htmlFor="skill-description">Description</label>
-          <Help label="About the description">
-            What it does and when to use it, in the third person, the main use first: an agent reads
-            only this before loading the skill. &quot;Writes release notes from merged branches. Use
-            when asked for release notes or a changelog.&quot;
-          </Help>
-        </span>
-        <textarea
-          id="skill-description"
-          rows={4}
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
-        />
-        <p className={`skills-size${shown ? ' error' : ''}`}>
-          {shown ?? `${description.length.toLocaleString('en-US')} of 1,024 characters`}
-        </p>
-      </div>
-      <div className="skills-actions">
-        {notice && (
-          <span className={`skills-notice${notice.error ? ' error' : ''}`} role="status">
-            {notice.text}
-          </span>
-        )}
-        <button type="submit" className="button" disabled={busy || problem !== null}>
-          Create
-        </button>
-      </div>
-    </form>
-  );
 }

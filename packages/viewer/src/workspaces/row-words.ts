@@ -4,16 +4,10 @@
 // `test/row-words.test.ts`.
 import type { BranchMerge, MergeEntry } from '@symbiote/core';
 import { clockWords } from './hive-live.js';
-import {
-  activityVerb,
-  AGENT_NAMES,
-  runsOnWords,
-  shortAge,
-  workspaceFacts,
-  workspaceName,
-  type LandedRow,
-  type WorkspaceRow,
-} from './workspaces.js';
+import { AGENT_NAMES, shortAge, workspaceName } from './workspaces.js';
+import type { LandedRow, WorkspaceRow } from './workspace-groups.js';
+import { activityVerb, workspaceFacts } from './workspace-next.js';
+import { runsOnWords } from './run-choices.js';
 import { plural } from '../ui/plural.js';
 
 /** A row's icon (`icons.tsx` names them): a merge, a bell, a question, an eye, a spinner… */
