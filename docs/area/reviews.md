@@ -146,9 +146,9 @@ symbol holding its line.
 | The marks, the drafts and the verdict picked, for both pages | `packages/viewer/src/diff/useReview.ts` |
 | The Files page and its diff | `packages/viewer/src/diff/FilesPage.tsx`, `packages/viewer/src/diff/file-diff.ts` |
 | Opening a review: the steps, their times, what needs no graph | `packages/viewer/src/diff/DiffProgress.tsx`, `analysis-steps.ts` |
-| The files before the graph exists | `pairFiles` in `packages/cli/src/server.ts` |
+| The files before the graph exists | `pairFiles` in `packages/cli/src/server-sites.ts` |
 | Comments and sending a verdict | `packages/viewer/src/diff/comments.ts` (`POST /api/review`) |
-| The reviews list | `GET /api/reviews` in `packages/cli/src/server.ts`; `branchReviews().list` caches each review's git (V94); pushed to pages as the `reviews` part of `/api/events` (`packages/cli/src/events.ts`) |
+| The reviews list | `GET /api/reviews` in `packages/cli/src/server-sites.ts`; `branchReviews().list` caches each review's git (V94); pushed to pages as the `reviews` part of `/api/events` (`packages/cli/src/events.ts`) |
 
 ## Decisions in force
 

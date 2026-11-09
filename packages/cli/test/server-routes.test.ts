@@ -9,7 +9,8 @@ import { join } from 'node:path';
 import type { Graph } from '@symbiote/core';
 import { afterAll, describe, expect, it } from 'vitest';
 import type { HiveRecord } from '../src/hive.js';
-import { startViewServer, type RepositoryOptions, type ViewServerOptions } from '../src/server.js';
+import type { RepositoryOptions, ViewServerOptions } from '../src/server-context.js';
+import { startViewServer } from '../src/server.js';
 
 const SHA = 'a'.repeat(40);
 const HEAD = 'b'.repeat(40);

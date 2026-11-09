@@ -169,7 +169,7 @@ stops during a merge, the entry is merged again from the start when Symbiote run
 | **Merge into ▾** | `packages/viewer/src/workspaces/MergeControl.tsx` |
 | Which workspaces show in the sidenav only as their Merging row | `mergingAlone` in `packages/viewer/src/workspaces/merges.ts` (`test/merges.test.ts`) |
 | The merge page: state, files, log | `packages/viewer/src/workspaces/Merge.tsx`; its words from `merge-steps.ts` (pure, `test/merge-steps.test.ts`); the pipeline card `ui/Pipeline.tsx` |
-| HTTP | `/api/merges…` in `packages/cli/src/server.ts`; the log as server-sent events |
+| HTTP | `/api/merges…` in `packages/cli/src/server-merges.ts`; the log as server-sent events |
 | Command line | `symbiote merge <branch>`, with `--into`, `--strategy`, `--land`, `--approve` and `--again` |
 | MCP tools | `merges`, `merge_log`, `queue_merge`, `land_merge`, `merge_resolution`, `retry_merge`, `recheck_merge`, `remove_merge` |
 
