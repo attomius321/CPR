@@ -7,7 +7,7 @@ import {
   parseModelChange,
   parseEffortChange,
 } from './server-requests.js';
-import type { Workspaces } from './workspaces.js';
+import type { Workspaces } from './workspace-context.js';
 import { sendFailure, type Merger } from './merges.js';
 import type { ServerContext } from './server-context.js';
 import { read, ofBranch, answer, json, send, type ServerHttp } from './server-http.js';

@@ -16,7 +16,7 @@ import {
   parseSuggestRequest,
   parseWorkspaceTerminal,
 } from './server-requests.js';
-import type { Workspaces } from './workspaces.js';
+import type { Workspaces } from './workspace-context.js';
 import { MAX_DOCUMENT_BYTES } from './workspace-documents.js';
 import { WorkspaceRefused } from './workspace-record.js';
 import type { HiveWorkspace } from './hive-workspace.js';

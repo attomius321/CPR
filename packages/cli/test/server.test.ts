@@ -45,7 +45,7 @@ import { Histories } from '../src/history.js';
 import { GitOpenRefused, type GitOpen, type GitPage, type GitWrite } from '../src/git-page.js';
 import type { OpenRequest, OpenResult } from '../src/editor.js';
 import { ReviewRefused, type BranchReviews } from '../src/reviews.js';
-import type { Workspaces } from '../src/workspaces.js';
+import type { Workspaces } from '../src/workspace-context.js';
 import type { HiveWorkspace } from '../src/hive-workspace.js';
 import type { WorkspaceDayService } from '../src/workspace-day.js';
 import { WorkspaceRefused } from '../src/workspace-record.js';

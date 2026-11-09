@@ -14,7 +14,7 @@ import type { Merger } from './merges.js';
 import type { BranchReviews } from './reviews.js';
 import type { UsageService } from './usage.js';
 import type { PageAgent } from './page-agent.js';
-import type { Workspaces } from './workspaces.js';
+import type { Workspaces } from './workspace-context.js';
 import type { Args } from './mcp-tools.js';
 
 /** What the tools are given: `symbiote view`'s services (`RepositoryOptions`). */

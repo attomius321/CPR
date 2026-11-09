@@ -84,7 +84,7 @@ import { MAX_BRIEF } from './workspace-brief.js';
 import { reviewPlace, type BranchReviews, type ReviewPlace } from './reviews.js';
 import { readThreadEnd } from './thread.js';
 import { symbioteFolder } from './workspace-record.js';
-import type { Workspaces } from './workspaces.js';
+import type { Workspaces } from './workspace-context.js';
 
 /** Hive's runner of a repository. */
 export interface HiveRunner {

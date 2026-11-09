@@ -23,7 +23,7 @@ import type { CodeMap } from '@symbiote/monitor';
 import type { Diffs, Pair } from './diffs.js';
 import type { Side } from './server-requests.js';
 import type { OpenRequest, OpenResult } from './editor.js';
-import type { Workspaces } from './workspaces.js';
+import type { Workspaces } from './workspace-context.js';
 import type { StateStore } from './state.js';
 import type { WorkspaceDayService } from './workspace-day.js';
 import type { Merger } from './merges.js';
