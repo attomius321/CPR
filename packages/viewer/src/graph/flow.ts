@@ -223,119 +223,22 @@ export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayou
 
   const { boxes, boxOf } = fileBoxes(nodes, summaries, byId, summaryWidth);
 
-  const summaryEdges: FlowEdge[] = summaries
-    .filter((s) => boxOf.has(s.id))
-    .map((s) => ({
-      id: `summary-edge:${s.id}`,
-      source: s.side === 'users' ? s.id : s.of,
-      target: s.side === 'users' ? s.of : s.id,
-      className: 'edge-summary',
-      data: { edge: null },
-    }));
+  const summaryEdges = summaryEdgesOf(summaries, boxOf);
   const links = [
     ...edges.map((e) => ({ from: e.from, to: e.to })),
     ...summaryEdges.map((e) => ({ from: e.source, to: e.target })),
   ];
 
-  // Inside each box: dagre for symbols linked inside it, columns for the rest.
-  const inner = new Map<string, { x: number; y: number }>();
-  const boxSizes = new Map<string, { width: number; height: number }>();
-  for (const [id, box] of boxes) {
-    const internal = links.filter((l) => boxOf.get(l.from) === id && boxOf.get(l.to) === id);
-    const placed = layoutBox(box.members, internal);
-    for (const [member, at] of placed.positions) {
-      inner.set(member, { x: at.x + GROUP_PAD.side, y: at.y + GROUP_PAD.top });
-    }
-    boxSizes.set(id, {
-      width: placed.width + 2 * GROUP_PAD.side,
-      height: placed.height + GROUP_PAD.top + GROUP_PAD.bottom,
-    });
-  }
+  const { inner, boxSizes } = layoutBoxes(boxes, boxOf, links);
 
   const between = links
     .map((l) => ({ from: boxOf.get(l.from) ?? '', to: boxOf.get(l.to) ?? '' }))
     .filter((l) => l.from && l.to && l.from !== l.to);
 
-  // Projects: when the files drawn belong to two or more, each is a frame around its files.
-  const projectOfBox = new Map<string, Project>();
-  for (const [id, box] of boxes) {
-    const project = box.file === undefined ? undefined : projectOf(box.file, projects);
-    if (project) projectOfBox.set(id, project);
-  }
-  const frameOf = new Map<string, string>();
-  const frames = new Map<string, { project: Project; changed: number }>();
-  if (new Set(projectOfBox.values()).size > 1) {
-    for (const [box, project] of projectOfBox) {
-      const id = `project:${project.folder}`;
-      let frame = frames.get(id);
-      if (!frame) frames.set(id, (frame = { project, changed: 0 }));
-      frame.changed += boxes.get(box)?.members.filter((m) => m.changed).length ?? 0;
-      frameOf.set(box, id);
-    }
-  }
-  // A box in no project (a package, the dynamic calls) is drawn in the frame it has the most links
-  // with, among its users as without frames: beside every frame, a package used by hundreds of
-  // symbols drew long fans of edges (Qwik). It still belongs to no project.
-  const placedIn = new Map(frameOf);
-  if (frames.size > 0) {
-    const weights = new Map<string, Map<string, number>>();
-    for (const { from, to } of between) {
-      for (const [box, other] of [
-        [from, to],
-        [to, from],
-      ] as const) {
-        const frame = frameOf.get(other);
-        if (frameOf.has(box) || !frame) continue;
-        const byFrame = weights.get(box) ?? new Map<string, number>();
-        byFrame.set(frame, (byFrame.get(frame) ?? 0) + 1);
-        weights.set(box, byFrame);
-      }
-    }
-    for (const [box, byFrame] of weights) {
-      let best: [string, number] | undefined;
-      for (const entry of byFrame) if (!best || entry[1] > best[1]) best = entry;
-      if (best) placedIn.set(box, best[0]);
-    }
-  }
+  const { projectOfBox, frameOf, frames } = projectFrames(boxes, projects);
+  const placedIn = placedInFrames(frameOf, frames, between);
 
-  // Between boxes: clusters connected by edges, each laid out by dagre, packed into a page. With
-  // frames, the boxes in a frame are packed so inside it; frames (and a box in none, linked to no
-  // frame) are placed in rows in the order of the links between them.
-  const boxPositions = new Map<string, { x: number; y: number }>();
-  const frameRects = new Map<string, Rect>();
-  if (frames.size === 0) {
-    const packed = packClusters([...boxSizes], between, { x: MARGIN, y: MARGIN });
-    for (const [id, at] of packed.positions) boxPositions.set(id, at);
-  } else {
-    for (const [id, frame] of frames) {
-      const light = frame.changed === 0;
-      const pad = light ? LIGHT_FRAME_PAD : FRAME_PAD;
-      const inside = new Set([...placedIn].filter(([, at]) => at === id).map(([box]) => box));
-      const packed = packClusters(
-        [...inside].map((box) => [box, boxSizes.get(box) ?? { width: 0, height: 0 }]),
-        between.filter((l) => inside.has(l.from) && inside.has(l.to)),
-        { x: pad.side, y: pad.top },
-      );
-      for (const [box, at] of packed.positions) boxPositions.set(box, at);
-      frameRects.set(id, {
-        x: 0,
-        y: 0,
-        width: Math.max(bandWidth(frame.project, light), packed.width + 2 * pad.side),
-        height: packed.height + pad.top + pad.bottom,
-      });
-    }
-    const outer = (box: string) => placedIn.get(box) ?? box;
-    const placed = packFrames(
-      [...frameRects, ...[...boxSizes].filter(([id]) => !placedIn.has(id))],
-      between.map((l) => ({ from: outer(l.from), to: outer(l.to) })).filter((l) => l.from !== l.to),
-      { x: MARGIN, y: MARGIN },
-    );
-    for (const [id, at] of placed.positions) {
-      const frame = frameRects.get(id);
-      if (frame) frameRects.set(id, { ...frame, ...at });
-      else boxPositions.set(id, at);
-    }
-  }
+  const { boxPositions, frameRects } = placeBoxes(boxSizes, between, frames, placedIn);
 
   const projectNodes: ProjectFlowNode[] = [...frames].map(([id, { project, changed }]) => {
     const rect = frameRects.get(id) ?? { x: 0, y: 0, width: 0, height: 0 };
@@ -744,6 +647,172 @@ function fileBoxes(
     );
   }
   return { boxes, boxOf };
+}
+
+/** Each summary drawn, linked to its symbol: from the summary for users, to it for uses. */
+function summaryEdgesOf(
+  summaries: readonly Summary[],
+  boxOf: ReadonlyMap<string, string>,
+): FlowEdge[] {
+  return summaries
+    .filter((s) => boxOf.has(s.id))
+    .map((s) => ({
+      id: `summary-edge:${s.id}`,
+      source: s.side === 'users' ? s.id : s.of,
+      target: s.side === 'users' ? s.of : s.id,
+      className: 'edge-summary',
+      data: { edge: null },
+    }));
+}
+
+/**
+ * Inside each box: dagre for symbols linked inside it, columns for the rest. `inner`: each
+ * member's position in its box, padding included; `boxSizes`: each box's size.
+ */
+function layoutBoxes(
+  boxes: ReadonlyMap<string, Box>,
+  boxOf: ReadonlyMap<string, string>,
+  links: readonly { from: string; to: string }[],
+): {
+  inner: Map<string, { x: number; y: number }>;
+  boxSizes: Map<string, { width: number; height: number }>;
+} {
+  const inner = new Map<string, { x: number; y: number }>();
+  const boxSizes = new Map<string, { width: number; height: number }>();
+  for (const [id, box] of boxes) {
+    const internal = links.filter((l) => boxOf.get(l.from) === id && boxOf.get(l.to) === id);
+    const placed = layoutBox(box.members, internal);
+    for (const [member, at] of placed.positions) {
+      inner.set(member, { x: at.x + GROUP_PAD.side, y: at.y + GROUP_PAD.top });
+    }
+    boxSizes.set(id, {
+      width: placed.width + 2 * GROUP_PAD.side,
+      height: placed.height + GROUP_PAD.top + GROUP_PAD.bottom,
+    });
+  }
+  return { inner, boxSizes };
+}
+
+/** A project's frame: its project and how many of its symbols drawn changed. */
+interface Frame {
+  project: Project;
+  changed: number;
+}
+
+/**
+ * Projects: when the files drawn belong to two or more, each is a frame around its files.
+ * `projectOfBox`: each box's project, framed or not; `frameOf`: each framed box's frame.
+ */
+function projectFrames(
+  boxes: ReadonlyMap<string, Box>,
+  projects: readonly Project[],
+): {
+  projectOfBox: Map<string, Project>;
+  frameOf: Map<string, string>;
+  frames: Map<string, Frame>;
+} {
+  const projectOfBox = new Map<string, Project>();
+  for (const [id, box] of boxes) {
+    const project = box.file === undefined ? undefined : projectOf(box.file, projects);
+    if (project) projectOfBox.set(id, project);
+  }
+  const frameOf = new Map<string, string>();
+  const frames = new Map<string, Frame>();
+  if (new Set(projectOfBox.values()).size > 1) {
+    for (const [box, project] of projectOfBox) {
+      const id = `project:${project.folder}`;
+      let frame = frames.get(id);
+      if (!frame) frames.set(id, (frame = { project, changed: 0 }));
+      frame.changed += boxes.get(box)?.members.filter((m) => m.changed).length ?? 0;
+      frameOf.set(box, id);
+    }
+  }
+  return { projectOfBox, frameOf, frames };
+}
+
+/**
+ * The frame each box is drawn in: its own, or for a box in no project (a package, the dynamic
+ * calls) the frame it has the most links with, among its users as without frames: beside every
+ * frame, a package used by hundreds of symbols drew long fans of edges (Qwik). It still belongs to
+ * no project.
+ */
+function placedInFrames(
+  frameOf: ReadonlyMap<string, string>,
+  frames: ReadonlyMap<string, Frame>,
+  between: readonly { from: string; to: string }[],
+): Map<string, string> {
+  const placedIn = new Map(frameOf);
+  if (frames.size > 0) {
+    const weights = new Map<string, Map<string, number>>();
+    for (const { from, to } of between) {
+      for (const [box, other] of [
+        [from, to],
+        [to, from],
+      ] as const) {
+        const frame = frameOf.get(other);
+        if (frameOf.has(box) || !frame) continue;
+        const byFrame = weights.get(box) ?? new Map<string, number>();
+        byFrame.set(frame, (byFrame.get(frame) ?? 0) + 1);
+        weights.set(box, byFrame);
+      }
+    }
+    for (const [box, byFrame] of weights) {
+      let best: [string, number] | undefined;
+      for (const entry of byFrame) if (!best || entry[1] > best[1]) best = entry;
+      if (best) placedIn.set(box, best[0]);
+    }
+  }
+  return placedIn;
+}
+
+/**
+ * Between boxes: clusters connected by edges, each laid out by dagre, packed into a page. With
+ * frames, the boxes in a frame are packed so inside it; frames (and a box in none, linked to no
+ * frame) are placed in rows in the order of the links between them. A box in a frame is placed
+ * from its frame's corner.
+ */
+function placeBoxes(
+  boxSizes: ReadonlyMap<string, { width: number; height: number }>,
+  between: readonly { from: string; to: string }[],
+  frames: ReadonlyMap<string, Frame>,
+  placedIn: ReadonlyMap<string, string>,
+): { boxPositions: Map<string, { x: number; y: number }>; frameRects: Map<string, Rect> } {
+  const boxPositions = new Map<string, { x: number; y: number }>();
+  const frameRects = new Map<string, Rect>();
+  if (frames.size === 0) {
+    const packed = packClusters([...boxSizes], between, { x: MARGIN, y: MARGIN });
+    for (const [id, at] of packed.positions) boxPositions.set(id, at);
+  } else {
+    for (const [id, frame] of frames) {
+      const light = frame.changed === 0;
+      const pad = light ? LIGHT_FRAME_PAD : FRAME_PAD;
+      const inside = new Set([...placedIn].filter(([, at]) => at === id).map(([box]) => box));
+      const packed = packClusters(
+        [...inside].map((box) => [box, boxSizes.get(box) ?? { width: 0, height: 0 }]),
+        between.filter((l) => inside.has(l.from) && inside.has(l.to)),
+        { x: pad.side, y: pad.top },
+      );
+      for (const [box, at] of packed.positions) boxPositions.set(box, at);
+      frameRects.set(id, {
+        x: 0,
+        y: 0,
+        width: Math.max(bandWidth(frame.project, light), packed.width + 2 * pad.side),
+        height: packed.height + pad.top + pad.bottom,
+      });
+    }
+    const outer = (box: string) => placedIn.get(box) ?? box;
+    const placed = packFrames(
+      [...frameRects, ...[...boxSizes].filter(([id]) => !placedIn.has(id))],
+      between.map((l) => ({ from: outer(l.from), to: outer(l.to) })).filter((l) => l.from !== l.to),
+      { x: MARGIN, y: MARGIN },
+    );
+    for (const [id, at] of placed.positions) {
+      const frame = frameRects.get(id);
+      if (frame) frameRects.set(id, { ...frame, ...at });
+      else boxPositions.set(id, at);
+    }
+  }
+  return { boxPositions, frameRects };
 }
 
 /**
