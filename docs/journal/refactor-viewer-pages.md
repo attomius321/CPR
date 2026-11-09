@@ -96,3 +96,5 @@ of 54 identical. First paint on Bitwarden's `737ee3f`: medians 331 ms (`main`) a
 Not verified: Firefox and Safari; the desktop window beyond its e2e specs; screenshots of states
 the spec does not reach (a merge's conflicts, a live terminal, Split, the Git page's menus open):
 the e2e suite drives them, their pixels are unchecked.
+
+Merged into main (2026-11-10).

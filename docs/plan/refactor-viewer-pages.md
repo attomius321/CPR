@@ -4,7 +4,7 @@
 [The first round](refactor-readability.md)
 
 **Status:** built (2026-11-09), on branch `refactor/viewer-pages` (a workspace started in Symbiote,
-from `main` at `371be1d`); ready for review. The person's OK: "Whatever you plan, do it with your
+from `main` at `371be1d`); merged into `main` on 2026-11-10. The person's OK: "Whatever you plan, do it with your
 recommendations" (2026-11-09). As built and results at the end.
 
 **Problem** (the brief: "The person finds these files too big and wants all of them done").
