@@ -126,10 +126,12 @@ export function exportFormat(url: URL): ExportFormat | null {
 
 export const FORMAT_WORDS = `format: ${EXPORT_FORMATS.join(' or ')}`;
 
+/** `value` as a JSON answer. */
 export function json(res: ServerResponse, status: number, value: unknown): void {
   send(res, status, JSON.stringify(value), TYPES['.json']);
 }
 
+/** A permanent redirect to `location`. */
 export function redirect(res: ServerResponse, location: string): void {
   res.writeHead(308, { location, 'cache-control': 'no-store' });
   res.end();
@@ -138,6 +140,7 @@ export function redirect(res: ServerResponse, location: string): void {
 /** A refusal's or a failure's words, for its request's line (LG1): 500 characters at most. */
 export const answers = new WeakMap<ServerResponse, string>();
 
+/** An answer, never cached; a refusal's words kept for its request's line. */
 export function send(
   res: ServerResponse,
   status: number,

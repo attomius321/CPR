@@ -16,6 +16,7 @@ export class UsageError extends Error {
   }
 }
 
+/** `parseArgs` with `config`; bad input is a usage error that shows `help`. */
 export function parse<const T extends ParseArgsConfig>(config: T, help: string) {
   try {
     return parseArgs(config);
@@ -79,12 +80,14 @@ export interface ServeArgs {
   browser: boolean;
 }
 
+/** `--fail-on`: a severity, or a usage error. */
 export function checkFailOn(failOn: string | undefined, help: string): void {
   if (failOn !== undefined && !SEVERITIES.includes(failOn as Severity)) {
     throw new UsageError(`--fail-on must be error, warning or info, got '${failOn}'`, help);
   }
 }
 
+/** `--depth`: a positive integer, or a usage error. */
 export function checkDepth(value: string, help: string): number {
   const depth = Number(value);
   if (!Number.isInteger(depth) || depth < 1) {
@@ -93,6 +96,7 @@ export function checkDepth(value: string, help: string): number {
   return depth;
 }
 
+/** `--port`: a port number, or a usage error. */
 export function checkPort(port: string, help: string): number {
   const value = Number(port);
   if (!Number.isInteger(value) || value < 0 || value > 65535) {

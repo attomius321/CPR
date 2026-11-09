@@ -229,17 +229,20 @@ export function changeFiles(repo: GitRepo): ChangeFiles {
   };
 }
 
+/** Whether a person saw the first-time intro (V39), kept in Symbiote's folder on this system. */
 export function introOf(ctx: CliContext): IntroRecord {
   const folder = symbioteConfigDir(ctx.env, process.platform, homedir());
   return introRecord(join(folder, 'intro.json'), { off: ctx.env.SYMBIOTE_INTRO === 'off' });
 }
 
+/** A graph in one line: files, symbols changed, findings. */
 export function statsLine(graph: Graph): string {
   const { symbols } = graph.stats;
   const changed = symbols.added + symbols.removed + symbols.modified;
   return `${graph.stats.filesChanged} files · ${changed} symbols changed · ${graph.findings.length} findings`;
 }
 
+/** `symbiote diff <base> [head]`: the change analyzed and reported; its exit code. */
 export async function diff(argv: string[], ctx: CliContext): Promise<number> {
   const { values, positionals } = parse(
     { args: argv, allowPositionals: true, options: { ...ANALYSIS_OPTIONS, ...REPORT_OPTIONS } },

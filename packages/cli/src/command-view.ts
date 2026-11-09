@@ -109,6 +109,7 @@ function libraryOf(ctx: CliContext): LibraryService {
   return libraryService(join(folder, 'library.json'), { home: homedir() });
 }
 
+/** `symbiote view [<base> [head]]`: the repository's pages served until Ctrl+C; its exit code. */
 export async function view(argv: string[], ctx: CliContext): Promise<number> {
   const { values, positionals } = parse(
     { args: argv, allowPositionals: true, options: { ...ANALYSIS_OPTIONS, ...SERVE_OPTIONS } },

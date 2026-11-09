@@ -338,6 +338,7 @@ export const short = (sha: string) => sha.slice(0, 7);
 
 export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
+/** A tool's text argument `key`: non-empty, `max` characters at most; else its problem. */
 export function words(args: Args, key: string, what: string, max = 20_000): string {
   const value = args[key];
   if (typeof value !== 'string' || value.trim() === '' || value.length > max) {
@@ -350,6 +351,7 @@ export const branchOf = (args: Args) => words(args, 'branch', "a workspace's bra
 
 export const idOf = (args: Args) => words(args, 'id', "a queue entry's id (from merges)", 100);
 
+/** A tool's yes-or-no argument `key`; absent is no. */
 export function flag(args: Args, key: string): boolean {
   const value = args[key];
   if (value !== undefined && typeof value !== 'boolean')
@@ -357,6 +359,7 @@ export function flag(args: Args, key: string): boolean {
   return value === true;
 }
 
+/** A tool's count argument `key`, from 1 to `max`; `fallback` when absent. */
 export function count(
   args: Args,
   key: string,

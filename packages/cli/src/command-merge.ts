@@ -105,6 +105,7 @@ function mergeLine(entry: MergeEntry): string {
   }
 }
 
+/** `symbiote merge <branch>`: queued, merged, checked and landed, or one step of it; its exit code. */
 export async function merge(argv: string[], ctx: CliContext): Promise<number> {
   const { values, positionals } = parse(
     {
