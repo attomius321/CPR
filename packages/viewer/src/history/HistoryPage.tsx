@@ -15,9 +15,6 @@ import type {
   HistoryShape,
   PullMode,
   RepoStatus,
-  StashEntry,
-  SyncState,
-  WorkingChanges,
 } from '@symbiote/core';
 import {
   fetchBranches,
@@ -26,57 +23,24 @@ import {
   fetchRowsOf,
   fetchShape,
   StaleHistory,
-  startDiff,
 } from './api.js';
 import { BranchesPanel } from './BranchesPanel.js';
 import { CommitRow } from './CommitRow.js';
 import { CompareBar } from './CompareBar.js';
 import { useBranchReviews } from './useBranchReviews.js';
-import {
-  fetchChangeFile,
-  fetchChanges,
-  fetchCommitFile,
-  fetchRemotes,
-  fetchStashes,
-  fetchSync,
-  findRows,
-  openDiff,
-  pull,
-  push,
-  stageLines,
-} from './git-api.js';
-import type { Staging } from './GitDiff.js';
-import {
-  changesOrder,
-  followShown,
-  nextMatch,
-  rowAfterListing,
-  stepShown,
-  useDetailsPlace,
-  type ShownFile,
-  headLine,
-} from './details.js';
-import { CommitDetails, useCommitRead } from './CommitDetails.js';
-import { ChangesDetails, useChangesRead } from './ChangesDetails.js';
-import { GitFile, OPEN_FILE_ID } from './GitFile.js';
+import { fetchRemotes, pull, push } from './git-api.js';
+import { useDetailsPlace, headLine } from './details.js';
+import { CommitDetails } from './CommitDetails.js';
+import { ChangesDetails } from './ChangesDetails.js';
+import { GitFile } from './GitFile.js';
 import { FindBox } from './FindBox.js';
 import { SyncBar, type SyncRun } from './SyncBar.js';
 import { workspaceChips, workspacesFirst } from '../workspaces/workspace-groups.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
-import {
-  BLOCK,
-  blocksAround,
-  comparison,
-  parentRows,
-  pick,
-  shortSha,
-  type Pair,
-  type Picked,
-} from './commits.js';
+import { BLOCK, blocksAround, parentRows, shortSha } from './commits.js';
 import { GraphCell, ROW_HEIGHT } from './GraphCell.js';
 import { Help } from '../ui/Help.js';
 import { GitIcon } from '../ui/icons.js';
-import { keyIsTaken } from '../ui/keys.js';
 import { Resizer } from '../ui/Resizer.js';
 import { PageHead } from '../ui/PageHead.js';
 import { loadWidths, saveWidth } from '../ui/widths.js';
@@ -85,23 +49,21 @@ import { GIT_PAGE } from '../shell/pages.js';
 import { useShell, type Notice } from '../shell/shell-context.js';
 import { tip } from '../ui/tip.js';
 import { Loading } from '../ui/Loading.js';
-import { WorkingRow } from './WorkingRow.js';
+import { WorkingRow, WORKING } from './WorkingRow.js';
 import { GitMenus, useGitMenus } from './GitMenus.js';
-
-/** Rows drawn beyond the view, above and below. */
-const OVERSCAN = 10;
+import { useWorkingChanges } from './useWorkingChanges.js';
+import { useShownFile } from './useShownFile.js';
+import { useRowsInView } from './useRowsInView.js';
+import { useCompare } from './useCompare.js';
+import { useFindRows } from './useFindRows.js';
+import { useRelist } from './useRelist.js';
+import { useHistoryKeys } from './useHistoryKeys.js';
 
 const scopeOfUrl = (): HistoryScope =>
   new URLSearchParams(window.location.search).get('scope') === 'current' ? 'current' : 'all';
 
 /** `?branch=<name>` (V18b: a workspace's branch): its tip, once listed. */
 const branchOfUrl = (): string | null => new URLSearchParams(window.location.search).get('branch');
-
-/** The uncommitted row's number (V66c): above the first commit's. */
-const WORKING = -1;
-
-/** How long the search waits for typing to stop. */
-const FIND_MS = 250;
 
 /**
  * Git (V66; History before it): the repository's history as a graph (V10), every branch or the
@@ -244,127 +206,34 @@ function History({
   const [flash, setFlash] = useState<number | null>(null);
   // Listing or a menu failed (under the title); a comparison failed (in the compare bar).
   const [error, setError] = useState<string | null>(null);
-  const [compareError, setCompareError] = useState<string | null>(null);
   const [stale, setStale] = useState(false);
   // Rows' details by row number, filled block by block; `loaded` re-renders when one arrives.
   const details = useRef(new Map<number, Commit>());
   const asked = useRef(new Set<number>());
   const [loaded, setLoaded] = useState(0);
-  const [picks, setPicks] = useState<Picked[]>([]);
-  // Diverged picks compared the other way round (V10c); picking again resets it.
-  const [swapped, setSwapped] = useState(false);
   const [cursor, setCursor] = useState(0);
-  const [starting, setStarting] = useState(false);
-  const [view, setView] = useState({ top: 0, height: 0 });
-  const scroller = useRef<HTMLDivElement>(null);
-  const list = useRef<HTMLOListElement>(null);
   const placed = useRef(false);
   // Branch reviews (V15): marks on badges, dots on commits added since.
   const marks = useBranchReviews();
 
-  // The checkout's uncommitted changes (V66c) and the branch's upstream (V66e), read as the page
-  // lists and again when it is back in view.
-  const [changes, setChanges] = useState<WorkingChanges | null>(null);
-  const [sync, setSync] = useState<SyncState | null>(null);
-  const [syncing, setSyncing] = useState<SyncRun | null>(null);
-  // The stashes (decision 639), in the branches panel.
-  const [stashes, setStashes] = useState<StashEntry[]>([]);
-  const readChanges = useCallback(() => {
-    fetchChanges()
-      .then(setChanges)
-      .catch(() => {});
-    fetchSync()
-      .then(setSync)
-      .catch(() => {});
-    fetchStashes()
-      .then(setStashes)
-      .catch(() => {});
-  }, []);
-  useEffect(readChanges, [readChanges]);
-  // The uncommitted row: files changed, or an operation in progress (decision 636: its Continue
-  // and Abort are in the row's pane, even with every file committed).
-  const working =
-    changes !== null &&
-    (changes.staged.length + changes.unstaged.length > 0 || changes.operation !== null)
-      ? changes
-      : null;
-  // The file shown in the rows' place (V70): of a commit, by its SHA, or uncommitted (null); not
-  // by its row, which a commit listed above it changes (decision 635). Closed when the cursor
-  // goes to another commit.
-  const [openFile, setOpenFile] = useState<(ShownFile & { sha: string | null }) | null>(null);
-  const onWorking = cursor === WORKING;
-  const commitSha = onWorking ? null : (details.current.get(cursor)?.sha ?? null);
-  const cursorKey = onWorking ? 'working' : (commitSha ?? `row ${cursor}`);
-  useEffect(() => {
-    // A row not read yet: decided once it is (a file's history goes to a row and opens the file).
-    if (!onWorking && commitSha === null) return;
-    setOpenFile((open) => (open && open.sha === commitSha ? open : null));
-    // Only the cursor's commit changing closes the file: `cursorKey` says it.
-  }, [cursorKey]);
-  const shownHere =
-    openFile && (onWorking ? openFile.sha === null : openFile.sha === commitSha) ? openFile : null;
-  // Read for the pane and the file shown; not while the pane is folded and nothing is shown.
-  const commitRead = useCommitRead(pane.open || shownHere ? commitSha : null);
-  const workingHere = onWorking ? working : null;
-  const changesRead = useChangesRead(workingHere);
-  const fileShown = useMemo(() => {
-    if (!shownHere) return null;
-    if (onWorking) {
-      const side = shownHere.staged ? changesRead?.staged : changesRead?.unstaged;
-      return side?.find((f) => f.path === shownHere.path) ?? null;
-    }
-    return commitRead?.files.find((f) => f.path === shownHere.path) ?? null;
-  }, [shownHere, onWorking, changesRead, commitRead]);
-  // j/k's order: the pane's.
-  const fileOrder = useMemo<ShownFile[]>(
-    () =>
-      onWorking
-        ? workingHere
-          ? changesOrder(workingHere)
-          : []
-        : (commitRead?.files.map(({ path }) => ({ path })) ?? []),
-    [onWorking, workingHere, commitRead],
-  );
-  // Staged or unstaged, the uncommitted file shown follows it to its other side.
-  useEffect(() => {
-    if (!openFile || openFile.sha !== null) return;
-    const next = working ? followShown(working, openFile) : null;
-    if (next !== openFile) setOpenFile(next && { ...next, sha: null });
-  }, [working, openFile]);
-  const shownPath = shownHere?.path ?? null;
-  const shownStaged = shownHere?.staged === true;
-  const loadShown = useCallback(() => {
-    if (!shownPath) return Promise.resolve(null);
-    if (onWorking) return fetchChangeFile(shownPath, shownStaged);
-    return commitSha ? fetchCommitFile(commitSha, shownPath) : Promise.resolve(null);
-    // `workingHere`: an uncommitted file's diff is read again after a stage.
-  }, [shownPath, shownStaged, onWorking, commitSha, workingHere]);
-  const openShown = useCallback(
-    () =>
-      !shownPath
-        ? Promise.resolve()
-        : openDiff(
-            onWorking
-              ? { path: shownPath, staged: shownStaged }
-              : { path: shownPath, sha: commitSha ?? '' },
-          ),
-    [shownPath, shownStaged, onWorking, commitSha],
-  );
-  // An uncommitted modified file's lines, staged or unstaged from its diff (decision 642).
-  const staging = useMemo<Staging | undefined>(() => {
-    if (!onWorking || !shownPath || fileShown?.status !== 'modified' || fileShown.previousPath)
-      return undefined;
-    return {
-      staged: shownStaged,
-      onLines: async (lines, index) =>
-        setChanges(await stageLines(shownPath, shownStaged, lines, index)),
-    };
-  }, [onWorking, shownPath, shownStaged, fileShown]);
+  const { setChanges, sync, syncing, setSyncing, stashes, readChanges, working } =
+    useWorkingChanges();
+  const {
+    openFile,
+    setOpenFile,
+    onWorking,
+    shownHere,
+    commitRead,
+    changesRead,
+    fileShown,
+    fileOrder,
+    shownStaged,
+    loadShown,
+    openShown,
+    staging,
+  } = useShownFile({ cursor, details, working, pane, setChanges });
   const [resizing, setResizing] = useState(false);
   const place = useDetailsPlace();
-  // The search (V66f): the rows found in this listing, the field.
-  const [matches, setMatches] = useState<number[] | null>(null);
-  const findRef = useRef<HTMLInputElement>(null);
 
   // Listing anew in place (decision 634), defined once the rows are: what a stale answer calls.
   const relistRef = useRef<() => Promise<void>>(() => Promise.resolve());
@@ -428,22 +297,10 @@ function History({
   const graphWidth = Math.ceil(widest * spacing);
   const rows = lanes.length;
 
-  // Which rows are in view: the list starts below the title, inside the scrolled box.
-  const measure = useCallback(() => {
-    const box = scroller.current;
-    if (box)
-      setView({ top: box.scrollTop - (list.current?.offsetTop ?? 0), height: box.clientHeight });
-  }, []);
-  useLayoutEffect(() => {
-    measure();
-    const box = scroller.current;
-    if (!box) return;
-    const observer = new ResizeObserver(measure);
-    observer.observe(box);
-    return () => observer.disconnect();
-  }, [measure, first]);
-  const firstShown = Math.max(0, Math.floor(view.top / ROW_HEIGHT) - OVERSCAN);
-  const lastShown = Math.min(rows - 1, Math.ceil((view.top + view.height) / ROW_HEIGHT) + OVERSCAN);
+  const { view, scroller, list, measure, firstShown, lastShown, reveal } = useRowsInView({
+    first,
+    rows,
+  });
 
   /** Loads a block of rows' details, unless asked for already. */
   const loadBlock = useCallback(
@@ -472,17 +329,6 @@ function History({
     for (const block of blocksAround(firstShown, lastShown, rows)) loadBlock(block);
   }, [rows, firstShown, lastShown, loadBlock]);
 
-  /** Scrolls row `row` into view: to the middle when `center`, else just enough. */
-  const reveal = useCallback((row: number, center = false) => {
-    const box = scroller.current;
-    if (!box) return;
-    const top = (list.current?.offsetTop ?? 0) + row * ROW_HEIGHT;
-    if (center) box.scrollTop = top - (box.clientHeight - ROW_HEIGHT) / 2;
-    else if (top < box.scrollTop) box.scrollTop = top;
-    else if (top + ROW_HEIGHT > box.scrollTop + box.clientHeight) {
-      box.scrollTop = top + ROW_HEIGHT - box.clientHeight;
-    }
-  }, []);
   const jump = useCallback(
     (row: number) => {
       setCursor(row);
@@ -524,17 +370,6 @@ function History({
     setCursor(headRow);
     if ((headRow + 1) * ROW_HEIGHT > view.height) reveal(headRow, true);
   }, [headRow, view.height, reveal, first]);
-
-  const compare = useCallback(async (pair: Pair) => {
-    setStarting(true);
-    setCompareError(null);
-    try {
-      window.location.assign(await startDiff(pair));
-    } catch (e) {
-      setCompareError(`Could not compare: ${(e as Error).message}`);
-      setStarting(false);
-    }
-  }, []);
 
   // Starting a workspace (V18) at a row's commit: the shell's page (V30a).
   const shell = useShell();
@@ -625,202 +460,58 @@ function History({
     [onRelist, shell, readChanges],
   );
 
-  const current = useMemo(
-    () =>
-      comparison(
-        picks,
-        {
-          parents,
-          head: headRow,
-          trunk: shape?.defaultBranch?.rows ?? [],
-          complete: shape !== null,
-          shaAt: (row) => details.current.get(row)?.sha,
-        },
-        swapped,
-      ),
-    // `loaded`: a block of details came, maybe the fork point's.
-    [picks, parents, headRow, shape, swapped, loaded],
-  );
-  // Diverged picks: the fork point's details, wherever it is in the history.
-  const forkRow = current?.diverged?.forkRow;
-  useEffect(() => {
-    if (forkRow !== undefined && !details.current.has(forkRow))
-      loadBlock(Math.floor(forkRow / BLOCK));
-  }, [forkRow, loadBlock]);
-  const pickRow = useCallback((row: number) => {
-    const commit = details.current.get(row);
-    if (!commit) return;
-    const next: Picked = {
-      sha: commit.sha,
-      row,
-      ...(commit.parents[0] ? { parent: commit.parents[0] } : {}),
-    };
-    setPicks((ps) =>
-      pick(
-        ps.map((p) => p.sha),
-        next.sha,
-      ).map((sha) => ps.find((p) => p.sha === sha) ?? next),
-    );
-    setSwapped(false);
-  }, []);
-  /** Leaves compare mode: the picks go with it. */
-  const stopComparing = useCallback(() => {
-    setPicks([]);
-    setSwapped(false);
-    setCompareError(null);
-    onComparing(false);
-  }, [onComparing]);
+  const {
+    picks,
+    setPicks,
+    swapped,
+    setSwapped,
+    starting,
+    compareError,
+    compare,
+    current,
+    forkRow,
+    pickRow,
+    stopComparing,
+  } = useCompare({ parents, headRow, shape, loaded, details, loadBlock, onComparing });
 
   // The search (V66f): asked once typing stops, the cursor on the first row found from it.
-  const query = find.query.trim();
-  const version = first?.version;
   const cursorAt = useRef(cursor);
   cursorAt.current = cursor;
-  // The words last searched: listed anew in place, the same words find again without moving.
-  const searched = useRef('');
-  useEffect(() => {
-    if (!query || !version) {
-      setMatches(null);
-      searched.current = '';
-      return;
-    }
-    const fresh = query !== searched.current;
-    if (fresh) setMatches(null);
-    let live = true;
-    const timer = setTimeout(() => {
-      findRows(scope, version, query)
-        .then((found) => {
-          if (!live) return;
-          if (found === null) return void relistRef.current();
-          setMatches(found);
-          searched.current = query;
-          const row = fresh ? nextMatch(found, cursorAt.current - 1, true) : null;
-          if (row !== null) jump(row);
-        })
-        .catch((e: unknown) => live && setError(`Could not find commits: ${(e as Error).message}`));
-    }, FIND_MS);
-    return () => {
-      live = false;
-      clearTimeout(timer);
-    };
-  }, [query, version, scope, jump]);
-  const matched = useMemo(() => new Set(matches ?? []), [matches]);
-  const step = useCallback(
-    (forward: boolean) => {
-      const row = matches ? nextMatch(matches, cursor, forward) : null;
-      if (row !== null) jump(row);
-    },
-    [matches, cursor, jump],
-  );
-  // Listing anew in place (decision 634): what moved unasked (a branch elsewhere, an agent's
-  // commit, a fetch) is read while the page stays, then swapped in at once. The cursor stays on its
-  // commit (on HEAD from HEAD with no file shown), the rows where they were on screen, the file
-  // shown and the pane as they were. One at a time; asked meanwhile, once more after.
-  const latest = useRef({ first, headRow, picks, shown: openFile !== null });
-  latest.current = { first, headRow, picks, shown: openFile !== null };
-  const relisting = useRef<Promise<void> | null>(null);
-  const relistAgain = useRef(false);
-  const scrollTo = useRef<{ row: number; offset: number } | { reveal: number } | null>(null);
-  const relistHere = useCallback((): Promise<void> => {
-    if (relisting.current) {
-      relistAgain.current = true;
-      return relisting.current;
-    }
-    const run = async (tries: number): Promise<void> => {
-      const { first: before, headRow: oldHead, picks: picked, shown } = latest.current;
-      if (!before) return;
-      readChanges();
-      const page = await fetchRows(scope, 0, BLOCK);
-      if (page.version === before.version) return;
-      const cursor = cursorAt.current;
-      const box = scroller.current;
-      const top = list.current?.offsetTop ?? 0;
-      const at = (row: number) => top + row * ROW_HEIGHT - (box?.scrollTop ?? 0);
-      // The row kept in its place on screen: the cursor's when in view, else the first in view.
-      const inView = (row: number) =>
-        box !== null && row >= 0 && at(row) > -ROW_HEIGHT && at(row) < box.clientHeight;
-      const anchor = inView(cursor)
-        ? cursor
-        : Math.max(0, Math.floor(((box?.scrollTop ?? 0) - top) / ROW_HEIGHT));
-      const shaOf = (row: number) => details.current.get(row)?.sha;
-      const kept = cursor === WORKING ? undefined : shaOf(cursor);
-      const anchored = shaOf(anchor);
-      const shas = [
-        ...new Set([kept, anchored, ...picked.map((p) => p.sha)].filter((s) => s !== undefined)),
-      ];
-      try {
-        const [nextShape, nextRefs, found] = await Promise.all([
-          fetchShape(scope, page.version),
-          fetchBranches(scope, page.version),
-          shas.length > 0 ? fetchRowsOf(scope, page.version, shas) : Promise.resolve([]),
-        ]);
-        const rowOf = new Map(shas.map((sha, i) => [sha, found[i] ?? null]));
-        const keptRow = kept === undefined ? null : (rowOf.get(kept) ?? null);
-        const next = rowAfterListing({
-          cursor,
-          wasHead: cursor === oldHead,
-          shown,
-          kept: keptRow,
-          head: nextShape.head,
-        });
-        // The first rows' details, and the cursor's when further down: its pane and file stay.
-        const fresh = new Map<number, Commit>();
-        page.commits.forEach((c, i) => fresh.set(i, c));
-        const blocks = new Set([0]);
-        if (next >= 0 && !fresh.has(next) && next < nextShape.rows) {
-          const block = Math.floor(next / BLOCK);
-          const more = await fetchRows(
-            scope,
-            block * BLOCK,
-            Math.min(nextShape.rows, (block + 1) * BLOCK),
-            page.version,
-          );
-          more.commits.forEach((c, i) => fresh.set(more.from + i, c));
-          blocks.add(block);
-        }
-        const anchorRow = anchored === undefined ? null : (rowOf.get(anchored) ?? null);
-        scrollTo.current =
-          next >= 0 && next !== keptRow
-            ? { reveal: next }
-            : anchorRow !== null
-              ? { row: anchorRow, offset: at(anchor) }
-              : null;
-        details.current = fresh;
-        asked.current = blocks;
-        setFirst(page);
-        setShape(nextShape);
-        setRefs(nextRefs);
-        setCursor(next);
-        setPicks((ps) =>
-          ps.flatMap((p) => {
-            const row = rowOf.get(p.sha);
-            return row === null || row === undefined ? [] : [{ ...p, row }];
-          }),
-        );
-        setFlash(null);
-        setLoaded((n) => n + 1);
-      } catch (e) {
-        // Moved again while read: read the newer listing.
-        if (e instanceof StaleHistory && tries > 0) return run(tries - 1);
-        throw e;
-      }
-    };
-    const done = run(2)
-      .catch((e: unknown) => {
-        if (e instanceof StaleHistory) setStale(true);
-        else setError(`Could not list commits: ${(e as Error).message}`);
-      })
-      .finally(() => {
-        relisting.current = null;
-        if (relistAgain.current) {
-          relistAgain.current = false;
-          void relistRef.current();
-        }
-      });
-    relisting.current = done;
-    return done;
-  }, [scope, readChanges]);
-  relistRef.current = relistHere;
+  const { query, matches, matched, step, findRef } = useFindRows({
+    find,
+    first,
+    scope,
+    cursor,
+    cursorAt,
+    jump,
+    relistRef,
+    setError,
+  });
+  const { latest } = useRelist({
+    scope,
+    readChanges,
+    first,
+    headRow,
+    picks,
+    openFile,
+    cursorAt,
+    scroller,
+    list,
+    details,
+    asked,
+    setFirst,
+    setShape,
+    setRefs,
+    setCursor,
+    setPicks,
+    setFlash,
+    setLoaded,
+    setStale,
+    setError,
+    relistRef,
+    reveal,
+    measure,
+  });
 
   /** A commit of a file's history or blame (decision 643): its row, the file open there. */
   const goToFile = useCallback(
@@ -848,112 +539,43 @@ function History({
     [scope, shell, jump],
   );
 
-  // Listed in place: the rows where they were on screen, or the cursor revealed when it moved.
-  useLayoutEffect(() => {
-    const to = scrollTo.current;
-    const box = scroller.current;
-    if (!to || !box) return;
-    scrollTo.current = null;
-    if ('reveal' in to) reveal(to.reveal);
-    else box.scrollTop = (list.current?.offsetTop ?? 0) + to.row * ROW_HEIGHT - to.offset;
-    measure();
-  }, [first, reveal, measure]);
-
   // The uncommitted row gone (committed, or changed elsewhere): the cursor back on HEAD.
   useEffect(() => {
     if (cursor === WORKING && !working) setCursor(headRow ?? 0);
   }, [cursor, working, headRow]);
 
-  // j/k move, x picks (turning compare mode on), Enter compares, Escape leaves compare mode.
-  // Attached as the rows are drawn (a layout effect), not after the paint: a key pressed as soon
-  // as they show is not lost.
-  useLayoutEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      // Typing (the search, the commit's message), and the menus and dialogs: their own keys.
-      if (keyIsTaken(event) || menu || confirm || refAction || branchMenu || stashMenu || question)
-        return;
-      // A file shown in the rows' place (V70): j/k step the files, o opens its diff in VS Code,
-      // Esc goes back to the rows; the rows' own keys wait under it.
-      if (fileShown && shownHere) {
-        if (event.key === 'j' || event.key === 'k') {
-          const step = event.key === 'j' ? 1 : -1;
-          setOpenFile({ ...stepShown(fileOrder, shownHere, step), sha: shownHere.sha });
-          return;
-        }
-        if (event.key === 'o') {
-          document.getElementById(OPEN_FILE_ID)?.click();
-          return;
-        }
-        if (event.key === 'Escape') {
-          setOpenFile(null);
-          return;
-        }
-        if (['x', 'c', 'Enter'].includes(event.key)) return;
-      }
-      if (event.key === 'j' || event.key === 'k') {
-        // Above the first commit, the uncommitted row when there is one (V66c).
-        const top = working ? WORKING : 0;
-        const next = Math.max(top, Math.min(rows - 1, cursor + (event.key === 'j' ? 1 : -1)));
-        setCursor(next);
-        reveal(next);
-      } else if (event.key === 'd') pane.onOpen(!pane.open);
-      else if (event.key === 'f') {
-        event.preventDefault();
-        findRef.current?.focus();
-      } else if (event.key === 'x') {
-        onComparing(true);
-        pickRow(cursor);
-      } else if (event.key === 'c') {
-        const box = list.current?.querySelector('.commit.cursor')?.getBoundingClientRect();
-        // `c` checks out: straight to the targets.
-        if (box) openMenu(cursor, box.left + 48, box.bottom, 'checkout');
-      } else if (event.key === '/') {
-        // Finds a branch: the panel's filter (shown first under 900 px).
-        event.preventDefault();
-        setPanelOpen(true);
-        requestAnimationFrame(() => filterRef.current?.focus());
-      } else if (event.key === 'Escape' && panelOpen) setPanelOpen(false);
-      else if (event.key === 'Escape' && comparing) stopComparing();
-      else if (
-        event.key === 'Enter' &&
-        // A focused button takes Enter itself.
-        !(event.target instanceof HTMLButtonElement) &&
-        comparing &&
-        current?.pair &&
-        !starting
-      ) {
-        event.preventDefault();
-        void compare(current.pair);
-      } else return;
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [
-    fileShown,
-    shownHere,
-    fileOrder,
-    rows,
-    cursor,
-    current,
-    starting,
-    compare,
-    pickRow,
-    reveal,
+  useHistoryKeys({
     menu,
     confirm,
-    openWorkspace,
-    openMenu,
-    comparing,
-    onComparing,
-    stopComparing,
-    panelOpen,
     refAction,
     branchMenu,
     stashMenu,
     question,
+    fileShown,
+    shownHere,
+    setOpenFile,
+    fileOrder,
     working,
+    rows,
+    cursor,
+    setCursor,
+    reveal,
     pane,
-  ]);
+    findRef,
+    onComparing,
+    pickRow,
+    list,
+    openMenu,
+    setPanelOpen,
+    filterRef,
+    panelOpen,
+    comparing,
+    stopComparing,
+    current,
+    starting,
+    compare,
+    openWorkspace,
+  });
 
   if (stale) {
     return (

@@ -3,6 +3,9 @@ import type { WorkingChanges } from '@symbiote/core';
 import { changesSummary } from './details.js';
 import { ROW_HEIGHT } from './GraphCell.js';
 
+/** The uncommitted row's number (V66c): above the first commit's. */
+export const WORKING = -1;
+
 /**
  * The checkout's uncommitted changes as a row above the commits (V66c): its dot hollow on HEAD's
  * lane (lane 0), joined to HEAD's when HEAD is the first commit listed.
