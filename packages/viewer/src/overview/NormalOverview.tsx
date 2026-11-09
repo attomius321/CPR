@@ -62,8 +62,9 @@ import { Empty, Feed, OverviewCard } from './parts.js';
 /** An agent's short name on a chip: Claude, Codex. */
 const USAGE_NAMES: Partial<Record<string, string>> = { claude: 'Claude', codex: 'Codex' };
 import { useDay } from './useDay.js';
-import { medianFigure, plural, resetsWords, windowName } from './words.js';
+import { medianFigure, resetsWords, windowName } from './words.js';
 import { Loading } from '../ui/Loading.js';
+import { plural } from '../ui/plural.js';
 
 export function NormalOverview() {
   const shell = useShell();

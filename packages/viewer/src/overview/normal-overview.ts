@@ -11,6 +11,7 @@ import {
   type WorkspaceRow,
 } from '../workspaces/workspaces.js';
 import { dayStarts, isToday, median, perDay } from './day.js';
+import { plural } from '../ui/plural.js';
 
 /** What an inbox row asks of the person. */
 export type InboxKind = 'plan' | 'asks' | 'review' | 'approved' | 'answered' | 'merge';
@@ -69,8 +70,6 @@ export interface MergeSteps {
   mark: StepMark;
   word: string;
 }
-
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /** When a workspace's current state began, as recorded; else when it last acted or started. */
 const sinceOf = (workspace: WorkspaceSummary) =>

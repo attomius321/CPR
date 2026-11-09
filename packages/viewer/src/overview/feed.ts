@@ -5,6 +5,7 @@ import type { DayEvent, MergeEntry, WorkspaceDay, WorkspaceSummary } from '@symb
 import { modelName, workspaceName } from '../workspaces/workspaces.js';
 import { isToday } from './day.js';
 import type { MergedRow } from './normal-overview.js';
+import { plural } from '../ui/plural.js';
 
 export type FeedIcon =
   | 'question'
@@ -40,7 +41,6 @@ const joined = (...parts: (string | undefined | false)[]) =>
   parts.filter((part): part is string => !!part).join(' · ');
 const newestFirst = (items: FeedItem[]) =>
   items.sort((a, b) => Date.parse(b.at) - Date.parse(a.at) || a.key.localeCompare(b.key));
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /** A branch as the page names it: its workspace's name, its Hive record's title, else itself. */
 function namer(list: readonly WorkspaceSummary[], day: WorkspaceDay | null) {

@@ -8,24 +8,17 @@ import { AskBar } from '../shell/AskBar.js';
 import { TitleBar } from '../shell/TitleBar.js';
 import { useTellApp, useWaiting } from '../shell/useWaiting.js';
 import { waitingCount } from '../shell/waiting.js';
+import { readStored, writeStored } from '../ui/stored.js';
 
 const FOLD_KEY = 'symbiote.viewer.sidenav.diff';
 
 /** On a diff the sidenav starts as a rail (decision 182): the canvas keeps its width. */
 function loadFolded(): boolean {
-  try {
-    return window.localStorage.getItem(FOLD_KEY) !== 'open';
-  } catch {
-    return true;
-  }
+  return readStored(FOLD_KEY) !== 'open';
 }
 
 function saveFolded(folded: boolean): void {
-  try {
-    window.localStorage.setItem(FOLD_KEY, folded ? 'rail' : 'open');
-  } catch {
-    // Storage blocked: the choice lasts until the page closes.
-  }
+  writeStored(FOLD_KEY, folded ? 'rail' : 'open');
 }
 
 /**

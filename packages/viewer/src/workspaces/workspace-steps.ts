@@ -12,6 +12,7 @@ import { HIVE_STAGES, NORMAL_STAGES } from '../ui/StageTrack.js';
 import type { StatusTone } from '../ui/StatusLabel.js';
 import { mergeState } from './merges.js';
 import { AGENT_NAMES, mergedForCard, type WorkspaceNext } from './workspaces.js';
+import { plural } from '../ui/plural.js';
 
 /** The track's mark at the step it is at: in progress, the person's, or failed. */
 export type StepMark = 'now' | 'you' | 'bad';
@@ -191,8 +192,6 @@ export interface PipelineStepWords {
   state: 'done' | 'now' | 'you' | 'todo' | 'bad';
   detail: string;
 }
-
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /** Each step's words when done and to come; the current step says the model's own. */
 const STEP_WORDS: Record<string, { done: (c: Ctx) => string; todo: (c: Ctx) => string }> = {

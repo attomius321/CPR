@@ -2,6 +2,7 @@
 // Settings, for this browser. index.html's inline script sets it before the first paint; this
 // module reads and changes it afterwards.
 import { useSyncExternalStore } from 'react';
+import { writeStored } from '../ui/stored.js';
 
 export type Theme = 'dark' | 'light' | 'system';
 
@@ -23,11 +24,7 @@ const listeners = new Set<() => void>();
 /** Shows `theme` now and keeps it for this browser's next pages. */
 export function setTheme(theme: Theme): void {
   document.documentElement.dataset.theme = theme;
-  try {
-    window.localStorage.setItem(THEME_KEY, theme);
-  } catch {
-    // Storage blocked: the choice lasts until the page closes.
-  }
+  writeStored(THEME_KEY, theme);
   for (const listener of listeners) listener();
 }
 

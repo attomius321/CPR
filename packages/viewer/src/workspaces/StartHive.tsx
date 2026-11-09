@@ -14,6 +14,7 @@ import {
   ReviewIcon,
   SubscriptionIcon,
 } from '../ui/icons.js';
+import { plural } from '../ui/plural.js';
 
 /** The check Hive would run (`/api/hive/state`): undefined while read, null when none is set. */
 export function useHiveCheck(on: boolean): HiveState['check'] | null | undefined {
@@ -58,8 +59,6 @@ export function HiveCheckLine({ check }: { check: HiveState['check'] | null | un
     </p>
   );
 }
-
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /** How Hive runs the goal (decision 871): its steps with this repository's facts, its limits. */
 export function HiveHow({

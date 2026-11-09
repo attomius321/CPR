@@ -55,8 +55,9 @@ import {
 import { Since } from '../workspaces/HeadSteps.js';
 import { Empty, Feed, OverviewCard } from './parts.js';
 import { useDay } from './useDay.js';
-import { dollars, medianFigure, plural, resetsWords, windowName } from './words.js';
+import { dollars, medianFigure, resetsWords, windowName } from './words.js';
 import { Loading } from '../ui/Loading.js';
+import { plural } from '../ui/plural.js';
 
 /** How many stopped workspaces are called out before "and N more" (decision 857). */
 const STOPPED_SHOWN = 3;

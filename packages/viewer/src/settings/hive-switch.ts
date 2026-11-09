@@ -1,6 +1,7 @@
 // What turning Hive mode on or off concerns, in words (HV4, decisions 771, 772): the workspaces
 // in normal mode that keep it off, and what Hive off does to each Hive workspace in flight. Pure.
 import type { HiveLandsBy, HivePacingSetting, HiveState, HiveStep } from '@symbiote/core';
+import { plural } from '../ui/plural.js';
 
 /** A workspace as the questions name it: its title, else its branch. */
 export const nameOf = (w: { branch: string; title?: string }) => w.title ?? w.branch;
@@ -94,8 +95,6 @@ export interface ReadyItem {
   /** The workspaces in normal mode that keep it off, named. */
   names?: string[];
 }
-
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /** Where the check comes from, short: `merge.checks`, else the file it was found in. */
 export const checkSource = (source: string) =>
