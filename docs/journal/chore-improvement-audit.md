@@ -699,3 +699,5 @@ each plan says the corrected version.
     - Codex's sandbox and packed refs
     - a top-level `..foo` folder
     - a strict-JSON `angular.json`
+
+Merged into main (2026-11-08).

@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/chore-remove-cpr.md)
 
-**Status:** built, ready for review (2026-11-08), on branch `chore/remove-cpr` (its workspace,
+**Status:** merged into `main` on 2026-11-08 (built 2026-11-08), on branch `chore/remove-cpr` (its workspace,
 from `main` at `a12c1d9`).
 
 **Kind** chore · **Branch** `chore/remove-cpr` · **Size** M · **Decisions** 953–954

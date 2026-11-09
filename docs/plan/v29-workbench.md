@@ -326,7 +326,7 @@ plan's 172–179; 176 supersedes V25's 136):
 | 176 | The Workspaces page | **Gone: workspaces in the sidenav, one opens in the main area; `/` opens History** (supersedes 136) | The person's ask. History is the page with the most to do when no workspace is picked |
 | 177 | A workspace's address | **`/?branch=` kept** | Symbiote has put it in links already (a diff's way back, threads); a new path would need one more rewrite |
 | 178 | The page's name | **History** (confirmed; decision 135 stands) | The person called it Commits in this ask, then chose History |
-| 179 | Theme | **Dark by default; light and system kept, chosen per browser in Settings** | The reference is dark; a light-system person can still have light |
+| 179 | Theme *(partly superseded by 940 of V97)* | **Dark by default; light and system kept, chosen per browser in Settings** | The reference is dark; a light-system person can still have light |
 | 180 | The font pair | **Geist + Geist Mono**, bundled (confirmed, from a mock in three pairs) | Modern and geometric, one family for text and code; 52 KB for Latin text (Inter's pair 88 KB); system fonts differ per machine (DejaVu Sans here) |
 | 181 | Vendors in the status bar | **Names, not logos** | Their marks are theirs; a name reads as well at 11 px |
 | 182 | A diff page | **In the shell with the sidenav as a 48 px rail by default** | The person keeps the sidenav everywhere; open, it would take the canvas from 1,140 to 900 px at 1440 |

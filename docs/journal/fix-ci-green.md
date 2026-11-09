@@ -111,3 +111,5 @@ under load with `withEarlyEdits`, 0 in 20 without): a comment saved before the s
 came back twice, and a summary's save pending at Finish landed after it, over the cleared drafts.
 `withEarlyEdits` takes a comment once by its id, and Finish cancels a pending draft save. 0 in 15
 after, under the same load.
+
+Merged into main (2026-11-09).

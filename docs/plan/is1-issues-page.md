@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/is1-issues-page.md)
 
-**Status:** built (2026-11-08), on branch `feature/issues-page` (a workspace started in Symbiote,
+**Status:** merged into `main` on 2026-11-08; built (2026-11-08), on branch `feature/issues-page` (a workspace started in Symbiote,
 from `main` at `c2aa5c4`); the plan OK'd by the person with the three choices as recommended:
 public repositories read without a token, the key `u`, an issue's first 100 comments. As built and
 results under "As built (IS1)" below.

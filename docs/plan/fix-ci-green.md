@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [The audit](../journal/chore-improvement-audit.md) (finding R1)
 
-**Status:** built (2026-11-08), on branch `fix/ci-green` in its own workspace (from `main` at
+**Status:** merged into `main` on 2026-11-09; built (2026-11-08), on branch `fix/ci-green` in its own workspace (from `main` at
 a12c1d9, `main` merged in at a95ccad); CI green on all three jobs (runs 42510596203 and 42514039113; run 42524539542 with macOS's unit
 tests). Written by the
 improvement audit (`chore/improvement-audit`).

@@ -2,6 +2,8 @@
 
 [Index](../PLAN.md) · [The audit](../journal/chore-improvement-audit.md) (finding S9)
 
+> What holds now: [The merger](../area/merger.md). This plan is kept as it was written.
+
 **Status:** planned (2026-11-06), to be built on branch `fix/fast-forward-flake` in its own
 workspace; written by the improvement audit (`chore/improvement-audit`). Not started.
 

@@ -33,3 +33,5 @@ behaviour-preserving steps, one commit each.
 - `pnpm check`: 245 test files and 3,428 tests (`main` had 243 and 3,423; the difference is the two
   new files). `pnpm build` passes. E2E: the viewer's 436 and the nexus's 32 pass, with no retries.
 - Not run: the `viewer-check` skill. Nothing drawn, laid out or timed changed.
+
+Merged into main (2026-11-09).

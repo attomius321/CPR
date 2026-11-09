@@ -379,7 +379,7 @@ What holds now: [The merger](area/merger.md) · its decisions: [the register](de
 
 | ID | What | Status | Decisions | Journal |
 |---|---|---|---|---|
-| [IS1](plan/is1-issues-page.md) | An Issues page: origin's GitHub or GitLab issues, read only: the list (state, search on titles, 30 a page), one issue with its comments and its link | built | 944–952 | [journal](journal/is1-issues-page.md) |
+| [IS1](plan/is1-issues-page.md) | An Issues page: origin's GitHub or GitLab issues, read only: the list (state, search on titles, 30 a page), one issue with its comments and its link | ✅ | 944–952 | [journal](journal/is1-issues-page.md) |
 
 ### Logs
 
@@ -397,7 +397,7 @@ What holds now: [The merger](area/merger.md) · its decisions: [the register](de
 | [V22](plan/roadmap.md) | Fixes: stale text outside the README | ✅ | | [journal](journal/v22-stale-text.md) |
 | Feature | README remade around workspaces; commands, configuration and review pages | ✅ | | [journal](journal/remake-readme.md) |
 | Rename | Rename to Symbiote | ✅ | | [journal](journal/rename-to-symbiote.md) |
-| [Chore](plan/chore-remove-cpr.md) | Remove CPR: the repository's old address, and what was kept under the former name no longer moved; V58's agent removed, Claude Code and Codex only | ready for review | 953–954 | [journal](journal/chore-remove-cpr.md) |
+| [Chore](plan/chore-remove-cpr.md) | Remove CPR: the repository's old address, and what was kept under the former name no longer moved; V58's agent removed, Claude Code and Codex only | ✅ | 953–954 | [journal](journal/chore-remove-cpr.md) |
 | [Refactor](plan/refactor-plan-journal-folders.md) | The plan and the journal in folders | ✅ | 290–293 | [journal](journal/refactor-plan-journal-folders.md) |
 | [Refactor](plan/refactor-readability.md) | The CLI's services and the viewer's pages in modules one can read | ✅ | 344–348 | [journal](journal/refactor-readability.md) |
 | [IN1](plan/in1-one-command-install.md) | Install in one command (`./install.sh`), with no native build: the agents' terminal prebuilt | ✅ | 532–538 | [journal](journal/in1-one-command-install.md) |
@@ -405,7 +405,7 @@ What holds now: [The merger](area/merger.md) · its decisions: [the register](de
 | Fix | `mark-merged.mjs`: a row with no plan waits for every branch its journal names; a journal's last line is its last entry's | ✅ | | [journal](journal/fix-mark-merged-shared-journals.md) |
 | [Chore](plan/chore-living-docs.md) | Living docs: a page per area of what holds now (Reviews and The merger first), replaced decisions marked on both rows, a register of every decision; merged branches deleted, unmerged ones kept as `archive/` tags | ✅ | 776–781 | [journal](journal/chore-living-docs.md) |
 | Chore | Living docs' gaps: a root `AGENTS.md` for Codex; a decision lookup that finds its replacement before `consolidate.mjs` marks it; a note for an area page whose code changed after it; Prettier leaves Symbiote's local files out | ✅ | | [journal](journal/chore-living-docs-gaps.md) |
-| [Fix](plan/fix-ci-green.md) | CI green again: the review-place test's git identity, lint's heap on macOS | built (CI green on all three jobs, macOS's unit tests too) | | [journal](journal/fix-ci-green.md) |
+| [Fix](plan/fix-ci-green.md) | CI green again: the review-place test's git identity, lint's heap on macOS | ✅ | | [journal](journal/fix-ci-green.md) |
 | [Chore](plan/chore-keys-v.md) | The `v` key in commands.md's keys table | planned | | |
 | [Chore](plan/chore-dependency-bumps.md) | Electron 44.9.1 and the patch bumps; the majors listed | planned | | |
 | [Fix](plan/fix-macos-install.md) | ./install.sh on macOS: the app step skipped with a note | planned | | |
@@ -419,8 +419,8 @@ What holds now: [The merger](area/merger.md) · its decisions: [the register](de
 | ID | What | Status | Decisions | Journal |
 |---|---|---|---|---|
 | Fix | Security and bugs: saves at once, forge tokens, framing, agents' `--`, Scout's gate, cross-site GETs, 400 and 413 | ✅ | | [journal](journal/fix-security-and-bugs.md) |
-| Chore | Improvement audit: every app and page verified on `main` (checks, both themes, real graphs, the CLI, MCP, nexus, window, install, logs), 43 numbered findings with their evidence, a top 10 | ready for review | | [journal](journal/chore-improvement-audit.md) |
-| Chore | One copy of each small helper: core's symbol hash, the viewer's choices kept in the browser and its `plural` | ready for review | | [journal](journal/chore-dedupe-helpers.md) |
+| Chore | Improvement audit: every app and page verified on `main` (checks, both themes, real graphs, the CLI, MCP, nexus, window, install, logs), 43 numbered findings with their evidence, a top 10 | ✅ | | [journal](journal/chore-improvement-audit.md) |
+| Chore | One copy of each small helper: core's symbol hash, the viewer's choices kept in the browser and its `plural` | ✅ | | [journal](journal/chore-dedupe-helpers.md) |
 | [SC1](plan/sc1-local-write-secret.md) | A per-run secret for symbiote view's writes, the Confirm and Nucleus's identity | planned | 930–932 | [journal](journal/sc1-local-write-secret.md) |
 | [Fix](plan/fix-view-help.md) | `symbiote view --help` and `symbiote --help` name the Overview | planned | | |
 | [Fix](plan/fix-cli-usage-errors.md) | A mistyped option prints its error and where help is, not the whole help | planned | | |

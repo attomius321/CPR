@@ -54,3 +54,4 @@ requests' and are unit-tested there); GitLab with a token on a real project (no 
 notes and the role are tested on recorded shapes and the fake forge); a real rate limit used up
 (tested on a 403 made in GitHub's shape).
 
+Merged into main (2026-11-08).

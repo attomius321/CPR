@@ -2,6 +2,8 @@
 
 [Index](../PLAN.md) · [The audit](../journal/chore-improvement-audit.md) (finding V8)
 
+> What holds now: [Reviews](../area/reviews.md). This plan is kept as it was written.
+
 **Status:** planned (2026-11-06), to be built on branch `fix/review-hint-wrap` in its own
 workspace; written by the improvement audit (`chore/improvement-audit`). Not started.
 

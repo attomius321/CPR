@@ -45,3 +45,4 @@ related to it, every record included (decision 954).
 **Verification**: `pnpm check` (243 test files, 3,415 tests) and `pnpm build` pass; `git grep -i`
 of its name finds nothing.
 
+Merged into main (2026-11-08).
