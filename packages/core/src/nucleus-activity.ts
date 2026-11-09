@@ -3,7 +3,8 @@
 // Code), its thread as Symbiote reads it (Codex) and Symbiote itself (its tools, the person's
 // Confirms, a conversation opened or ended). Types only; the CLI writes and reads the file and
 // serves `GET /api/nucleus/activity`.
-import type { ActivityEntry, AgentKind } from './workspaces.js';
+import type { ActivityEntry } from './workspace-activity.js';
+import type { AgentKind } from './agents.js';
 
 /** The tokens a turn used, as its agent reported them. */
 export interface TurnTokens {
