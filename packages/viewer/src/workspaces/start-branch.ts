@@ -4,7 +4,7 @@ import type { WorkspaceStart } from '@symbiote/core';
 import { AGENT_NAMES } from './workspaces.js';
 
 /** Longest name proposed after the prefix. */
-export const MAX_NAME = 40;
+const MAX_NAME = 40;
 
 /**
  * A branch named after the brief's first line: its first five words, lowercase, accents and

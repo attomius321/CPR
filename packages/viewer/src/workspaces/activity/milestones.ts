@@ -12,14 +12,14 @@ import {
   times,
 } from './group-parts.js';
 
-export const VERDICTS = {
+const VERDICTS = {
   approve: 'Approved',
   'request-changes': 'Changes requested',
   comment: 'Commented',
 } as const;
 
 /** How a session ended, in words; a Codex run's other reasons are its failure (V20a). */
-export function endGroup(entry: Extract<ThreadEntry, { kind: 'end' }>, codex: boolean) {
+function endGroup(entry: Extract<ThreadEntry, { kind: 'end' }>, codex: boolean) {
   const reason = entry.reason;
   if (reason === 'completed') return { title: 'Its run completed', status: 'done' as const };
   if (reason === 'stopped') return { title: 'Stopped', status: 'cancelled' as const };
@@ -32,7 +32,7 @@ export function endGroup(entry: Extract<ThreadEntry, { kind: 'end' }>, codex: bo
 }
 
 /** A Confirm's end in words and tone (NU2). */
-export const CONFIRM_ENDS = {
+const CONFIRM_ENDS = {
   confirmed: { text: 'Confirmed', tone: 'ok' },
   declined: { text: 'Declined', tone: 'muted' },
   expired: { text: 'No answer in time', tone: 'warning' },
@@ -40,15 +40,15 @@ export const CONFIRM_ENDS = {
 } as const;
 
 /** Why a start went without a Confirm (NU8), in words and tone. */
-export const WITHOUT_CONFIRM = {
+const WITHOUT_CONFIRM = {
   setting: { text: 'Your setting', tone: 'muted' },
   hive: { text: 'Hive mode', tone: 'muted' },
 } as const;
 
-export type Base = Pick<ActivityGroup, 'key' | 'start' | 'end' | 'failures' | 'events'>;
+type Base = Pick<ActivityGroup, 'key' | 'start' | 'end' | 'failures' | 'events'>;
 
 /** A Confirm (NU2): asked, waiting for the person until it ends; what the yes did, its detail. */
-export function confirmGroup(
+function confirmGroup(
   event: Extract<ActivityEvent, { kind: 'confirm' }>,
   base: Base,
   context: Context,
@@ -92,7 +92,7 @@ export function confirmGroup(
 }
 
 /** Nucleus's own events (NU2): an error, a turn interrupted, a conversation opened or ended. */
-export function nucleusGroup(entry: NucleusOwn, base: Base, context: Context): ActivityGroup {
+function nucleusGroup(entry: NucleusOwn, base: Base, context: Context): ActivityGroup {
   const agent = AGENT_NAMES[entry.agent ?? context.agent.kind ?? 'claude'];
   switch (entry.kind) {
     case 'error':
@@ -139,7 +139,7 @@ export const questionsOf = (entry: Extract<ThreadEntry, { kind: 'asks' }>) =>
   (entry.questions ?? []).map((q) => q.question).join('; ');
 
 /** Who sent a message, as a milestone's title starts (AR2, decision 741). */
-export function senderOf(from: PromptFrom, context: Context): string {
+function senderOf(from: PromptFrom, context: Context): string {
   switch (from) {
     case 'hive':
       return 'Hive';

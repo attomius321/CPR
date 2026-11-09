@@ -101,16 +101,16 @@ export class TaskState {
   }
 }
 
-export const EDITS: (WorkKind | 'debug' | null)[] = ['implement', 'docs'];
+const EDITS: (WorkKind | 'debug' | null)[] = ['implement', 'docs'];
 
 /** How many calls, besides reads, a phase may hold of another kind between two of its own. */
-export const BETWEEN = 4;
+const BETWEEN = 4;
 
 /** A run's calls. */
-export const callsOf = (run: Run) => callsIn(run.events);
+const callsOf = (run: Run) => callsIn(run.events);
 
 /** Whether a run is a test run whose last test failed (not stopped): never absorbed. */
-export function failedTests(run: Run, context: Context): boolean {
+function failedTests(run: Run, context: Context): boolean {
   if (run.kind !== 'test') return false;
   const last = callsOf(run).filter(isTest).at(-1);
   return last !== undefined && outcome(last, context) === 'failed';
@@ -133,7 +133,7 @@ export function adjacent(runs: readonly Run[]): Run[] {
  * and a few looks (an agent tests as it implements); a visual inspection a few tweaks; an
  * exploration or testing only reads. Never a failed test, git, or another task's work.
  */
-export function absorbs(kind: Run['kind'], between: Run, context: Context): boolean {
+function absorbs(kind: Run['kind'], between: Run, context: Context): boolean {
   if (between.kind === 'git' || failedTests(between, context)) return false;
   if (between.kind === 'explore' || between.kind === null) return true;
   if (kind === 'implement' || kind === 'docs')

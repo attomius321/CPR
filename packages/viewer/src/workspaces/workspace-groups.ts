@@ -74,10 +74,10 @@ export interface HiveGroups {
 }
 
 /** The browser's local midnight of `now`'s day (V91, decision 850). */
-export const midnight = (now: number) => new Date(now).setHours(0, 0, 0, 0);
+const midnight = (now: number) => new Date(now).setHours(0, 0, 0, 0);
 
 /** When a landed or answered workspace ended: its landing's end, else its agent's last act. */
-export function endedAt(workspace: WorkspaceSummary): string | undefined {
+function endedAt(workspace: WorkspaceSummary): string | undefined {
   const landing = workspace.hive?.landing;
   if (landing?.outcome === 'landed' && landing.ended) return landing.ended;
   return workspace.lastAction;

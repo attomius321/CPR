@@ -49,7 +49,7 @@ export interface WorkspaceNext {
   paused?: true;
 }
 
-export const chip = (mark: string, tone: AgentChip['tone'], title: string): AgentChip => ({
+const chip = (mark: string, tone: AgentChip['tone'], title: string): AgentChip => ({
   mark,
   tone,
   title,
@@ -233,7 +233,7 @@ export function workspaceNext(
  * began to wait (Codex on its app server); none when nothing was recorded, or for a plan (its first
  * line is mostly a heading: "Plan ready" says more).
  */
-export function blockedOn({ activity, agent, worktree }: WorkspaceSummary): string | undefined {
+function blockedOn({ activity, agent, worktree }: WorkspaceSummary): string | undefined {
   if (activity?.asks) return askedFor(activity.asks, worktree.path);
   const said = activity?.report;
   if (agent.state !== 'needs-you' || agent.interrupted || !said || !activity.since)
@@ -243,7 +243,7 @@ export function blockedOn({ activity, agent, worktree }: WorkspaceSummary): stri
 }
 
 /** Each tool's verb (V48f): Claude Code's tools by name, Codex's items by kind. */
-export const TOOL_WORDS: Record<string, [verb: string, alone: string]> = {
+const TOOL_WORDS: Record<string, [verb: string, alone: string]> = {
   Bash: ['Running', 'Running a command'],
   command: ['Running', 'Running a command'],
   Edit: ['Editing', 'Editing a file'],

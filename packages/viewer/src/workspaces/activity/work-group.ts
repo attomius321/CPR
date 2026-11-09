@@ -32,7 +32,7 @@ import {
 } from './group-parts.js';
 
 /** What the files an edit phase touched came to: "2 files · +14 −1". */
-export function editsText(calls: readonly ToolCall[]): string {
+function editsText(calls: readonly ToolCall[]): string {
   const files = new Set<string>();
   let added = 0;
   let removed = 0;
@@ -57,7 +57,7 @@ export function editsText(calls: readonly ToolCall[]): string {
 }
 
 /** What an exploration came to: "12 files read · 8 searches · 15 commands". */
-export function readsText(calls: readonly ToolCall[]): string {
+function readsText(calls: readonly ToolCall[]): string {
   const read = new Set<string>();
   let searches = 0;
   let pages = 0;
@@ -82,7 +82,7 @@ export function readsText(calls: readonly ToolCall[]): string {
 }
 
 /** A test call in a line: "pnpm check · 42 passed", "npx vitest run · 1 failed (exit 1)". */
-export function testText(call: ToolCall, context: Context): { text: string; counts?: TestCounts } {
+function testText(call: ToolCall, context: Context): { text: string; counts?: TestCounts } {
   const name = testName(call, context);
   const counts = call.output ? testCounts(call.output) : null;
   const state = outcome(call, context);
@@ -101,7 +101,7 @@ export function testText(call: ToolCall, context: Context): { text: string; coun
   return { text: `${name} · ${result}`, ...(counts ? { counts } : {}) };
 }
 
-export const TITLES: Record<WorkKind | 'debug' | 'other', string> = {
+const TITLES: Record<WorkKind | 'debug' | 'other', string> = {
   explore: 'Exploration',
   implement: 'Implementation',
   docs: 'Documentation',
@@ -115,7 +115,7 @@ export const TITLES: Record<WorkKind | 'debug' | 'other', string> = {
 };
 
 /** What Nucleus did on the web (NU2): "2 searches · 5 pages". */
-export function webText(calls: readonly ToolCall[]): string {
+function webText(calls: readonly ToolCall[]): string {
   let searches = 0;
   let pages = 0;
   for (const call of calls) {
@@ -137,7 +137,7 @@ export function webText(calls: readonly ToolCall[]): string {
 }
 
 /** Which of Symbiote's tools Nucleus used, once each in order (NU2): "workspaces · review". */
-export function symbioteText(calls: readonly ToolCall[]): string {
+function symbioteText(calls: readonly ToolCall[]): string {
   return [...new Set(calls.flatMap((c) => symbioteTool(c) ?? (c.source ? [c.tool] : [])))].join(
     ' · ',
   );

@@ -16,7 +16,7 @@ export interface ThreadItem {
 }
 
 /** The heading of a message one of Symbiote's senders typed (AR2, decision 741). */
-export const SENT_LABELS: Readonly<Partial<Record<PromptFrom, string>>> = {
+const SENT_LABELS: Readonly<Partial<Record<PromptFrom, string>>> = {
   hive: "Hive's message",
   nucleus: "Nucleus's message",
   merger: "Symbiote's message",
@@ -36,7 +36,7 @@ export function promptFrom(
 }
 
 /** Tools whose permission is to change a file (`file_path` in their input). */
-export const EDITS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);
+const EDITS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);
 
 /**
  * What an ask is for, in words (V48): a question and its options, or the permission to run a
@@ -67,7 +67,7 @@ export function askedFor(entry: Extract<ThreadEntry, { kind: 'asks' }>, worktree
 }
 
 /** What an agent waits on, in the thread's words: a question and its options, or a permission. */
-export function waitsFor(entry: Extract<ThreadEntry, { kind: 'asks' }>, worktree?: string): string {
+function waitsFor(entry: Extract<ThreadEntry, { kind: 'asks' }>, worktree?: string): string {
   const asked = askedFor(entry, worktree);
   return entry.questions ? asked : `Waiting: p${asked.slice(1)}`;
 }

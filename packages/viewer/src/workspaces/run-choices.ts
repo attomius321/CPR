@@ -67,7 +67,7 @@ export function keptModel(
  * The levels an agent takes on `model` (V47): the model's own when the agent lists it (none for
  * a model that takes none), else the agent's, its default model's.
  */
-export function levelsOn(
+function levelsOn(
   agent: Pick<AgentOption, 'efforts' | 'models'>,
   model: string | undefined,
 ): AgentEfforts | undefined {
@@ -164,9 +164,9 @@ export function startedWith(
 }
 
 /** The families Claude Code takes as aliases of its newest model of each (`--model opus`). */
-export const CLAUDE_FAMILIES = /^(opus|sonnet|haiku|fable)$/;
+const CLAUDE_FAMILIES = /^(opus|sonnet|haiku|fable)$/;
 
-export const capital = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
+const capital = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
 
 /**
  * A model's name from its ID (V83, decision 661), as its agent's list names it:
@@ -190,13 +190,13 @@ export function modelName(id: string): string {
 }
 
 /** A model by its name, and by its ID too when the name is more than its ID's capitals. */
-export const modelWords = (id: string) => {
+const modelWords = (id: string) => {
   const name = modelName(id);
   return name.toLowerCase() === id.toLowerCase() ? name : `${name} (${id})`;
 };
 
 /** Whether a model picked at the start is the one that runs: the same, or its family's alias. */
-export const sameModel = (started: string, running: string) =>
+const sameModel = (started: string, running: string) =>
   started === running ||
   modelName(started) === modelName(running) ||
   (CLAUDE_FAMILIES.test(started) && modelName(running).startsWith(`${modelName(started)} `));

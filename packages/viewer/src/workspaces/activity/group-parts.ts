@@ -99,7 +99,7 @@ export const plural = (n: number, one: string, many: string) =>
 export const firstLine = (text: string) =>
   (text.split('\n').find((line) => line.trim() !== '') ?? '').trim();
 
-export const lineTime = (call: ToolCall) => Date.parse((call.start ?? call.end)?.at ?? '') || 0;
+const lineTime = (call: ToolCall) => Date.parse((call.start ?? call.end)?.at ?? '') || 0;
 
 export const isCall = (event: ActivityEvent): event is CallEvent => event.kind === 'call';
 
