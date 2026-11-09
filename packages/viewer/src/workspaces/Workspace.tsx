@@ -98,7 +98,7 @@ import {
 import { GIT_PAGE } from '../shell/pages.js';
 import { useShell, type Notice } from '../shell/shell-context.js';
 import { verdictLine } from './terminal.js';
-import { closeQuestion, shellAfter, shellName, shellOfUrl, withShell } from './shells.js';
+import { closeQuestion, shellName, shellOfUrl, shownTab, withShell } from './shells.js';
 import { readWorkspacesAgain, reloadWorkspaces, useWorkspaces } from './useWorkspaces.js';
 import { tip } from '../ui/tip.js';
 import { Loading } from '../ui/Loading.js';
@@ -299,35 +299,16 @@ function WorkspacePanel({
   const [focus, toggleFocus] = useFocus();
   const splitCan = terminals && shellsCan;
   const fallback: AgentView = terminals ? 'terminal' : 'thread';
-  // The shell picked; once it went (closed, exited), its neighbour, the one before first; none
-  // left, or `symbiote view` started again: the agent's tab.
-  const shellNumber =
-    shellShown === null || shells === null || shells.some((shell) => shell.number === shellShown)
-      ? shellShown
-      : shellAfter(shells, shellShown);
-  // Split's shell, as for a picked one: its neighbour once it went; none left, Split is off.
-  const splitNumber =
-    !splitCan || split === null
-      ? null
-      : shells === null || shells.some((shell) => shell.number === split)
-        ? split
-        : shellAfter(shells, split);
-  const shellGone = chosen === 'shell' && (!shellsCan || (shells !== null && shellNumber === null));
-  const view: View =
-    splitNumber !== null
-      ? 'terminal'
-      : chosen === 'terminal' && !terminals
-        ? 'thread'
-        : shellGone || (chosen === 'run' && !workspace.hive)
-          ? fallback
-          : (chosen ?? fallback);
+  const { shellNumber, splitNumber, view, shownShell } = shownTab({
+    chosen,
+    shells,
+    shellShown,
+    split,
+    terminals,
+    shellsCan,
+    hive: workspace.hive !== undefined,
+  });
   const showTerminal = terminals && view === 'terminal';
-  const shownShell =
-    splitNumber !== null
-      ? shells?.find((shell) => shell.number === splitNumber)
-      : view === 'shell'
-        ? shells?.find((shell) => shell.number === shellNumber)
-        : undefined;
   const [opened, setOpened] = useState<OpenedTerminal | null>(null);
   const [ended, setEnded] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
