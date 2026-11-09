@@ -68,3 +68,49 @@ not counted).
 | `merges.test.ts` | 28.5 s | passes |
 | `workspaces.test.ts` | 16.5 s | passes |
 | `pnpm test:e2e` | 200.7 s | 436 viewer and 32 nexus tests |
+
+## Refactor — the nine files in modules with an explicit context (2026-11-09, branch `refactor/cli-services`)
+
+Parts a–e of the plan, then `main.ts`, `page-agent.ts`, `prompts.ts` and core's `workspaces.ts`,
+in 13 commits after the plan's. The nine files went from 15,078 lines to 3,069; the six closures
+over 600 lines from 8,582 to 1,847 (the longest now 443); 63 new files, none over 520 lines.
+
+**Learned**:
+- **Retyping was never needed.** A script cut whole declarations with their comments by name,
+  from a closure's body, an object literal or a file's top level, into a factory or a file;
+  another seeded each new file with the old one's imports and let TypeScript's own "remove
+  unused" prune them. The compiler's "cannot find name" list for each new module is exactly the
+  names its code reads: split between the context and the modules that provide them, it wrote
+  each factory's `Pick<>` parameters. A first version of the cutting script placed text at the
+  source file's offsets in the target: the files did not compile, and were made again from
+  `main`'s text.
+- **A token-for-token walk is the review's anchor.** Every named declaration of `main`'s nine
+  files compared with the branch's, whitespace aside: 1,981 equal, once `ctx.closed` reads as
+  `closed`. The prompts and core's types were compared character for character (a prompt's words
+  are in template literals, where whitespace counts).
+- **Cycles come from where the shared bits sit, not from the steps.** Each part's first cut made
+  cycles: modules importing helpers, types or a refusal class (`MergeRefused`,
+  `PageAgentRefused`) from the file that wires them. Each was solved by giving the shared bit a
+  home below the steps: the context file for types and refusals, the first step for helpers
+  (`hive-round.ts`), a file of its own where the thing is a concern of its own (`merge-config.ts`,
+  `config-write.ts`, `prompt-settings.ts`). One cycle was in the calls themselves, in Hive's
+  runner, and one late-bound call breaks it.
+- **The `let`s decide what stays.** A `let` read by more than one module must be a context field
+  read live (`ctx.closed`, 20 reads in Hive's runner, the only edit inside moved bodies); where
+  only the closure's own `close` reads it with one module (the page agent's Codex watch, its
+  activity writer), the module stayed in the closure instead.
+- **`exportfix` and `unexport`**: moving a private helper into a shared module needs `export`;
+  a script added it where the compiler asked, and another removed it again where no file imports
+  the name and `main` did not export it.
+- **The intro e2e timing tests did not fail here**; the e2e runs were 3.7–4.0 minutes while
+  vitest ran beside them, 3.0–3.1 alone.
+
+**Verification**:
+- The route table (three servers, 374 requests each) and `tools/list` with `initialize` equal to
+  their first run after every part; `pnpm check` (3,432 tests) after parts a, e and i and on the
+  last commit; the CLI's 1,674 tests after every part; e2e (436 viewer, 32 nexus) after parts a,
+  d and on the last commit.
+- 18 test files changed, none but import lines; no new import cycle (core's `merges` ↔
+  `workspaces` one gone); `@symbiote/core` exports the same 432 names.
+- Timings against the baseline: `pnpm check` 105.4 → 109.6 s (+4.0 %), the three long CLI test
+  files +2.1 % to +7.5 %, e2e 200.7 → 205.9 s (+2.6 %), the build a second faster: within ±10 %.
