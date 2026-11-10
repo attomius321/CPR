@@ -2,8 +2,8 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v99-picks-land-readable.md)
 
-**Status:** planned (2026-11-10), to be built on branch `feature/v99-picks-land-readable` in its
-own workspace; written by the graph usability spike (`spike/graph-usability`). Not started.
+**Status:** built, ready for review (2026-11-11), on branch `feature/v99-picks-land-readable` (the
+workspace's, from `main` at 15fce4b); planned by the graph usability spike (`spike/graph-usability`).
 
 **Kind** feature (milestone) · **Branch** `feature/v99-picks-land-readable` · **Size** S ·
 **Depends on** none · **Rank** 1 of 12
@@ -91,3 +91,30 @@ Measured on the last 26 merges into `main` with code and an 84-graph sample
 |---|---|---|---|
 | 966 | A pick's zoom (amends 886) | **A pick whose name would be under 11 px on screen comes to the reading zoom; a readable pick in view moves nothing; a readable pick out of view pans at the person's zoom** | 5 of 26 merges open where a pick stays at 5–11 px; 886's framing kept where it reads |
 | 967 | The reading zoom | **The body size over the graph's 12 px name size, from Settings' Text size (1.17, 1.25, 1.33); the first fit, Focus and a group's reveal fit no closer than it** | The person reads 15 px; zoom 1 gave 12 px and ignored Text size |
+
+## As built
+
+Built as planned, decisions 966–967. Tests first: the unit tests and `e2e/pick.spec.ts` failed
+on `main`'s build for the right reasons, then passed.
+
+- **`readingZoom` and `pickView`** in `src/graph/mapzoom.ts`, beside `MAP_ZOOM`, with `NAME_PX`
+  (12). A unit test reads `ui/base.css` and `graph/SymbolNode.css`: a name is `--size-caption`,
+  12 px inside `.react-flow`, and the body is 14, 15 and 16 px for the three text sizes. The
+  zoom cannot drift from what is drawn unseen.
+- **The canvas** reads the text size (`useTextSize`): the reading zoom is the cap of every fit.
+  That covers the first fit (`FIT_OPTIONS` became `fitOptions`), Focus, a project's fit, a
+  group's reveal, and a file or frame clicked on the map. The plan's `:154` and `:166` were
+  those two map clicks, at 1.1 before. The pick's effect asks `pickView`. V93's `onMap` branch
+  is gone, because on the map (under 0.45) a name is under 5.4 px and already comes to the
+  reading zoom.
+- **One test changed with the behaviour**: `resize.spec.ts`, "the selection is in view again
+  once a resize ends". Its change (the `detectors` fixture) opens at 0.72, where names are 8.7 px.
+  The pick now comes to 1.25, where the card is 310 px wide. The panel dragged to its limit leaves
+  a 238 px canvas, so the card cannot be whole in it. The canvas centres it, and the test now
+  says so: whole when it fits, centred when it is wider than the canvas.
+- **Left as it was**: the zoom control's Fit the view (React Flow's own fit, up to 2×) is not in
+  the brief's list. A card wider than the canvas is centred, so its name's start can be cut on a
+  canvas narrowed to its 240 px minimum. On `main` this happened only from the map, at 1×.
+- **A text size changed in another tab** runs the canvas's view effect again. A picked symbol
+  moves only if its name is now unreadable or out of view. Focus and a group's reveal fit again
+  at the new cap.

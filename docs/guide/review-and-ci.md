@@ -67,9 +67,11 @@ its findings.
 
 Click a symbol, or press `j` and `k` to walk the change list. The detail panel opens beside the
 graph with the symbol's findings, its old and new signature, a diff of only that symbol, and the
-symbols that use it and that it uses, each with **Open ↗** to open it in VS Code. The graph moves
-only to bring the symbol into view, keeping its zoom; picked on the map, it comes to full size. To
-open the symbol in VS Code, press `o`. To open one line, Ctrl+click it.
+symbols that use it and that it uses, each with **Open ↗** to open it in VS Code. If the symbol's
+name would be drawn under 11 px, the graph zooms in until its names are at your text size: 15 px,
+or 14 and 16 with Settings' Compact and Large. Otherwise the graph moves only to bring the symbol
+into view, at your zoom. The graph opens fitted whole, and no closer than that zoom. To open the
+symbol in VS Code, press `o`. To open one line, Ctrl+click it.
 
 Large changes stay readable in three ways:
 

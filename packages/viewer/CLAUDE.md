@@ -45,7 +45,9 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   (V8e): view keys, the cache of recent layouts, numbered requests, the main-thread fallback.
   The worker is `new URL('./layout-worker.ts', import.meta.url)`: the two files move together.
 - `src/diff/App.tsx` — state, the page shown (Files first, Graph by `?view=graph`, `g` between
-  them; V60), the view to lay out, toolbar; `Canvas.tsx` the canvas (map mode, reveal/fit),
+  them; V60), the view to lay out, toolbar; `Canvas.tsx` the canvas (map mode, reveal/fit; a
+  pick's move, `pickView`, and every fit's cap, the reading zoom from Settings' text size,
+  `readingZoom` in `graph/mapzoom.ts`, V99),
   `CanvasCard.tsx` its card (the legend and the view's toggles), `DiffHead.tsx` the head's parts;
   `useDiffGraph.ts` the graph's loading and polling, `useReview.ts` marks and drafts,
   `useDiffKeys.ts` the keys.

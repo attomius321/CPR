@@ -169,8 +169,9 @@ to narrow the list: an entry's name, an agent's prompt, or a config key such as 
 - **This machine**: the **Skill library**, its folder or a repository to clone, and who commits its
   changes.
 - **Appearance**: dark, light or your system's theme, and the text size: Compact, Default or Large.
-  The text size changes the text and not the rows. Appearance also sets whether Git's commit details
-  show on the right or below the commits.
+  The text size changes the text and not the rows, and how close the graph zooms to a picked
+  symbol. Appearance also sets whether Git's commit details show on the right or below the
+  commits.
 
 The status bar at the bottom of every page shows, at the left, the checkout's branch and commit,
 how many things wait for you and how many agents work (in Hive mode: Hive on, the workspaces in

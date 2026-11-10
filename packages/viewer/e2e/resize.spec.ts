@@ -133,14 +133,14 @@ test('the selection is in view again once a resize ends', async ({ page }) => {
     .poll(async () => {
       const node = await selected.boundingBox();
       const view = await canvas(page).boundingBox();
-      return (
-        !!node &&
-        !!view &&
-        node.x >= view.x &&
-        node.x + node.width <= view.x + view.width &&
-        node.y >= view.y &&
-        node.y + node.height <= view.y + view.height
-      );
+      if (!node || !view) return false;
+      // Picked at the reading zoom (V99: this change opens at 0.72), the card is 310 px: wider
+      // than the narrowest canvas, 240 px, it is centred in it.
+      const across =
+        node.width <= view.width
+          ? node.x >= view.x && node.x + node.width <= view.x + view.width
+          : Math.abs(node.x + node.width / 2 - (view.x + view.width / 2)) <= 2;
+      return across && node.y >= view.y && node.y + node.height <= view.y + view.height;
     })
     .toBe(true);
 });
