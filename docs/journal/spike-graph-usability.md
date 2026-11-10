@@ -63,6 +63,10 @@ briefs and 40 screenshots (20 problems, both themes, 1x at 2560 × 1440) are in
 
 fix-code-point-order and fix-graph-file-check are not about reviewing and stay as planned.
 
+At the person's ask, each item became a plan: V99–V109 in `docs/plan/` (decisions 966–986 proposed),
+item 10 being V96 as planned, each with a journal entry of what the spike measured. V100 includes
+fix-finding-counts.
+
 **Verification**: each number comes from a script in `spikes/graph-usability/walk/` on the runs
 above, with its output in `spikes/graph-usability/data/`. `scripts/viewer/interactions.mjs` ran
 3 rounds on the five graphs. Every problem was seen in a screenshot in both themes. `git diff

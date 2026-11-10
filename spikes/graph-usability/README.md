@@ -83,6 +83,20 @@ sizes). Ranked by impact for its cost.
 | 11 | [One review progress](#11-one-review-progress-m) | G10 | anyone who marks: 2 reviews in 169 | M | — |
 | 12 | [Open the graph on the riskiest finding](#12-open-the-graph-on-the-riskiest-finding-m) | G1 | 24 of 26 merges | M | amends V93's first view |
 
+Each item has a plan in `docs/plan/`:
+[V99](../../docs/plan/v99-picks-land-readable.md) (1),
+[V100](../../docs/plan/v100-findings-where-you-look.md) (2),
+[V101](../../docs/plan/v101-links-a-finding-is-about.md) (3),
+[V102](../../docs/plan/v102-files-by-risk.md) (4),
+[V103](../../docs/plan/v103-panel-code-whole.md) (5),
+[V104](../../docs/plan/v104-graph-files-follow.md) (6),
+[V105](../../docs/plan/v105-stylesheet-cards.md) (7),
+[V106](../../docs/plan/v106-change-louder-than-context.md) (8),
+[V107](../../docs/plan/v107-back-in-the-panel.md) (9),
+[V96](../../docs/plan/v96-map-labels.md) (10, as planned),
+[V108](../../docs/plan/v108-one-review-progress.md) (11) and
+[V109](../../docs/plan/v109-open-on-the-risk.md) (12).
+
 Items 1–3 together take a review from "pick, then zoom 6–21 notches, then guess the links" to
 "pick, read, see who is affected". Add item 9 for the way back, and the walks' model puts
 "follow callers" at about 4 s instead of 10.7–15.3 s. There is no wheel, no Focus round trip and no
