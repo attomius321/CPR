@@ -1,0 +1,380 @@
+{
+ "change": "bitwarden",
+ "facts": {
+  "files": [
+   "Show the changes to apps/desktop/src/vault/app/vault-v3/vault-items/vault-cipher-row.component.html",
+   "Show the changes to apps/desktop/src/vault/app/vault-v3/vault-items/vault-cipher-row.component.spec.ts",
+   "Show the changes to apps/desktop/src/vault/app/vault-v3/vault-items/vault-cipher-row.component.ts",
+   "Show the changes to apps/desktop/src/vault/app/vault-v3/vault-items/vault-collection-row.component.html",
+   "Show the changes to apps/desktop/src/vault/app/vault-v3/vault-items/vault-collection-row.component.ts",
+   "Show the changes to apps/desktop/src/vault/app/vault-v3/vault-list.component.html",
+   "Show the changes to apps/desktop/src/vault/app/vault-v3/vault-list.component.ts",
+   "Show the changes to apps/desktop/src/vault/app/vault-v3/vault.component.html",
+   "Show the changes to apps/desktop/src/vault/app/vault-v3/vault.component.ts",
+   "Show the changes to apps/web/src/app/admin-console/organizations/collections/bulk-collections-dialog/bulk-collections-dialog.component.spec.ts",
+   "Show the changes to apps/web/src/app/admin-console/organizations/collections/bulk-collections-dialog/bulk-collections-dialog.component.ts",
+   "Show the changes to apps/web/src/app/admin-console/organizations/collections/services/vault-collection-actions.service.spec.ts",
+   "Show the changes to apps/web/src/app/admin-console/organizations/collections/services/vault-collection-actions.service.ts",
+   "Show the changes to apps/web/src/app/admin-console/organizations/collections/vault.component.html",
+   "Show the changes to apps/web/src/app/admin-console/organizations/collections/vault.component.ts",
+   "Show the changes to apps/web/src/app/vault/components/vault-items/vault-item-event.ts",
+   "Show the changes to apps/web/src/app/vault/components/vault-items/vault-items.component.html",
+   "Show the changes to apps/web/src/app/vault/components/vault-items/vault-items.component.spec.ts",
+   "Show the changes to apps/web/src/app/vault/components/vault-items/vault-items.component.ts",
+   "Show the changes to apps/web/src/app/vault/components/vault-items/vault-items.stories.ts",
+   "Show the changes to apps/web/src/app/vault/individual-vault/bulk-action-dialogs/bulk-delete-dialog-web.adapter.ts",
+   "Show the changes to apps/web/src/app/vault/individual-vault/vault.component.html",
+   "Show the changes to apps/web/src/app/vault/individual-vault/vault.component.spec.ts",
+   "Show the changes to apps/web/src/app/vault/individual-vault/vault.component.ts",
+   "Show the changes to libs/common/src/enums/feature-flag.enum.ts",
+   "Show the changes to libs/vault/src/components/assign-collections.component.spec.ts",
+   "Show the changes to libs/vault/src/components/assign-collections.component.ts",
+   "Show the changes to libs/vault/src/components/vault-item-event.ts",
+   "Show the changes to libs/vault/src/components/vault-items-table/vault-items-table.stories.ts",
+   "Show the changes to libs/vault/src/services/vault-batch-bar.service.spec.ts",
+   "Show the changes to libs/vault/src/services/vault-batch-bar.service.ts"
+  ],
+  "firstFileShown": "apps/desktop/src/vault/app/vault-v3/vault-items/vault-cipher-row.component.htmlmodified+9 −111 of 31Open in VS Codeo",
+  "headPills": [
+   "7 warnings"
+  ],
+  "fit": {
+   "zoom": 0.202081,
+   "map": true,
+   "pane": {
+    "w": 2154,
+    "h": 1296
+   },
+   "drawn": {
+    "symbols": 174,
+    "changed": 86,
+    "context": 88,
+    "summaries": 29,
+    "files": 60,
+    "frames": 6,
+    "edges": 135,
+    "findingCounts": 8
+   },
+   "nameFontPx": 12,
+   "fileFontPx": 11,
+   "namesCut": 5,
+   "namesShown": 174,
+   "filesCut": 50,
+   "filesShown": 120,
+   "layoutScreen": {
+    "w": 1525,
+    "h": 1180
+   },
+   "elements": 3236
+  },
+  "findingsTab": "Findings 9",
+  "findingsListed": 9,
+  "findingSeverities": [
+   "warning",
+   "warning",
+   "warning",
+   "warning",
+   "warning",
+   "warning",
+   "warning",
+   "info",
+   "info"
+  ],
+  "firstFinding": "AssignCollectionsComponent.constructor is public API and its new signature may break code outside the repoexported-api-changed@bitwarden/vault",
+  "selectedAfterPick": {
+   "x": 1108,
+   "y": 692,
+   "width": 380,
+   "height": 58,
+   "inView": true
+  },
+  "zoomAfterPick": 1,
+  "panelTitle": "constructorAssignCollectionsComponent.constructorModified@bitwarden/vault › src/components/assign-collections.component.ts · line 296 at 737ee3fsignatureOpen in VS Codeo",
+  "neighbourLists": [
+   {
+    "title": "Uses 7",
+    "links": 8
+   }
+  ],
+  "followed": "FormBuilder",
+  "callerOnCanvas": null,
+  "focus": {
+   "zoom": 1.1,
+   "map": false,
+   "pane": {
+    "w": 1810,
+    "h": 1296
+   },
+   "drawn": {
+    "symbols": 1,
+    "changed": 1,
+    "context": 0,
+    "summaries": 0,
+    "files": 1,
+    "frames": 0,
+    "edges": 0,
+    "findingCounts": 1
+   },
+   "nameFontPx": 12,
+   "fileFontPx": 11,
+   "namesCut": 0,
+   "namesShown": 1,
+   "filesCut": 1,
+   "filesShown": 2,
+   "layoutScreen": {
+    "w": 444,
+    "h": 110
+   },
+   "elements": 507
+  },
+  "zoomAfterFocusOffAndFit": 0.202081,
+  "zoomInNotches": 12,
+  "zoomedFrom": 1,
+  "afterZoomIn": {
+   "x": 1671.02587890625,
+   "y": 122.22206115722656,
+   "width": 405.3037109375,
+   "height": 61.86213684082031,
+   "inView": true
+  },
+  "excerpt": {
+   "rows": 10,
+   "cut": 8,
+   "firstChanged": "base:306",
+   "more": false,
+   "panelWidth": 336
+  },
+  "where": "@bitwarden/vault › src/components/assign-collections.component.ts · line 296 at 737ee3f",
+  "filesPageOpenedOn": "apps/desktop/src/vault/app/vault-v3/vault-items/vault-cipher-row.component.html",
+  "fileIndex": 26,
+  "fileListScrolls": 0,
+  "lineScrolls": 0,
+  "progressAfterOne": "1 of 86 changed symbols reviewedj / k next",
+  "progressWords": "1 of 86 changed symbols reviewedj / k next",
+  "changesTotal": "Changes 86",
+  "error": "TimeoutError: locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('tab', { name: /Review/ })\u001b[22m\n",
+  "pageErrors": []
+ },
+ "tasks": [
+  {
+   "name": "open the diff",
+   "ops": {
+    "click": 1,
+    "key": 0,
+    "type": 0,
+    "wheel": 0,
+    "pan": 0,
+    "switch": 0,
+    "read": 1
+   },
+   "waits": [
+    {
+     "label": "Files page (or the analysis steps) drawn",
+     "ms": 174
+    },
+    {
+     "label": "analysis done, graph ready",
+     "ms": 14
+    }
+   ],
+   "notes": [
+    {
+     "read": "the head: title, facts, pills"
+    }
+   ],
+   "wallMs": 313,
+   "klmSeconds": 2.8
+  },
+  {
+   "name": "find the riskiest change",
+   "ops": {
+    "click": 1,
+    "key": 1,
+    "type": 0,
+    "wheel": 0,
+    "pan": 0,
+    "switch": 1,
+    "read": 2
+   },
+   "waits": [
+    {
+     "label": "Graph page drawn",
+     "ms": 170
+    },
+    {
+     "label": "finding selected, panel drawn",
+     "ms": 66
+    }
+   ],
+   "notes": [
+    {
+     "read": "the findings list"
+    },
+    {
+     "read": "the finding in the panel"
+    }
+   ],
+   "zoom": 1,
+   "selected": {
+    "x": 1108,
+    "y": 692,
+    "width": 380,
+    "height": 58,
+    "inView": true
+   },
+   "wallMs": 1584,
+   "klmSeconds": 4.5
+  },
+  {
+   "name": "follow callers and callees",
+   "ops": {
+    "click": 4,
+    "key": 2,
+    "type": 0,
+    "wheel": 12,
+    "pan": 0,
+    "switch": 0,
+    "read": 2
+   },
+   "waits": [
+    {
+     "label": "a caller selected",
+     "ms": 46
+    },
+    {
+     "label": "Focus laid out and fitted",
+     "ms": 377
+    }
+   ],
+   "notes": [
+    {
+     "read": "used by / uses lists"
+    },
+    {
+     "read": "the caller in the panel"
+    },
+    {
+     "lost": "no back from a followed symbol: re-picked the finding"
+    }
+   ],
+   "zoomInNotches": 12,
+   "wallMs": 35337,
+   "klmSeconds": 12.5
+  },
+  {
+   "name": "read a finding, get to its code",
+   "ops": {
+    "click": 1,
+    "key": 1,
+    "type": 0,
+    "wheel": 0,
+    "pan": 0,
+    "switch": 1,
+    "read": 2
+   },
+   "waits": [
+    {
+     "label": "Files page drawn",
+     "ms": 49
+    },
+    {
+     "label": "the file's diff drawn",
+     "ms": 83
+    }
+   ],
+   "notes": [
+    {
+     "read": "the changed lines in the panel"
+    },
+    {
+     "read": "find the symbol's file in the list"
+    }
+   ],
+   "panelFile": "libs/vault/src/components/assign-collections.component.ts",
+   "symbolLine": 296,
+   "wallMs": 244,
+   "klmSeconds": 4.4
+  },
+  {
+   "name": "leave a comment (Files: a line)",
+   "ops": {
+    "click": 0,
+    "key": 0,
+    "type": 0,
+    "wheel": 0,
+    "pan": 0,
+    "switch": 0,
+    "read": 0
+   },
+   "waits": [],
+   "notes": [
+    {
+     "lost": "no changed line to comment on in the first file"
+    }
+   ],
+   "wallMs": 1,
+   "klmSeconds": 0
+  },
+  {
+   "name": "leave a comment (Graph: the panel)",
+   "ops": {
+    "click": 0,
+    "key": 1,
+    "type": 0,
+    "wheel": 0,
+    "pan": 0,
+    "switch": 1,
+    "read": 0
+   },
+   "waits": [],
+   "notes": [
+    {
+     "lost": "no comment box in the panel"
+    }
+   ],
+   "wallMs": 10588,
+   "klmSeconds": 0.3
+  },
+  {
+   "name": "mark reviewed",
+   "ops": {
+    "click": 0,
+    "key": 1,
+    "type": 0,
+    "wheel": 0,
+    "pan": 0,
+    "switch": 0,
+    "read": 0
+   },
+   "waits": [
+    {
+     "label": "progress updated",
+     "ms": 19
+    }
+   ],
+   "notes": [],
+   "wallMs": 23,
+   "klmSeconds": 0.3
+  },
+  {
+   "name": "know when you are done",
+   "ops": {
+    "click": 0,
+    "key": 0,
+    "type": 0,
+    "wheel": 0,
+    "pan": 0,
+    "switch": 0,
+    "read": 1
+   },
+   "waits": [],
+   "notes": [
+    {
+     "read": "the progress line"
+    }
+   ],
+   "started": 1794342929165,
+   "klmSeconds": 1.4
+  }
+ ]
+}

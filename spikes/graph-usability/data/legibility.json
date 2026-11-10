@@ -1,0 +1,246 @@
+{
+ "dark/default": {
+  "body text (sidebar finding)": {
+   "px": 14,
+   "weight": "500",
+   "contrast": 16.69
+  },
+  "changed symbol: name": {
+   "px": 12,
+   "weight": "600",
+   "contrast": 16.69
+  },
+  "changed symbol: kind": {
+   "px": 11,
+   "weight": "500",
+   "contrast": 8.18
+  },
+  "changed symbol: signature line": {
+   "px": 11,
+   "weight": "400",
+   "contrast": 8.18
+  },
+  "unchanged symbol: name": {
+   "px": 12,
+   "weight": "500",
+   "contrast": 8.51
+  },
+  "unchanged symbol: \"unchanged\"": {
+   "px": 11,
+   "weight": "400",
+   "contrast": 8.51
+  },
+  "file box: path": {
+   "px": 15,
+   "weight": "400",
+   "contrast": 17.36
+  },
+  "summary: count": {
+   "px": 15,
+   "weight": "400",
+   "contrast": 17.36
+  },
+  "frame: name": {
+   "px": 15,
+   "weight": "400",
+   "contrast": 17.36
+  },
+  "finding count on a node": {
+   "px": 11,
+   "weight": "600",
+   "contrast": 9.44
+  },
+  "legend": {
+   "px": 15,
+   "weight": "400",
+   "contrast": 17.36
+  },
+  "edge (call)": {
+   "width": "1.5px",
+   "contrast": null
+  }
+ },
+ "dark/large": {
+  "body text (sidebar finding)": {
+   "px": 15,
+   "weight": "500",
+   "contrast": 16.69
+  },
+  "changed symbol: name": {
+   "px": 12,
+   "weight": "600",
+   "contrast": 16.69
+  },
+  "changed symbol: kind": {
+   "px": 11,
+   "weight": "500",
+   "contrast": 8.18
+  },
+  "changed symbol: signature line": {
+   "px": 11,
+   "weight": "400",
+   "contrast": 8.18
+  },
+  "unchanged symbol: name": {
+   "px": 12,
+   "weight": "500",
+   "contrast": 8.51
+  },
+  "unchanged symbol: \"unchanged\"": {
+   "px": 11,
+   "weight": "400",
+   "contrast": 8.51
+  },
+  "file box: path": {
+   "px": 16,
+   "weight": "400",
+   "contrast": 17.36
+  },
+  "summary: count": {
+   "px": 16,
+   "weight": "400",
+   "contrast": 17.36
+  },
+  "frame: name": {
+   "px": 16,
+   "weight": "400",
+   "contrast": 17.36
+  },
+  "finding count on a node": {
+   "px": 11,
+   "weight": "600",
+   "contrast": 9.44
+  },
+  "legend": {
+   "px": 16,
+   "weight": "400",
+   "contrast": 17.36
+  },
+  "edge (call)": {
+   "width": "1.5px",
+   "contrast": null
+  }
+ },
+ "light/default": {
+  "body text (sidebar finding)": {
+   "px": 14,
+   "weight": "500",
+   "contrast": 18.51
+  },
+  "changed symbol: name": {
+   "px": 12,
+   "weight": "600",
+   "contrast": 18.51
+  },
+  "changed symbol: kind": {
+   "px": 11,
+   "weight": "500",
+   "contrast": 6.71
+  },
+  "changed symbol: signature line": {
+   "px": 11,
+   "weight": "400",
+   "contrast": 6.71
+  },
+  "unchanged symbol: name": {
+   "px": 12,
+   "weight": "500",
+   "contrast": 6.1
+  },
+  "unchanged symbol: \"unchanged\"": {
+   "px": 11,
+   "weight": "400",
+   "contrast": 6.1
+  },
+  "file box: path": {
+   "px": 15,
+   "weight": "400",
+   "contrast": 16.83
+  },
+  "summary: count": {
+   "px": 15,
+   "weight": "400",
+   "contrast": 16.83
+  },
+  "frame: name": {
+   "px": 15,
+   "weight": "400",
+   "contrast": 16.83
+  },
+  "finding count on a node": {
+   "px": 11,
+   "weight": "600",
+   "contrast": 5.54
+  },
+  "legend": {
+   "px": 15,
+   "weight": "400",
+   "contrast": 16.83
+  },
+  "edge (call)": {
+   "width": "1.5px",
+   "contrast": null
+  }
+ },
+ "light/large": {
+  "body text (sidebar finding)": {
+   "px": 15,
+   "weight": "500",
+   "contrast": 18.51
+  },
+  "changed symbol: name": {
+   "px": 12,
+   "weight": "600",
+   "contrast": 18.51
+  },
+  "changed symbol: kind": {
+   "px": 11,
+   "weight": "500",
+   "contrast": 6.71
+  },
+  "changed symbol: signature line": {
+   "px": 11,
+   "weight": "400",
+   "contrast": 6.71
+  },
+  "unchanged symbol: name": {
+   "px": 12,
+   "weight": "500",
+   "contrast": 6.1
+  },
+  "unchanged symbol: \"unchanged\"": {
+   "px": 11,
+   "weight": "400",
+   "contrast": 6.1
+  },
+  "file box: path": {
+   "px": 16,
+   "weight": "400",
+   "contrast": 16.83
+  },
+  "summary: count": {
+   "px": 16,
+   "weight": "400",
+   "contrast": 16.83
+  },
+  "frame: name": {
+   "px": 16,
+   "weight": "400",
+   "contrast": 16.83
+  },
+  "finding count on a node": {
+   "px": 11,
+   "weight": "600",
+   "contrast": 5.54
+  },
+  "legend": {
+   "px": 16,
+   "weight": "400",
+   "contrast": 16.83
+  },
+  "edge (call)": {
+   "width": "1.5px",
+   "contrast": null
+  }
+ }
+}

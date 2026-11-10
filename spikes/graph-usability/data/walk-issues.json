@@ -1,0 +1,413 @@
+{
+ "change": "issues",
+ "facts": {
+  "files": [
+   "Show the changes to CLAUDE.md",
+   "Show the changes to README.md",
+   "Show the changes to docs/JOURNAL.md",
+   "Show the changes to docs/PLAN.md",
+   "Show the changes to docs/guide/pages.md",
+   "Show the changes to docs/guide/review-and-ci.md",
+   "Show the changes to docs/journal/is1-issues-page.md",
+   "Show the changes to docs/plan/is1-issues-page.md",
+   "Show the changes to docs/reference/commands.md",
+   "Show the changes to packages/cli/src/hive-request.ts",
+   "Show the changes to packages/cli/src/issues.ts",
+   "Show the changes to packages/cli/src/main.ts",
+   "Show the changes to packages/cli/src/server.ts",
+   "Show the changes to packages/cli/test/hive-request.test.ts",
+   "Show the changes to packages/cli/test/issues.test.ts",
+   "Show the changes to packages/cli/test/server.test.ts",
+   "Show the changes to packages/core/src/index.ts",
+   "Show the changes to packages/core/src/issues.ts",
+   "Show the changes to packages/forge/package.json",
+   "Show the changes to packages/forge/src/github.ts",
+   "Show the changes to packages/forge/src/gitlab.ts",
+   "Show the changes to packages/forge/src/http.ts",
+   "Show the changes to packages/forge/src/index.ts",
+   "Show the changes to packages/forge/src/issues.ts",
+   "Show the changes to packages/forge/src/types.ts",
+   "Show the changes to packages/forge/test/fake-forge.ts",
+   "Show the changes to packages/forge/test/fixtures/issues/github-comments.json",
+   "Show the changes to packages/forge/test/fixtures/issues/github-issue.json",
+   "Show the changes to packages/forge/test/fixtures/issues/github-issues.json",
+   "Show the changes to packages/forge/test/fixtures/issues/gitlab-issue.json",
+   "Show the changes to packages/forge/test/fixtures/issues/gitlab-issues.json",
+   "Show the changes to packages/forge/test/fixtures/issues/gitlab-notes.json",
+   "Show the changes to packages/forge/test/issues.test.ts",
+   "Show the changes to packages/forge/test/mock-api.ts",
+   "Show the changes to packages/viewer/CLAUDE.md",
+   "Show the changes to packages/viewer/e2e/issues.spec.ts",
+   "Show the changes to packages/viewer/e2e/page-frame.spec.ts",
+   "Show the changes to packages/viewer/e2e/shell.spec.ts",
+   "Show the changes to packages/viewer/e2e/targets.spec.ts",
+   "Show the changes to packages/viewer/e2e/title-bar.spec.ts",
+   "Show the changes to packages/viewer/e2e/tooltips.spec.ts",
+   "Show the changes to packages/viewer/e2e/workspace-history.spec.ts",
+   "Show the changes to packages/viewer/src/issues/IssuesPage.css",
+   "Show the changes to packages/viewer/src/issues/IssuesPage.tsx",
+   "Show the changes to packages/viewer/src/issues/issue-text.ts",
+   "Show the changes to packages/viewer/src/issues/issues.ts",
+   "Show the changes to packages/viewer/src/shell/Shell.tsx",
+   "Show the changes to packages/viewer/src/shell/Sidenav.tsx",
+   "Show the changes to packages/viewer/src/shell/pages.ts",
+   "Show the changes to packages/viewer/src/styles.css",
+   "Show the changes to packages/viewer/src/ui/icons.tsx",
+   "Show the changes to packages/viewer/src/ui/widths.ts",
+   "Show the changes to packages/viewer/test/issue-text.test.ts",
+   "Show the changes to packages/viewer/test/issues.test.ts",
+   "Show the changes to packages/viewer/test/pages.test.ts"
+  ],
+  "firstFileShown": "CLAUDE.mdmodified+1 −11 of 55Open in VS CodeoViewed",
+  "headPills": [
+   "1 warning"
+  ],
+  "fit": {
+   "zoom": 0.157009,
+   "map": true,
+   "pane": {
+    "w": 2154,
+    "h": 1296
+   },
+   "drawn": {
+    "symbols": 349,
+    "changed": 212,
+    "context": 137,
+    "summaries": 24,
+    "files": 59,
+    "frames": 5,
+    "edges": 100,
+    "findingCounts": 8
+   },
+   "nameFontPx": 12,
+   "fileFontPx": 11,
+   "namesCut": 6,
+   "namesShown": 349,
+   "filesCut": 37,
+   "filesShown": 118,
+   "layoutScreen": {
+    "w": 1309,
+    "h": 1180
+   },
+   "elements": 4806
+  },
+  "findingsTab": "Findings 8",
+  "findingsListed": 8,
+  "findingSeverities": [
+   "warning",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info"
+  ],
+  "firstFinding": "Route changed its signature; 8 of 12 users not updated: DiffShell, TransitionNotices, WindowTitle, routeHere, sameRoute and 3 moresignature-changed@symbiote/viewer",
+  "selectedAfterPick": {
+   "x": 1208,
+   "y": 692,
+   "width": 180,
+   "height": 58,
+   "inView": true
+  },
+  "zoomAfterPick": 1,
+  "panelTitle": "typeRouteModified@symbiote/viewer › src/shell/pages.ts · line 10 at 6102055signatureOpen in VS Codeo",
+  "neighbourLists": [
+   {
+    "title": "Used by 12",
+    "links": 12
+   }
+  ],
+  "followed": "DiffShell",
+  "callerOnCanvas": {
+   "x": 1179.5,
+   "y": 692,
+   "width": 237,
+   "height": 58,
+   "inView": true
+  },
+  "focus": {
+   "zoom": 1.1,
+   "map": false,
+   "pane": {
+    "w": 1810,
+    "h": 1296
+   },
+   "drawn": {
+    "symbols": 10,
+    "changed": 5,
+    "context": 5,
+    "summaries": 0,
+    "files": 3,
+    "frames": 0,
+    "edges": 11,
+    "findingCounts": 1
+   },
+   "nameFontPx": 12,
+   "fileFontPx": 11,
+   "namesCut": 0,
+   "namesShown": 10,
+   "filesCut": 1,
+   "filesShown": 6,
+   "layoutScreen": {
+    "w": 1032,
+    "h": 484
+   },
+   "elements": 811
+  },
+  "zoomAfterFocusOffAndFit": 0.157009,
+  "zoomInNotches": 14,
+  "zoomedFrom": 1,
+  "afterZoomIn": {
+   "x": 1728.875,
+   "y": 544.876953125,
+   "width": 196.82470703125,
+   "height": 63.42138671875,
+   "inView": true
+  },
+  "excerpt": {
+   "rows": 29,
+   "cut": 20,
+   "firstChanged": "head:21",
+   "more": false,
+   "panelWidth": 336
+  },
+  "where": "@symbiote/viewer › src/shell/pages.ts · line 10 at 6102055",
+  "filesPageOpenedOn": "CLAUDE.md",
+  "fileIndex": 48,
+  "fileListScrolls": 1,
+  "lineScrolls": 0,
+  "progressAfterOne": "1 of 212 changed symbols reviewedj / k next",
+  "progressWords": "1 of 212 changed symbols reviewedj / k next",
+  "changesTotal": "Changes 212",
+  "pageErrors": []
+ },
+ "tasks": [
+  {
+   "name": "open the diff",
+   "ops": {
+    "click": 1,
+    "key": 0,
+    "type": 0,
+    "wheel": 0,
+    "pan": 0,
+    "switch": 0,
+    "read": 1
+   },
+   "waits": [
+    {
+     "label": "Files page (or the analysis steps) drawn",
+     "ms": 230
+    },
+    {
+     "label": "analysis done, graph ready",
+     "ms": 6525
+    }
+   ],
+   "notes": [
+    {
+     "read": "the head: title, facts, pills"
+    }
+   ],
+   "wallMs": 6915,
+   "klmSeconds": 9.4
+  },
+  {
+   "name": "find the riskiest change",
+   "ops": {
+    "click": 1,
+    "key": 1,
+    "type": 0,
+    "wheel": 0,
+    "pan": 0,
+    "switch": 1,
+    "read": 2
+   },
+   "waits": [
+    {
+     "label": "Graph page drawn",
+     "ms": 215
+    },
+    {
+     "label": "finding selected, panel drawn",
+     "ms": 82
+    }
+   ],
+   "notes": [
+    {
+     "read": "the findings list"
+    },
+    {
+     "read": "the finding in the panel"
+    }
+   ],
+   "zoom": 1,
+   "selected": {
+    "x": 1208,
+    "y": 692,
+    "width": 180,
+    "height": 58,
+    "inView": true
+   },
+   "wallMs": 1657,
+   "klmSeconds": 4.6
+  },
+  {
+   "name": "follow callers and callees",
+   "ops": {
+    "click": 4,
+    "key": 2,
+    "type": 0,
+    "wheel": 14,
+    "pan": 0,
+    "switch": 0,
+    "read": 2
+   },
+   "waits": [
+    {
+     "label": "a caller selected",
+     "ms": 68
+    },
+    {
+     "label": "Focus laid out and fitted",
+     "ms": 387
+    }
+   ],
+   "notes": [
+    {
+     "read": "used by / uses lists"
+    },
+    {
+     "read": "the caller in the panel"
+    },
+    {
+     "lost": "no back from a followed symbol: re-picked the finding"
+    }
+   ],
+   "zoomInNotches": 14,
+   "wallMs": 5672,
+   "klmSeconds": 13.1
+  },
+  {
+   "name": "read a finding, get to its code",
+   "ops": {
+    "click": 1,
+    "key": 1,
+    "type": 0,
+    "wheel": 1,
+    "pan": 0,
+    "switch": 1,
+    "read": 2
+   },
+   "waits": [
+    {
+     "label": "Files page drawn",
+     "ms": 79
+    },
+    {
+     "label": "the file's diff drawn",
+     "ms": 99
+    }
+   ],
+   "notes": [
+    {
+     "read": "the changed lines in the panel"
+    },
+    {
+     "read": "find the symbol's file in the list"
+    }
+   ],
+   "panelFile": "packages/viewer/src/shell/pages.ts",
+   "symbolLine": 10,
+   "wallMs": 403,
+   "klmSeconds": 4.8
+  },
+  {
+   "name": "leave a comment (Files: a line)",
+   "ops": {
+    "click": 1,
+    "key": 1,
+    "type": 33,
+    "wheel": 0,
+    "pan": 0,
+    "switch": 0,
+    "read": 0
+   },
+   "waits": [
+    {
+     "label": "comment drafted",
+     "ms": 209
+    }
+   ],
+   "notes": [],
+   "wallMs": 421,
+   "klmSeconds": 11
+  },
+  {
+   "name": "leave a comment (Graph: the panel)",
+   "ops": {
+    "click": 0,
+    "key": 4,
+    "type": 33,
+    "wheel": 0,
+    "pan": 0,
+    "switch": 1,
+    "read": 0
+   },
+   "waits": [
+    {
+     "label": "comment drafted",
+     "ms": 216
+    }
+   ],
+   "notes": [],
+   "wallMs": 1098,
+   "klmSeconds": 10.6
+  },
+  {
+   "name": "mark reviewed",
+   "ops": {
+    "click": 0,
+    "key": 1,
+    "type": 0,
+    "wheel": 0,
+    "pan": 0,
+    "switch": 0,
+    "read": 0
+   },
+   "waits": [
+    {
+     "label": "progress updated",
+     "ms": 10
+    }
+   ],
+   "notes": [],
+   "wallMs": 20,
+   "klmSeconds": 0.3
+  },
+  {
+   "name": "know when you are done",
+   "ops": {
+    "click": 1,
+    "key": 0,
+    "type": 0,
+    "wheel": 0,
+    "pan": 0,
+    "switch": 0,
+    "read": 2
+   },
+   "waits": [],
+   "notes": [
+    {
+     "read": "the progress line"
+    },
+    {
+     "read": "the review tab"
+    }
+   ],
+   "wallMs": 190,
+   "klmSeconds": 4
+  }
+ ]
+}

@@ -1,0 +1,372 @@
+{
+ "change": "flakes",
+ "facts": {
+  "files": [
+   "Show the changes to docs/JOURNAL.md",
+   "Show the changes to docs/PLAN.md",
+   "Show the changes to docs/area/merger.md",
+   "Show the changes to docs/journal/fix-e2e-flakes.md",
+   "Show the changes to packages/cli/src/command-view.ts",
+   "Show the changes to packages/cli/src/merge-context.ts",
+   "Show the changes to packages/cli/src/merges.ts",
+   "Show the changes to packages/cli/src/workspace-agent.ts",
+   "Show the changes to packages/cli/src/workspace-context.ts",
+   "Show the changes to packages/cli/src/workspace-launches.ts",
+   "Show the changes to packages/cli/src/workspace-summary.ts",
+   "Show the changes to packages/cli/src/workspaces.ts",
+   "Show the changes to packages/cli/test/merges.test.ts",
+   "Show the changes to packages/cli/test/workspaces.test.ts",
+   "Show the changes to packages/viewer/e2e/shell.spec.ts",
+   "Show the changes to packages/viewer/e2e/symbiote.ts",
+   "Show the changes to packages/viewer/e2e/workspaces.spec.ts",
+   "Show the changes to packages/viewer/src/workspaces/useWorkspaces.ts"
+  ],
+  "firstFileShown": "docs/JOURNAL.mdmodified+1 −4461 of 18Open in VS CodeoViewed",
+  "headPills": [],
+  "fit": {
+   "zoom": 0.484699,
+   "map": false,
+   "pane": {
+    "w": 2154,
+    "h": 1296
+   },
+   "drawn": {
+    "symbols": 45,
+    "changed": 19,
+    "context": 26,
+    "summaries": 10,
+    "files": 19,
+    "frames": 2,
+    "edges": 68,
+    "findingCounts": 6
+   },
+   "nameFontPx": 12,
+   "fileFontPx": 11,
+   "namesCut": 0,
+   "namesShown": 45,
+   "filesCut": 0,
+   "filesShown": 38,
+   "layoutScreen": {
+    "w": 1379,
+    "h": 1180
+   },
+   "elements": 1277
+  },
+  "findingsTab": "Findings 6",
+  "findingsListed": 6,
+  "findingSeverities": [
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info"
+  ],
+  "firstFinding": "MergerOptions changed its signature compatibly; existing users keep working (1 user, 0 untouched)signature-changed@symbiote/cli",
+  "selectedAfterPick": {
+   "x": 1176.9993896484375,
+   "y": 1267.3770751953125,
+   "width": 137.654541015625,
+   "height": 28.112548828125,
+   "inView": true
+  },
+  "zoomAfterPick": 0.484699,
+  "panelTitle": "interfaceMergerOptionsModified@symbiote/cli › src/merge-context.ts · line 49 at 0c87309signatureOpen in VS Codeo",
+  "neighbourLists": [
+   {
+    "title": "Used by 1",
+    "links": 8
+   }
+  ],
+  "followed": "merger",
+  "callerOnCanvas": {
+   "x": 1736.34228515625,
+   "y": 1180.1312255859375,
+   "width": 101.302001953125,
+   "height": 28.112548828125,
+   "inView": true
+  },
+  "focus": {
+   "zoom": 1.1,
+   "map": false,
+   "pane": {
+    "w": 1810,
+    "h": 1296
+   },
+   "drawn": {
+    "symbols": 2,
+    "changed": 2,
+    "context": 0,
+    "summaries": 0,
+    "files": 2,
+    "frames": 0,
+    "edges": 0,
+    "findingCounts": 2
+   },
+   "nameFontPx": 12,
+   "fileFontPx": 11,
+   "namesCut": 0,
+   "namesShown": 2,
+   "filesCut": 0,
+   "filesShown": 4,
+   "layoutScreen": {
+    "w": 339,
+    "h": 308
+   },
+   "elements": 605
+  },
+  "zoomAfterFocusOffAndFit": 0.484699,
+  "zoomInNotches": 6,
+  "zoomedFrom": 0.484699,
+  "afterZoomIn": {
+   "x": 916.775634765625,
+   "y": 1249.70263671875,
+   "width": 316.2470703125,
+   "height": 64.585693359375,
+   "inView": true
+  },
+  "excerpt": {
+   "rows": 21,
+   "cut": 15,
+   "firstChanged": "head:64",
+   "more": false,
+   "panelWidth": 336
+  },
+  "where": "@symbiote/cli › src/merge-context.ts · line 49 at 0c87309",
+  "filesPageOpenedOn": "docs/JOURNAL.md",
+  "fileIndex": 5,
+  "fileListScrolls": 0,
+  "lineScrolls": 0,
+  "progressAfterOne": "18 of 19 changed symbols reviewedj / k next",
+  "progressWords": "18 of 19 changed symbols reviewedj / k next",
+  "changesTotal": "Changes 19",
+  "pageErrors": []
+ },
+ "tasks": [
+  {
+   "name": "open the diff",
+   "ops": {
+    "click": 1,
+    "key": 0,
+    "type": 0,
+    "wheel": 0,
+    "pan": 0,
+    "switch": 0,
+    "read": 1
+   },
+   "waits": [
+    {
+     "label": "Files page (or the analysis steps) drawn",
+     "ms": 167
+    },
+    {
+     "label": "analysis done, graph ready",
+     "ms": 21
+    }
+   ],
+   "notes": [
+    {
+     "read": "the head: title, facts, pills"
+    }
+   ],
+   "wallMs": 377,
+   "klmSeconds": 2.8
+  },
+  {
+   "name": "find the riskiest change",
+   "ops": {
+    "click": 1,
+    "key": 1,
+    "type": 0,
+    "wheel": 0,
+    "pan": 0,
+    "switch": 1,
+    "read": 2
+   },
+   "waits": [
+    {
+     "label": "Graph page drawn",
+     "ms": 73
+    },
+    {
+     "label": "finding selected, panel drawn",
+     "ms": 79
+    }
+   ],
+   "notes": [
+    {
+     "read": "the findings list"
+    },
+    {
+     "read": "the finding in the panel"
+    }
+   ],
+   "zoom": 0.484699,
+   "selected": {
+    "x": 1176.9993896484375,
+    "y": 1267.3770751953125,
+    "width": 137.654541015625,
+    "height": 28.112548828125,
+    "inView": true
+   },
+   "wallMs": 1503,
+   "klmSeconds": 4.4
+  },
+  {
+   "name": "follow callers and callees",
+   "ops": {
+    "click": 4,
+    "key": 2,
+    "type": 0,
+    "wheel": 6,
+    "pan": 0,
+    "switch": 0,
+    "read": 2
+   },
+   "waits": [
+    {
+     "label": "a caller selected",
+     "ms": 62
+    },
+    {
+     "label": "Focus laid out and fitted",
+     "ms": 375
+    }
+   ],
+   "notes": [
+    {
+     "read": "used by / uses lists"
+    },
+    {
+     "read": "the caller in the panel"
+    },
+    {
+     "lost": "no back from a followed symbol: re-picked the finding"
+    }
+   ],
+   "zoomInNotches": 6,
+   "wallMs": 4695,
+   "klmSeconds": 10.7
+  },
+  {
+   "name": "read a finding, get to its code",
+   "ops": {
+    "click": 1,
+    "key": 1,
+    "type": 0,
+    "wheel": 0,
+    "pan": 0,
+    "switch": 1,
+    "read": 2
+   },
+   "waits": [
+    {
+     "label": "Files page drawn",
+     "ms": 82
+    },
+    {
+     "label": "the file's diff drawn",
+     "ms": 83
+    }
+   ],
+   "notes": [
+    {
+     "read": "the changed lines in the panel"
+    },
+    {
+     "read": "find the symbol's file in the list"
+    }
+   ],
+   "panelFile": "packages/cli/src/merge-context.ts",
+   "symbolLine": 49,
+   "wallMs": 279,
+   "klmSeconds": 4.4
+  },
+  {
+   "name": "leave a comment (Files: a line)",
+   "ops": {
+    "click": 1,
+    "key": 1,
+    "type": 33,
+    "wheel": 0,
+    "pan": 0,
+    "switch": 0,
+    "read": 0
+   },
+   "waits": [
+    {
+     "label": "comment drafted",
+     "ms": 207
+    }
+   ],
+   "notes": [],
+   "wallMs": 368,
+   "klmSeconds": 11
+  },
+  {
+   "name": "leave a comment (Graph: the panel)",
+   "ops": {
+    "click": 0,
+    "key": 4,
+    "type": 33,
+    "wheel": 0,
+    "pan": 0,
+    "switch": 1,
+    "read": 0
+   },
+   "waits": [
+    {
+     "label": "comment drafted",
+     "ms": 207
+    }
+   ],
+   "notes": [],
+   "wallMs": 933,
+   "klmSeconds": 10.6
+  },
+  {
+   "name": "mark reviewed",
+   "ops": {
+    "click": 0,
+    "key": 1,
+    "type": 0,
+    "wheel": 0,
+    "pan": 0,
+    "switch": 0,
+    "read": 0
+   },
+   "waits": [
+    {
+     "label": "progress updated",
+     "ms": 8
+    }
+   ],
+   "notes": [],
+   "wallMs": 13,
+   "klmSeconds": 0.3
+  },
+  {
+   "name": "know when you are done",
+   "ops": {
+    "click": 1,
+    "key": 0,
+    "type": 0,
+    "wheel": 0,
+    "pan": 0,
+    "switch": 0,
+    "read": 2
+   },
+   "waits": [],
+   "notes": [
+    {
+     "read": "the progress line"
+    },
+    {
+     "read": "the review tab"
+    }
+   ],
+   "wallMs": 165,
+   "klmSeconds": 4
+  }
+ ]
+}
