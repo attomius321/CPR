@@ -2333,3 +2333,43 @@ test('a fast-forward main can no longer take waits for you; Merge commit instead
   await expect(entry.locator('.merge-row-state')).toHaveText(/^Landed: main is at/, POLL);
   expect(git('log', '-1', '--format=%P', 'main')).toBe(`${moved} ${tip}`);
 });
+
+test("a page's own read after Land never puts back what the stream already moved on from (fix/e2e-flakes)", async ({
+  page,
+}) => {
+  const { branch } = await approvedWorkspace(page);
+  await page.goto(`${symbiote.url}?branch=${encodeURIComponent(branch)}`);
+  const here = panel(page, branch);
+  await here.getByLabel('How it lands').selectOption('fast-forward');
+  await here.getByRole('button', { name: 'Merge into', exact: true }).click();
+  const card = page.getByRole('region', { name: 'Merging' }).locator(`[data-merge="${branch}"]`);
+  await expect(card).toContainText('Not checked', POLL);
+  git('commit', '--allow-empty', '-qm', 'Main: moved');
+  await card.getByRole('link').click();
+  const entry = page.getByRole('region', { name: `Merge of ${branch}` });
+  const state = entry.locator('.merge-row-state');
+  const cannot = `Cannot fast-forward: main has 1 commit ${branch} does not. Merge with a merge commit, or bring main into the branch and review it again`;
+
+  // The page's own read after Land: answered while the merge is queued again, it arrives after
+  // the stream said it cannot fast-forward (under load, its read of the workspaces was slow).
+  let read: { states: string[]; given: Promise<void> } | undefined;
+  await page.route('**/api/merges', async (route) => {
+    if (read || route.request().method() !== 'GET') return route.continue();
+    let give = () => {};
+    read = { states: [], given: new Promise((resolve) => (give = resolve)) };
+    const response = await route.fetch();
+    const body = (await response.json()) as { merges: { branch: string; state: string }[] };
+    read.states = body.merges.filter((m) => m.branch === branch).map((m) => m.state);
+    await expect(state).toHaveText(cannot, POLL);
+    await route.fulfill({ response, json: body });
+    give();
+  });
+  await entry.getByRole('button', { name: 'Land', exact: true }).click();
+  await expect.poll(() => read !== undefined, POLL).toBe(true);
+  await read?.given;
+  expect(read?.states).toEqual(['queued']);
+  // What the page did with it is done; the state the stream sent stays.
+  await page.waitForTimeout(500);
+  await expect(state).toHaveText(cannot, { timeout: 1_000 });
+  await expect(entry.locator('.merge-label')).toHaveText('Needs you');
+});

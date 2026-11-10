@@ -373,6 +373,26 @@ describe('merging, checking and landing (V26a)', () => {
     await expect(m.failure(entry?.id ?? '')).rejects.toMatchObject({ status: 409 });
   });
 
+  it('says a drain its lock stopped, and merges at the next kick (fix/e2e-flakes)', async () => {
+    const { repo, shas } = setup();
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    config(repo, { checks: ['pnpm check'] });
+    const errors: unknown[] = [];
+    const m = await make(repo, fakeChecks().run, { onError: (error) => errors.push(error) });
+    // Its lock cannot be taken: a folder where the lock file goes.
+    const lock = join(cache, 'state', (await openRepo(repo.root)).id, 'merges.lock');
+    mkdirSync(lock, { recursive: true });
+    await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    expect(errors).toHaveLength(1);
+    expect((await m.list()).merges[0]?.state).toBe('queued');
+
+    rmSync(lock, { recursive: true });
+    await m.list();
+    await m.idle();
+    expect((await m.list()).merges[0]?.state).toBe('landed');
+  });
+
   it('runs a real check in the merge, through the shell', async () => {
     const { repo, shas } = setup();
     review(repo, 'topic', { head: shas.T, into: 'main' });

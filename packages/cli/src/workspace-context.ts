@@ -41,6 +41,7 @@ import { workspaceCodex } from './workspace-codex.js';
 import type { Terminals } from './terminal.js';
 import type { ReviewPlace } from './reviews.js';
 import type { ActivityExport, ExportFormat } from './activity-export.js';
+import type { WorkspaceLaunches } from './workspace-launches.js';
 
 /** What `symbiote/config.json` says of workspaces and their agent; anything unknown is ignored. */
 export interface WorkspaceConfig {
@@ -256,4 +257,6 @@ export interface WorkspacesContext extends WorkspacesOptions {
   attached: Map<string, Set<string>>;
   /** Each workspace's shells (V45), by branch: they live as long as `symbiote view`. */
   shellsByBranch: Map<string, { id: string; number: number }[]>;
+  /** The Claude Code agents this process is launching (fix/e2e-flakes). */
+  launches: WorkspaceLaunches;
 }

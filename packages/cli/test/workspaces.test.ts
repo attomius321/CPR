@@ -2366,6 +2366,48 @@ describe('workspaces', () => {
     expect(seen).toMatchObject({ branch: 'feature/one', worktree: workspace.worktree.path });
   });
 
+  it('lists an agent being started as at work: during its launch, and from a read that began before it ended (fix/e2e-flakes)', async () => {
+    const { repo } = fresh();
+    const { claude, listed, start } = fakeClaude();
+    let launched = () => {};
+    let starting = () => {};
+    const started = new Promise<void>((resolve) => (starting = resolve));
+    const s = await service(repo, claude);
+    // One at work already, as in the sidenav: the list reads Claude Code's sessions.
+    await s.start({ brief: 'Zero', branch: 'feature/zero', planFirst: true });
+    const launching = new Promise<void>((resolve) => (launched = resolve));
+    claude.start = async (request) => {
+      starting();
+      await launching;
+      return start(request);
+    };
+    const one = s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    await started;
+    const agentOf = async (list: ReturnType<typeof s.list>) =>
+      (await list).workspaces.find((w) => w.branch === 'feature/one')?.agent;
+
+    // Its record is there, its session not yet: being started, not "No agent".
+    expect(await agentOf(s.list())).toEqual({ state: 'working', kind: 'claude' });
+
+    // A read that began during the launch, its sessions read before the session was listed, ends
+    // after the launch: still being started, not "Not running".
+    const before = structuredClone(listed);
+    let answer: ((sessions: AgentSession[]) => void) | undefined;
+    claude.sessions = () => new Promise((resolve) => (answer = resolve));
+    const straddling = agentOf(s.list());
+    await vi.waitFor(() => expect(answer).toBeDefined());
+    claude.sessions = () => Promise.resolve(listed);
+    launched();
+    await one;
+    answer?.(before);
+    expect(await straddling).toEqual({ state: 'working', kind: 'claude' });
+
+    // Read after it: listed, at work; gone from the list, not running, as before.
+    expect(await agentOf(s.list())).toMatchObject({ state: 'working', id: 's1' });
+    claude.sessions = () => Promise.resolve([]);
+    expect(await agentOf(s.list())).toMatchObject({ state: 'not-running' });
+  });
+
   it('a reply continues the same session: a live one is stopped first, never resumed with a flag', async () => {
     const { repo } = fresh();
     const { claude, listed, stop, resume } = fakeClaude();
