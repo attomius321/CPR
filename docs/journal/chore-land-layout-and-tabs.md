@@ -24,3 +24,5 @@ into `main`. No code changed beyond the two branches'.
 - `pnpm check`: 253 test files, 3,462 tests. `flow.test.ts` and `shells.test.ts` alone: 46.
   `pnpm build` passes. E2E: the viewer's 438 and the nexus's 32 pass, with no retries.
 - The same on a `git archive` export of the merge commit on `main`.
+
+Merged into main (2026-11-10).

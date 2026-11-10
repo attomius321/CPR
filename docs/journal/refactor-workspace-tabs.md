@@ -31,3 +31,5 @@ is 950 lines with 128 branches.
 - `pnpm check`: 245 test files and 3,434 tests (`main`'s 3,428 and these 6). `pnpm build` passes.
   E2E: the viewer's 436 and the nexus's 32 pass. `workspaces.spec.ts`, `terminal-view.spec.ts` and
   `shell.spec.ts` are among them and open shells, Split and Focus in a real page.
+
+Merged into main (2026-11-10).

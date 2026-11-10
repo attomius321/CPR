@@ -39,3 +39,5 @@ function of 14 to 45 lines, moved word for word.
   the nexus's 32 pass.
 - Not run: the `viewer-check` skill's screenshots. The layouts are the same JSON, so the pictures
   are too; their time is measured above.
+
+Merged into main (2026-11-10).
