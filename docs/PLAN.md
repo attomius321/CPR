@@ -428,3 +428,4 @@ What holds now: [The merger](area/merger.md) · its decisions: [the register](de
 | [Refactor](plan/refactor-network-shapes.md) | Shape checks where JSON enters: forge answers, SSE, the viewer's reads | planned | | |
 | [Chore](plan/chore-risky-module-tests.md) | Tests of their own for the merge queue, runShell, core's merging and the Codex runner | planned | | |
 | [Chore](plan/chore-verify-review-findings.md) | Verify the code reviews' unchecked findings, one failing test each | planned | | |
+| Fix | Two e2e flakes, two product races: an agent being started listed as "No agent" (its card jumped from Not running to Working); a page's own read after Land putting back "Queued" over the stream's newer state | ready for review | | [journal](journal/fix-e2e-flakes.md) |
