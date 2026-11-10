@@ -127,6 +127,7 @@ loop steadier, from what the graph runs of 2026-11-02 found (Agents, below).
 | [V8](plan/v8-smooth-viewer.md) | A smooth viewer | ✅ | 37–41 | [journal](journal/v8-smooth-viewer.md) |
 | [V12](plan/v12-open-in-vscode.md) | Open in VS Code | ✅ | 60–64 | [journal](journal/v12-open-in-vscode.md) |
 | Fix | `open-pr.spec.ts`: two opens raced to VS Code's log; the spec waits for each | ✅ | | [journal](journal/fix-open-pr-spec-race.md) |
+| Refactor | `layoutFlow` in its phases: 378 lines to 108, each phase a pure function; the same layouts on five real graphs | ready for review | | [journal](journal/refactor-layout-flow.md) |
 | [Fix](plan/fix-graph-file-check.md) | A file that is not a graph says so; an error boundary around each page | planned | | |
 | [V96](plan/v96-map-labels.md) | Project names never cover file names on the map | planned | 938–939 | [journal](journal/v96-map-labels.md) |
 
@@ -204,6 +205,7 @@ What holds now: [Reviews](area/reviews.md) · its decisions: [the register](deci
 | [V83](plan/v83-workspace-running-model.md) | What a workspace's agent runs on — its model and effort, read back from the session — in its head and on its card; a card's state on one line | ✅ | 659–664 | [journal](journal/v83-workspace-running-model.md) |
 | [V84](plan/v84-activity-export.md) | Export activity: a workspace's or Nucleus's as Markdown (or JSON Lines), from the tab, `symbiote activity` or the MCP | ✅ | 668–672 | [journal](journal/v84-activity-export.md) |
 | [V94](plan/v94-push-not-polling.md) | Push instead of polling: one server-sent stream per browser, the whole state then what changed; reviews cached; terminals on the stream; changes from files, hooks, Claude Code's list and Codex's server | ✅ | 897–907 | [journal](journal/v94-push-not-polling.md) |
+| Refactor | The tab a workspace's page shows: `shownTab`, a pure function with a test per state, out of `WorkspacePanel` | ready for review | | [journal](journal/refactor-workspace-tabs.md) |
 | [Fix](plan/fix-history-empty-indent.md) | History's empty state: both lines at one indent | planned | | |
 
 ### Agents
@@ -422,6 +424,7 @@ What holds now: [The merger](area/merger.md) · its decisions: [the register](de
 | Fix | Security and bugs: saves at once, forge tokens, framing, agents' `--`, Scout's gate, cross-site GETs, 400 and 413 | ✅ | | [journal](journal/fix-security-and-bugs.md) |
 | Chore | Improvement audit: every app and page verified on `main` (checks, both themes, real graphs, the CLI, MCP, nexus, window, install, logs), 43 numbered findings with their evidence, a top 10 | ✅ | | [journal](journal/chore-improvement-audit.md) |
 | Chore | One copy of each small helper: core's symbol hash, the viewer's choices kept in the browser and its `plural` | ✅ | | [journal](journal/chore-dedupe-helpers.md) |
+| Chore | refactor/layout-flow and refactor/workspace-tabs landed on `main` with their history | ready for review | | [journal](journal/chore-land-layout-and-tabs.md) |
 | [SC1](plan/sc1-local-write-secret.md) | A per-run secret for symbiote view's writes, the Confirm and Nucleus's identity | planned | 930–932 | [journal](journal/sc1-local-write-secret.md) |
 | [Fix](plan/fix-view-help.md) | `symbiote view --help` and `symbiote --help` name the Overview | planned | | |
 | [Fix](plan/fix-cli-usage-errors.md) | A mistyped option prints its error and where help is, not the whole help | planned | | |
