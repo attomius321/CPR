@@ -1,5 +1,15 @@
+import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CUT_REST_MS, MAP_ZOOM, mapZoomStyle, nextMapZoom } from '../src/graph/mapzoom.js';
+import {
+  CUT_REST_MS,
+  MAP_ZOOM,
+  NAME_PX,
+  mapZoomStyle,
+  nextMapZoom,
+  pickView,
+  readingZoom,
+} from '../src/graph/mapzoom.js';
+import { TEXT_SIZES } from '../src/shell/text-size.js';
 
 describe('nextMapZoom', () => {
   it('writes the zoom on the map, once per value', () => {
@@ -60,5 +70,60 @@ describe('mapZoomStyle', () => {
     labels.remove();
     vi.advanceTimersByTime(CUT_REST_MS);
     expect(rule.values.get('--symbiote-cut')).toBe('0.2');
+  });
+});
+
+/** A rule's declarations in a stylesheet, by its selector as written. */
+function declared(file: string, selector: string, property: string): string | undefined {
+  const css = readFileSync(new URL(`../src/${file}`, import.meta.url), 'utf8');
+  const at = css.indexOf(`${selector} {`);
+  if (at < 0) return undefined;
+  const block = css.slice(at, css.indexOf('}', at));
+  return new RegExp(`${property}:\\s*([^;]+);`).exec(block)?.[1]?.trim();
+}
+
+describe('readingZoom (V99, decision 967)', () => {
+  it("puts a graph's name at the person's body size: 14, 15 or 16 px for its 12", () => {
+    expect(readingZoom('default')).toBe(1.25);
+    expect(readingZoom('compact') * NAME_PX).toBeCloseTo(14, 9);
+    expect(readingZoom('large') * NAME_PX).toBeCloseTo(16, 9);
+    // Never closer than React Flow lets the person zoom (its 2), never on the map.
+    for (const size of TEXT_SIZES) {
+      expect(readingZoom(size)).toBeLessThan(2);
+      expect(readingZoom(size)).toBeGreaterThan(MAP_ZOOM);
+    }
+  });
+
+  it('reads the sizes the stylesheet draws', () => {
+    // A name is the graph's caption, which keeps V32's 12 px inside `.react-flow` (decision 438).
+    expect(declared('graph/SymbolNode.css', '.symbol-name', 'font')).toContain(
+      'var(--size-caption)',
+    );
+    expect(declared('ui/base.css', '.react-flow', '--size-caption')).toBe(`${NAME_PX}px`);
+    const body = {
+      compact: declared('ui/base.css', ":root[data-text-size='compact']", '--size-body'),
+      default: declared('ui/base.css', ':root', '--size-body'),
+      large: declared('ui/base.css', ":root[data-text-size='large']", '--size-body'),
+    };
+    for (const size of TEXT_SIZES) {
+      expect(`${Math.round(readingZoom(size) * NAME_PX)}px`, size).toBe(body[size]);
+    }
+  });
+});
+
+describe('pickView (V99, decision 966)', () => {
+  it('brings a name drawn under 11 px to the reading zoom, in view or not', () => {
+    // On the map, and between the map and 11 px: where V93 left a pick unreadable (5.9 px).
+    for (const zoom of [0.3, 0.6, 0.9]) {
+      expect(pickView(zoom, true), `${zoom}, shown`).toBe('zoom');
+      expect(pickView(zoom, false), `${zoom}`).toBe('zoom');
+    }
+  });
+
+  it("keeps a readable pick's framing (886): still in view, panned at its zoom out of view", () => {
+    for (const zoom of [11 / NAME_PX, 1, 1.3]) {
+      expect(pickView(zoom, true), `${zoom}, shown`).toBe('stay');
+      expect(pickView(zoom, false), `${zoom}`).toBe('pan');
+    }
   });
 });

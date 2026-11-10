@@ -1,5 +1,38 @@
+import type { TextSize } from '../shell/text-size.js';
+
 /** Below this zoom the canvas is a map: file and project names readable, symbols as blocks. */
 export const MAP_ZOOM = 0.45;
+
+/**
+ * A symbol's name at zoom 1, in px: `.symbol-name` is the graph's `--size-caption`, which keeps
+ * V32's 12 px inside `.react-flow` (`ui/base.css`, decision 438).
+ */
+export const NAME_PX = 12;
+
+/** A name drawn smaller than this on screen is not read: a pick brings it closer (V99). */
+const READABLE_PX = 11;
+
+/** The person's body size for each of Settings' text sizes (`--size-body`, `ui/base.css`). */
+const BODY_PX: Record<TextSize, number> = { compact: 14, default: 15, large: 16 };
+
+/**
+ * The reading zoom (V99, decision 967): a graph's names at the person's body size, 1.17, 1.25 or
+ * 1.33. A pick that is not readable comes to it, and no fit (the first, Focus, a group's) comes
+ * closer.
+ */
+export function readingZoom(size: TextSize): number {
+  return BODY_PX[size] / NAME_PX;
+}
+
+/**
+ * What a pick does to the view at `zoom` (V99, decision 966, amending 886): a name drawn under
+ * 11 px comes to the reading zoom; a readable one stays where it is when it is `shown` whole, and
+ * is panned to at the person's zoom when it is not.
+ */
+export function pickView(zoom: number, shown: boolean): 'stay' | 'pan' | 'zoom' {
+  if (zoom * NAME_PX < READABLE_PX) return 'zoom';
+  return shown ? 'stay' : 'pan';
+}
 
 /** The map's labels: the only elements that read `--symbiote-zoom` (see styles.css). */
 const LABELS = '.file-name, .project-frame, .project-name';
