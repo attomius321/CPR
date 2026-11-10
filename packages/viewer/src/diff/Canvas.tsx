@@ -1,5 +1,5 @@
 // A diff's canvas (V6, V8): the graph React Flow draws, the map below `MAP_ZOOM`, fewer edges while
-// the view moves, and the selection brought into view.
+// the view moves, and the selection brought into view, readable (V99).
 import {
   Background,
   ControlButton,
@@ -31,10 +31,11 @@ import {
   type FlowNode,
   type SymbolData,
 } from '../graph/flow.js';
-import { MAP_ZOOM, mapZoomStyle } from '../graph/mapzoom.js';
+import { MAP_ZOOM, mapZoomStyle, pickView, readingZoom } from '../graph/mapzoom.js';
 import { ProjectNode } from '../graph/ProjectNode.js';
 import { SummaryNode } from '../graph/SummaryNode.js';
 import { SymbolNode } from '../graph/SymbolNode.js';
+import { useTextSize } from '../shell/text-size.js';
 import { useTheme } from '../shell/theme.js';
 import { tip } from '../ui/tip.js';
 import { Loading } from '../ui/Loading.js';
@@ -74,13 +75,6 @@ interface CanvasProps {
 const MOVE_END_DELAY = 100;
 /** Nothing uses edge clicks or hovers: no invisible wide path beside each edge. */
 const EDGE_OPTIONS = { interactionWidth: 0 };
-/**
- * The first fit (V93, decision 886): a small change at most at its size, as proof 03 frames it;
- * React Flow's default let a few symbols fill the canvas at 2×.
- */
-const FIT_OPTIONS = { maxZoom: 1 };
-/** A pick on the map comes to this zoom: its words at their size, as proof 03 reads them. */
-const READING_ZOOM = 1;
 const PRO_OPTIONS = { hideAttribution: true };
 /** Smaller than React Flow's 200 × 150 (V37): beside the detail panel it covered the nodes. */
 const MINIMAP_SIZE = { width: 160, height: 112 };
@@ -108,6 +102,11 @@ export function Canvas({
   reveal,
 }: CanvasProps) {
   const { fitView, screenToFlowPosition, getNodesBounds, getViewport, setCenter } = useReactFlow();
+  // The reading zoom (V99, decision 967): names at the person's body size. A fit comes no closer
+  // (the first, V93's at most 1×; Focus and a group's, 1.1 before), and an unreadable pick comes
+  // to it. React Flow's default let a few symbols fill the canvas at 2×.
+  const reading = readingZoom(useTextSize());
+  const fitOptions = useMemo(() => ({ maxZoom: reading }), [reading]);
   // Zoomed out, the canvas is a map; labels scale with `--symbiote-zoom`, set without re-rendering
   // and only where they read it.
   const map = useStore((state) => state.transform[2] < MAP_ZOOM);
@@ -151,10 +150,10 @@ export function Canvas({
       else if (node.type === 'summary') onToggleSummary(node.id);
       // On the map, a file box is what is clicked: zoom into it.
       else if (node.type === 'file' && map) {
-        void fitView({ nodes: [{ id: node.id }], duration: 300, maxZoom: 1.1 });
+        void fitView({ nodes: [{ id: node.id }], duration: 300, maxZoom: reading });
       }
     },
-    [map, fitView, onSelect, onToggleSummary],
+    [map, reading, fitView, onSelect, onToggleSummary],
   );
   const onPaneClick = useCallback(
     (event: ReactMouseEvent) => {
@@ -163,16 +162,16 @@ export function Canvas({
       const frame = map
         ? projectAt(layoutNodes, screenToFlowPosition({ x: event.clientX, y: event.clientY }))
         : undefined;
-      if (frame) void fitView({ nodes: [{ id: frame }], duration: 300, maxZoom: 1.1 });
+      if (frame) void fitView({ nodes: [{ id: frame }], duration: 300, maxZoom: reading });
       else onSelect(null);
     },
-    [map, layoutNodes, fitView, screenToFlowPosition, onSelect],
+    [map, reading, layoutNodes, fitView, screenToFlowPosition, onSelect],
   );
 
   // The project last fitted as a whole: walking its symbols then centres each, as without one.
   const fitted = useRef(scope);
   // The first layout drawn is fitted whole (V93, decision 886): the canvas as proof 03 frames it,
-  // a pick then moving it only when the symbol is out of view.
+  // a pick then moving it only when the symbol is out of view or unreadable (V99).
   const framed = useRef(false);
   useEffect(() => {
     // Fit once the layout asked for is drawn, not the one it replaces: the view moves once.
@@ -192,7 +191,7 @@ export function Canvas({
           width,
           height,
           0.05,
-          FIT_OPTIONS.maxZoom,
+          fitOptions.maxZoom,
           0.1,
         );
         const now = getViewport();
@@ -200,13 +199,14 @@ export function Canvas({
           Math.abs(want.zoom - now.zoom) > 0.01 ||
           Math.abs(want.x - now.x) > 2 ||
           Math.abs(want.y - now.y) > 2;
-        if (off) void fitView(FIT_OPTIONS);
+        if (off) void fitView(fitOptions);
       } else if (reveal)
-        void fitView({ nodes: reveal.map((id) => ({ id })), duration: 300, maxZoom: 1.1 });
-      else if (focus || rescoped) void fitView({ duration: 300, maxZoom: 1.1 });
+        void fitView({ nodes: reveal.map((id) => ({ id })), duration: 300, maxZoom: reading });
+      else if (focus || rescoped) void fitView({ duration: 300, maxZoom: reading });
       else if (selected) {
-        // The picked symbol in view at the zoom the person has (V93, decision 886: the canvas as
-        // proof 03 frames it; V90 zoomed to it): moved only when it is not already in view.
+        // The picked symbol readable and in view (V99, decision 966, amending V93's 886): a name
+        // drawn under 11 px comes to the reading zoom; a readable one moves nothing when it is in
+        // view (the canvas as proof 03 frames it), and is panned to at the person's zoom when not.
         const bounds = getNodesBounds([selected]);
         const { x, y, zoom } = getViewport();
         const [width = 0, height = 0] = size.split('x').map(Number);
@@ -218,11 +218,10 @@ export function Canvas({
           bounds.y >= top &&
           bounds.x + bounds.width <= left + width / zoom &&
           bounds.y + bounds.height <= top + height / zoom;
-        // On the map nothing is readable: a pick there comes to a reading zoom, proof 03's.
-        const onMap = zoom < MAP_ZOOM;
-        if ((!shown || onMap) && bounds.width > 0) {
+        const move = pickView(zoom, shown);
+        if (move !== 'stay' && bounds.width > 0) {
           void setCenter(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2, {
-            zoom: onMap ? READING_ZOOM : zoom,
+            zoom: move === 'zoom' ? reading : zoom,
             duration: 300,
           });
         }
@@ -238,6 +237,8 @@ export function Canvas({
     reveal,
     resizing,
     pending,
+    reading,
+    fitOptions,
     fitView,
     getNodesBounds,
     getViewport,
@@ -254,7 +255,7 @@ export function Canvas({
       onMove={move}
       onMoveEnd={moved}
       fitView
-      fitViewOptions={FIT_OPTIONS}
+      fitViewOptions={fitOptions}
       onlyRenderVisibleElements
       {...(map ? { className: 'map' } : {})}
       colorMode={theme}

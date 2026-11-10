@@ -461,3 +461,4 @@ merge commit.
 - 2026-11-10 [V107 spike — no way back](journal/v107-back-in-the-panel.md)
 - 2026-11-10 [V108 spike — two progresses](journal/v108-one-review-progress.md)
 - 2026-11-10 [V109 spike — the first view](journal/v109-open-on-the-risk.md)
+- 2026-11-11 [V99 — a pick lands readable](journal/v99-picks-land-readable.md)

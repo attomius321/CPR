@@ -1,7 +1,7 @@
 # Reviews
 
 [Index](../PLAN.md) · [Its decisions](../decisions.md#reviews) · Checked against the code on
-2026-11-04
+2026-11-11
 
 This page says how branch reviews work today. Read it before you change them. The plans listed
 in the index under "Reviews" say why each part was built, as it was decided then. If a plan and
@@ -120,9 +120,15 @@ review.
 Since V93 a diff of TypeScript, JavaScript or HTML is in colour, the Files page's and a symbol's in
 the detail panel (decision 889, replacing 845's "none"): `ui/syntax.ts`, a tokenizer of our own,
 line by line with a block comment or a template string carried over; 2,000 rows in 2.8 ms
-median. On the Graph page the first layout is fitted whole at most at 1×, and a pick moves the
-canvas only when the symbol is out of view, or comes to 1× from the map (886); the detail panel
-is 336 px (887) and each use has **Open ↗** (888). A finding's title is its message (890).
+median. On the Graph page the detail panel is 336 px (887) and each use has **Open ↗** (888). A
+finding's title is its message (890).
+
+Since V99 a pick lands readable. The reading zoom puts the graph's 12 px names at the person's
+body size: 1.25 for 15 px, 1.17 and 1.33 for Settings' Compact and Large (967, `readingZoom` in
+`graph/mapzoom.ts`). A pick whose name would be drawn under 11 px comes to it; a readable pick
+in view moves nothing, and one out of view is panned to at the person's zoom (966, amending 886;
+`pickView`). The first layout is fitted whole once drawn (886), and no fit comes closer than the
+reading zoom: the first, Focus, a group's reveal, a file or a frame clicked on the map.
 
 ## Opening a review
 
@@ -180,12 +186,15 @@ when a later decision or a fix changed it.
 | 846–847 | Opening a review: the steps as a timeline with their times as the page saw them; the files (served from the pair), a workspace's report, commits and brief at once; the Files page read only meanwhile | [V90](../plan/v90-redesign-reviews.md) |
 | 900 | The reviews list keeps what git said of each review under a key of its file's commits, its refs' tips, the tips it is counted against and its verdict's target's tips: git runs only for a review whose key changed | [V94](../plan/v94-push-not-polling.md) |
 | 886–890 | A review as proof 03: the first fit whole (≤ 1×), no zoom to a pick but from the map; the detail 336 px; Open ↗ per use; syntax colours from our own tokenizer (supersedes 845); a finding's message as its title | [V93](../plan/v93-redesign-finish.md) |
+| 966–967 | A pick lands readable: a name under 11 px on screen comes to the reading zoom, a readable pick in view moves nothing (amends 886); the reading zoom is the body size over the graph's 12 px names, and no fit comes closer | [V99](../plan/v99-picks-land-readable.md) |
 
 These no longer hold:
 
 - **435's "tabs Files and Review"**: one card since V90 (842), the review under the files.
 - **845's "no syntax colours"**: since V93 (889) our own tokenizer colours TS, JS and HTML.
 - **V90's zoom to a picked symbol**: since V93 (886) a pick only brings it into view.
+- **886's "no zoom to the symbol" and its 1×**: since V99 (966–967) a pick whose name is under
+  11 px comes to the reading zoom (1.25 by default), and the first fit stops there, not at 1×.
 - **80, Approve pushes the reviewed commit**: replaced by 82 a day later. In 4 approvals out of
   4, the agent had already pushed the commit, so the push did nothing.
 - **82's "the agent merges the approved commit when asked"**: [the merger](merger.md) merges it
