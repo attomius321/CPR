@@ -5,7 +5,9 @@ import {
   shellAfter,
   shellName,
   shellOfUrl,
+  shownTab,
   withShell,
+  type TabState,
 } from '../src/workspaces/shells.js';
 
 const shell = (number: number, running?: string): WorkspaceShell => ({
@@ -55,5 +57,102 @@ describe("a workspace's shells (V45)", () => {
   it('adds a shell in the order of the numbers, once', () => {
     expect(withShell([shell(1), shell(3)], shell(2)).map((s) => s.number)).toEqual([1, 2, 3]);
     expect(withShell([shell(1), shell(2)], shell(2))).toEqual([shell(1), shell(2)]);
+  });
+});
+
+describe("the tab a workspace's page shows (V45, V89)", () => {
+  /** An agent with a terminal, shells allowed and none open, nothing picked. */
+  const state = (change: Partial<TabState> = {}): TabState => ({
+    chosen: null,
+    shells: [],
+    shellShown: null,
+    split: null,
+    terminals: true,
+    shellsCan: true,
+    hive: false,
+    ...change,
+  });
+  const none = { shellNumber: null, splitNumber: null, shownShell: undefined };
+
+  it("is the agent's terminal unless a tab is picked, its thread when it has no terminal", () => {
+    expect(shownTab(state())).toEqual({ ...none, view: 'terminal' });
+    expect(shownTab(state({ terminals: false }))).toEqual({ ...none, view: 'thread' });
+    expect(shownTab(state({ chosen: 'terminal', terminals: false }))).toEqual({
+      ...none,
+      view: 'thread',
+    });
+    expect(shownTab(state({ chosen: 'activity' }))).toEqual({ ...none, view: 'activity' });
+  });
+
+  it("shows Run only for Hive's workspaces", () => {
+    expect(shownTab(state({ chosen: 'run' })).view).toBe('terminal');
+    expect(shownTab(state({ chosen: 'run', hive: true })).view).toBe('run');
+  });
+
+  it('shows the shell picked; once it went, its neighbour; none left, the agent', () => {
+    const open = [shell(1), shell(2), shell(4)];
+    expect(shownTab(state({ chosen: 'shell', shellShown: 2, shells: open }))).toEqual({
+      ...none,
+      shellNumber: 2,
+      view: 'shell',
+      shownShell: shell(2),
+    });
+    expect(shownTab(state({ chosen: 'shell', shellShown: 3, shells: open }))).toEqual({
+      ...none,
+      shellNumber: 2,
+      view: 'shell',
+      shownShell: shell(2),
+    });
+    expect(shownTab(state({ chosen: 'shell', shellShown: 1, shells: [] }))).toEqual({
+      ...none,
+      view: 'terminal',
+    });
+  });
+
+  it('keeps the shell picked while the shells are read, and leaves it where shells cannot run', () => {
+    expect(shownTab(state({ chosen: 'shell', shellShown: 2, shells: null }))).toEqual({
+      ...none,
+      shellNumber: 2,
+      view: 'shell',
+    });
+    expect(
+      shownTab(state({ chosen: 'shell', shellShown: 2, shells: [shell(2)], shellsCan: false })),
+    ).toEqual({ ...none, shellNumber: 2, view: 'terminal' });
+  });
+
+  it("splits the agent's terminal with a shell, its neighbour once it went", () => {
+    const open = [shell(1), shell(2), shell(4)];
+    expect(shownTab(state({ split: 2, shells: open, chosen: 'activity' }))).toEqual({
+      ...none,
+      splitNumber: 2,
+      view: 'terminal',
+      shownShell: shell(2),
+    });
+    expect(shownTab(state({ split: 3, shells: open }))).toEqual({
+      ...none,
+      splitNumber: 2,
+      view: 'terminal',
+      shownShell: shell(2),
+    });
+    expect(shownTab(state({ split: 2, shells: null }))).toEqual({
+      ...none,
+      splitNumber: 2,
+      view: 'terminal',
+    });
+  });
+
+  it('does not split with no shell left, no shells or no terminal', () => {
+    expect(shownTab(state({ split: 2, shells: [], chosen: 'activity' }))).toEqual({
+      ...none,
+      view: 'activity',
+    });
+    expect(shownTab(state({ split: 2, shells: [shell(2)], shellsCan: false }))).toEqual({
+      ...none,
+      view: 'terminal',
+    });
+    expect(shownTab(state({ split: 2, shells: [shell(2)], terminals: false }))).toEqual({
+      ...none,
+      view: 'thread',
+    });
   });
 });
