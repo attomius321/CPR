@@ -12,8 +12,9 @@ into `main`. No code changed beyond the two branches'.
 - **`main`'s `docs/JOURNAL.md` was 2 lines.** The fix/e2e-flakes docs commit (0c873094)
   replaced its 447 lines with a blank line and its own entry. Git's merge then kept the branches'
   old copy of the index under `main`'s two lines, 444 lines in the wrong order. Each merge was
-  resolved to `main`'s file plus the branch's one entry. Putting the 445 lost lines back is a
-  separate fix, not part of this chore.
+  resolved to `main`'s file plus the branch's one entry. Asked afterwards, the index was put
+  back: 0c873094's parent's 447 lines and the four entries since, by date. Every file in
+  `journal/` is listed in it.
 - **flow.ts merged without a conflict**, as expected: `main` had not touched it since 371be1d6.
 - **Workspace.tsx conflicted only in its imports.** The viewer refactor (decision 960) kept the
   tab block word for word, so git applied the branch's replacement with `shownTab` by itself. The
