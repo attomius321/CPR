@@ -78,3 +78,5 @@ S9 of the improvement audit). Neither test was wrong: each showed a race in the 
 - The two tests and the two new ones, `--repeat-each 12 --workers 8` with the same extra load
   (load average 27): 48 of 48.
 - `pnpm check` (3,456 unit tests) and `pnpm build` pass.
+
+Merged into main (2026-11-10).

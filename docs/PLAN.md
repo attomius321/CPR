@@ -276,7 +276,7 @@ What holds now: [The merger](area/merger.md) · its decisions: [the register](de
 | [Fix](plan/fix-network-timeouts.md) | Timeouts on forge calls and the merger's push | planned | | |
 | [Fix](plan/fix-merge-failure-reason.md) | A failed merge says why, in its record and its log line | planned | | |
 | [Fix](plan/fix-merge-help.md) | `symbiote merge --help` names every default target in order | planned | | |
-| [Fix](plan/fix-fast-forward-flake.md) | The fast-forward spec stays "Queued" under load: find why | planned | | |
+| [Fix](plan/fix-fast-forward-flake.md) | The fast-forward spec stays "Queued" under load: find why; built by `fix/e2e-flakes` | ✅ | | [journal](journal/fix-e2e-flakes.md) |
 | [Fix](plan/fix-landed-merge-group.md) | A landed merge leaves the sidenav's Merging group | planned | | |
 
 ### Shell and look
@@ -428,4 +428,4 @@ What holds now: [The merger](area/merger.md) · its decisions: [the register](de
 | [Refactor](plan/refactor-network-shapes.md) | Shape checks where JSON enters: forge answers, SSE, the viewer's reads | planned | | |
 | [Chore](plan/chore-risky-module-tests.md) | Tests of their own for the merge queue, runShell, core's merging and the Codex runner | planned | | |
 | [Chore](plan/chore-verify-review-findings.md) | Verify the code reviews' unchecked findings, one failing test each | planned | | |
-| Fix | Two e2e flakes, two product races: an agent being started listed as "No agent" (its card jumped from Not running to Working); a page's own read after Land putting back "Queued" over the stream's newer state | ready for review | | [journal](journal/fix-e2e-flakes.md) |
+| Fix | Two e2e flakes, two product races: an agent being started listed as "No agent" (its card jumped from Not running to Working); a page's own read after Land putting back "Queued" over the stream's newer state | ✅ | | [journal](journal/fix-e2e-flakes.md) |

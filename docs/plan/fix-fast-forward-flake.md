@@ -7,6 +7,13 @@
 **Status:** planned (2026-11-06), to be built on branch `fix/fast-forward-flake` in its own
 workspace; written by the improvement audit (`chore/improvement-audit`). Not started.
 
+**Built by `fix/e2e-flakes`** (merged into main 2026-11-10, 4cbcae0c); this branch was never
+made. The cause was hypothesis 3, the page: after Land, the page's own read answered "Queued"
+while the drain ran and arrived after the stream had pushed "Cannot fast-forward", putting
+"Queued" back for good. A page's own read now never replaces a part pushed after it began
+(`useWorkspaces.ts`). Hypothesis 1 (the pid lock) was not the cause; `kick()` now logs a drain
+it stops. Tests, timings and runs: [its journal](../journal/fix-e2e-flakes.md).
+
 **Kind** fix (an investigation first) · **Branch** `fix/fast-forward-flake` · **Size** S–M ·
 **Depends on** none · **Plan** P32 of 51 (the audit's order)
 
