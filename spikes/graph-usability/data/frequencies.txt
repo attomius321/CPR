@@ -1,0 +1,17 @@
+first view, your merges: 26 graphs; names under 11 px 24; map 19; 0.45–0.92 5; readable 2; median zoom 0.16, name 1.9 px; screens at zoom 1 median 30, max 242; unchanged per changed 0.72; summary cards 24; first paint median 366 ms, max 966 ms
+first view, r1: 25 graphs; names under 11 px 2; map 0; 0.45–0.92 2; readable 23; median zoom 1.00, name 12 px; screens at zoom 1 median 1, max 6; unchanged per changed 1.50; summary cards 0; first paint median 175 ms, max 210 ms
+first view, sample: 84 graphs; names under 11 px 42; map 27; 0.45–0.92 15; readable 42; median zoom 0.97, name 11.7 px; screens at zoom 1 median 2, max 242; unchanged per changed 1.00; summary cards 2; first paint median 193 ms, max 966 ms
+findings: {"warning":55,"info":352}; graphs with findings 37; head differs from tab 33; head shows none 14
+  own-symbiote-12999780: 450 of 682 changed symbols are CSS rules
+  own-symbiote-291ef48c: 113 of 207 changed symbols are CSS rules
+  own-symbiote-42b3b572: 532 of 563 changed symbols are CSS rules
+  own-symbiote-83a736a5: 5 of 9 changed symbols are CSS rules
+  own-symbiote-98e28e23: 440 of 519 changed symbols are CSS rules
+  own-symbiote-c4e4da07: 296 of 495 changed symbols are CSS rules
+  own-symbiote-c623963d: 7 of 11 changed symbols are CSS rules
+  own-symbiote-d74b3727: 242 of 344 changed symbols are CSS rules
+  own-symbiote-ecf71568: 159 of 394 changed symbols are CSS rules
+  own-symbiote-ef648adb: 15 of 21 changed symbols are CSS rules
+your merges: 5425 changed symbols, 2487 CSS rules, 566 in tests; 17 merges have CSS
+type references: 471 of 6624 changed symbols linked only by them; 2290 have some; of 405 symbols with findings, 90 only by them
+Files: 30 of 30 merges open on a file that is not code; the top finding's file at median position 28 (5–111) of 19

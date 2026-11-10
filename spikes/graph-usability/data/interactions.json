@@ -1,0 +1,410 @@
+[
+  {
+    "graph": "own-symbiote-4cbcae0c.json",
+    "rows": {
+      "open": {
+        "took": 217,
+        "blocked": 0,
+        "worst": 0
+      },
+      "pan, overview": {
+        "took": 518,
+        "blocked": 0,
+        "worst": 0
+      },
+      "open a group": {
+        "took": 51,
+        "blocked": 0,
+        "worst": 0
+      },
+      "close it": {
+        "took": 27,
+        "blocked": 0,
+        "worst": 0
+      },
+      "select a change": {
+        "took": 64,
+        "blocked": 0,
+        "worst": 0
+      },
+      "pan, zoomed in": {
+        "took": 520,
+        "blocked": 0,
+        "worst": 0
+      },
+      "next change (j) ×8": {
+        "took": 1038,
+        "blocked": 0,
+        "worst": 0
+      },
+      "mark reviewed (r)": {
+        "took": 7,
+        "blocked": 0,
+        "worst": 0
+      },
+      "zoom out ×20": {
+        "took": 1031,
+        "blocked": 0,
+        "worst": 0
+      },
+      "zoom in ×10": {
+        "took": 532,
+        "blocked": 0,
+        "worst": 0
+      },
+      "context off": {
+        "took": 70,
+        "blocked": 0,
+        "worst": 0
+      },
+      "context on": {
+        "took": 47,
+        "blocked": 0,
+        "worst": 0
+      },
+      "next project (p)": {
+        "took": 34,
+        "blocked": 0,
+        "worst": 0
+      }
+    },
+    "map": {
+      "map": true,
+      "clicksReachFile": 98,
+      "elements": {
+        "page": 945,
+        "symbols": 407,
+        "edges": 58,
+        "files": 133,
+        "frames": 12
+      }
+    },
+    "errors": []
+  },
+  {
+    "graph": "own-symbiote-11610c73.json",
+    "rows": {
+      "open": {
+        "took": 361,
+        "blocked": 89,
+        "worst": 139
+      },
+      "pan, overview": {
+        "took": 524,
+        "blocked": 0,
+        "worst": 0
+      },
+      "open a group": {
+        "took": 152,
+        "blocked": 31,
+        "worst": 81
+      },
+      "close it": {
+        "took": 85,
+        "blocked": 29,
+        "worst": 79
+      },
+      "select a change": {
+        "took": 59,
+        "blocked": 0,
+        "worst": 0
+      },
+      "pan, zoomed in": {
+        "took": 519,
+        "blocked": 0,
+        "worst": 0
+      },
+      "next change (j) ×8": {
+        "took": 1062,
+        "blocked": 0,
+        "worst": 0
+      },
+      "mark reviewed (r)": {
+        "took": 8,
+        "blocked": 0,
+        "worst": 0
+      },
+      "zoom out ×20": {
+        "took": 1033,
+        "blocked": 0,
+        "worst": 0
+      },
+      "zoom in ×10": {
+        "took": 532,
+        "blocked": 0,
+        "worst": 0
+      },
+      "context off": {
+        "took": 104,
+        "blocked": 0,
+        "worst": 0
+      },
+      "context on": {
+        "took": 96,
+        "blocked": 2,
+        "worst": 52
+      },
+      "next project (p)": {
+        "took": 39,
+        "blocked": 0,
+        "worst": 0
+      }
+    },
+    "map": {
+      "map": true,
+      "clicksReachFile": 100,
+      "elements": {
+        "page": 4678,
+        "symbols": 3104,
+        "edges": 301,
+        "files": 413,
+        "frames": 30
+      }
+    },
+    "errors": []
+  },
+  {
+    "graph": "own-symbiote-eb807773.json",
+    "rows": {
+      "open": {
+        "took": 908,
+        "blocked": 198,
+        "worst": 248
+      },
+      "pan, overview": {
+        "took": 977,
+        "blocked": 0,
+        "worst": 0
+      },
+      "open a group": {
+        "took": 461,
+        "blocked": 124,
+        "worst": 174
+      },
+      "close it": {
+        "error": "locator.dispatchEvent: Timeout 30000ms exceeded."
+      },
+      "select a change": {
+        "took": 283,
+        "blocked": 16,
+        "worst": 66
+      },
+      "pan, zoomed in": {
+        "took": 522,
+        "blocked": 0,
+        "worst": 0
+      },
+      "next change (j) ×8": {
+        "took": 1152,
+        "blocked": 0,
+        "worst": 50
+      },
+      "mark reviewed (r)": {
+        "took": 11,
+        "blocked": 0,
+        "worst": 0
+      },
+      "zoom out ×20": {
+        "took": 1033,
+        "blocked": 0,
+        "worst": 0
+      },
+      "zoom in ×10": {
+        "took": 533,
+        "blocked": 0,
+        "worst": 0
+      },
+      "context off": {
+        "took": 244,
+        "blocked": 31,
+        "worst": 81
+      },
+      "context on": {
+        "took": 188,
+        "blocked": 85,
+        "worst": 135
+      },
+      "next project (p)": {
+        "took": 43,
+        "blocked": 0,
+        "worst": 0
+      }
+    },
+    "map": {
+      "map": true,
+      "clicksReachFile": 100,
+      "elements": {
+        "page": 7740,
+        "symbols": 3803,
+        "edges": 1465,
+        "files": 623,
+        "frames": 6
+      }
+    },
+    "errors": []
+  },
+  {
+    "graph": "bitwarden-projects-bitwarden-737ee3f.json",
+    "rows": {
+      "open": {
+        "took": 360,
+        "blocked": 59,
+        "worst": 109
+      },
+      "pan, overview": {
+        "took": 520,
+        "blocked": 0,
+        "worst": 0
+      },
+      "open a group": {
+        "took": 133,
+        "blocked": 18,
+        "worst": 68
+      },
+      "close it": {
+        "took": 55,
+        "blocked": 1,
+        "worst": 51
+      },
+      "select a change": {
+        "took": 63,
+        "blocked": 0,
+        "worst": 0
+      },
+      "pan, zoomed in": {
+        "took": 521,
+        "blocked": 0,
+        "worst": 0
+      },
+      "next change (j) ×8": {
+        "took": 1084,
+        "blocked": 0,
+        "worst": 0
+      },
+      "mark reviewed (r)": {
+        "took": 8,
+        "blocked": 0,
+        "worst": 0
+      },
+      "zoom out ×20": {
+        "took": 1032,
+        "blocked": 0,
+        "worst": 0
+      },
+      "zoom in ×10": {
+        "took": 533,
+        "blocked": 0,
+        "worst": 0
+      },
+      "context off": {
+        "took": 77,
+        "blocked": 0,
+        "worst": 0
+      },
+      "context on": {
+        "took": 94,
+        "blocked": 0,
+        "worst": 0
+      },
+      "next project (p)": {
+        "took": 39,
+        "blocked": 0,
+        "worst": 0
+      }
+    },
+    "map": {
+      "map": true,
+      "clicksReachFile": 100,
+      "elements": {
+        "page": 3124,
+        "symbols": 1551,
+        "edges": 406,
+        "files": 420,
+        "frames": 42
+      }
+    },
+    "errors": []
+  },
+  {
+    "graph": "qwik-docs-qwik-65661bf49.json",
+    "rows": {
+      "open": {
+        "took": 292,
+        "blocked": 42,
+        "worst": 92
+      },
+      "pan, overview": {
+        "took": 519,
+        "blocked": 0,
+        "worst": 0
+      },
+      "open a group": {
+        "took": 91,
+        "blocked": 0,
+        "worst": 0
+      },
+      "close it": {
+        "took": 45,
+        "blocked": 0,
+        "worst": 0
+      },
+      "select a change": {
+        "took": 62,
+        "blocked": 0,
+        "worst": 0
+      },
+      "pan, zoomed in": {
+        "took": 519,
+        "blocked": 0,
+        "worst": 0
+      },
+      "next change (j) ×8": {
+        "took": 1031,
+        "blocked": 0,
+        "worst": 0
+      },
+      "mark reviewed (r)": {
+        "took": 7,
+        "blocked": 0,
+        "worst": 0
+      },
+      "zoom out ×20": {
+        "took": 1032,
+        "blocked": 0,
+        "worst": 0
+      },
+      "zoom in ×10": {
+        "took": 531,
+        "blocked": 0,
+        "worst": 0
+      },
+      "context off": {
+        "took": 75,
+        "blocked": 0,
+        "worst": 0
+      },
+      "context on": {
+        "took": 71,
+        "blocked": 0,
+        "worst": 0
+      },
+      "next project (p)": {
+        "took": 34,
+        "blocked": 0,
+        "worst": 0
+      }
+    },
+    "map": {
+      "map": true,
+      "clicksReachFile": 100,
+      "elements": {
+        "page": 2370,
+        "symbols": 1372,
+        "edges": 160,
+        "files": 273,
+        "frames": 18
+      }
+    },
+    "errors": []
+  }
+]

@@ -1,0 +1,542 @@
+{
+ "change": "cli",
+ "facts": {
+  "files": [
+   "Show the changes to .claude/skills/writing-docs/SKILL.md",
+   "Show the changes to CLAUDE.md",
+   "Show the changes to docs/JOURNAL.md",
+   "Show the changes to docs/PLAN.md",
+   "Show the changes to docs/area/merger.md",
+   "Show the changes to docs/area/reviews.md",
+   "Show the changes to docs/journal/refactor-cli-services.md",
+   "Show the changes to docs/plan/refactor-cli-services.md",
+   "Show the changes to packages/cli/src/bin.ts",
+   "Show the changes to packages/cli/src/check-setting.ts",
+   "Show the changes to packages/cli/src/command-activity.ts",
+   "Show the changes to packages/cli/src/command-agents.ts",
+   "Show the changes to packages/cli/src/command-app.ts",
+   "Show the changes to packages/cli/src/command-args.ts",
+   "Show the changes to packages/cli/src/command-context.ts",
+   "Show the changes to packages/cli/src/command-diff.ts",
+   "Show the changes to packages/cli/src/command-mcp.ts",
+   "Show the changes to packages/cli/src/command-merge.ts",
+   "Show the changes to packages/cli/src/command-pr.ts",
+   "Show the changes to packages/cli/src/command-view.ts",
+   "Show the changes to packages/cli/src/config-write.ts",
+   "Show the changes to packages/cli/src/hive-checking.ts",
+   "Show the changes to packages/cli/src/hive-context.ts",
+   "Show the changes to packages/cli/src/hive-forge.ts",
+   "Show the changes to packages/cli/src/hive-landing.ts",
+   "Show the changes to packages/cli/src/hive-off.ts",
+   "Show the changes to packages/cli/src/hive-pacing.ts",
+   "Show the changes to packages/cli/src/hive-request.ts",
+   "Show the changes to packages/cli/src/hive-review.ts",
+   "Show the changes to packages/cli/src/hive-reviewing.ts",
+   "Show the changes to packages/cli/src/hive-round.ts",
+   "Show the changes to packages/cli/src/hive-runner.ts",
+   "Show the changes to packages/cli/src/hive-writing.ts",
+   "Show the changes to packages/cli/src/main.ts",
+   "Show the changes to packages/cli/src/mcp-confirm.ts",
+   "Show the changes to packages/cli/src/mcp-context.ts",
+   "Show the changes to packages/cli/src/mcp-lookup.ts",
+   "Show the changes to packages/cli/src/mcp-merges.ts",
+   "Show the changes to packages/cli/src/mcp-overview.ts",
+   "Show the changes to packages/cli/src/mcp-reviews.ts",
+   "Show the changes to packages/cli/src/mcp-tools.ts",
+   "Show the changes to packages/cli/src/mcp-workspaces.ts",
+   "Show the changes to packages/cli/src/mcp.ts",
+   "Show the changes to packages/cli/src/merge-agent.ts",
+   "Show the changes to packages/cli/src/merge-config.ts",
+   "Show the changes to packages/cli/src/merge-context.ts",
+   "Show the changes to packages/cli/src/merge-land.ts",
+   "Show the changes to packages/cli/src/merge-resolve.ts",
+   "Show the changes to packages/cli/src/merge-run.ts",
+   "Show the changes to packages/cli/src/merge-targets.ts",
+   "Show the changes to packages/cli/src/merges.ts",
+   "Show the changes to packages/cli/src/nucleus.ts",
+   "Show the changes to packages/cli/src/page-agent-context.ts",
+   "Show the changes to packages/cli/src/page-agent-conversation.ts",
+   "Show the changes to packages/cli/src/page-agent-files.ts",
+   "Show the changes to packages/cli/src/page-agent-levels.ts",
+   "Show the changes to packages/cli/src/page-agent.ts",
+   "Show the changes to packages/cli/src/prompt-settings.ts",
+   "Show the changes to packages/cli/src/prompt-specs.ts",
+   "Show the changes to packages/cli/src/prompt-text.ts",
+   "Show the changes to packages/cli/src/prompts.ts",
+   "Show the changes to packages/cli/src/reviews.ts",
+   "Show the changes to packages/cli/src/scribe.ts",
+   "Show the changes to packages/cli/src/server-context.ts",
+   "Show the changes to packages/cli/src/server-git.ts",
+   "Show the changes to packages/cli/src/server-hive.ts",
+   "Show the changes to packages/cli/src/server-http.ts",
+   "Show the changes to packages/cli/src/server-logs.ts",
+   "Show the changes to packages/cli/src/server-merges.ts",
+   "Show the changes to packages/cli/src/server-nucleus.ts",
+   "Show the changes to packages/cli/src/server-pages.ts",
+   "Show the changes to packages/cli/src/server-sites.ts",
+   "Show the changes to packages/cli/src/server-terminals.ts",
+   "Show the changes to packages/cli/src/server-workspaces.ts",
+   "Show the changes to packages/cli/src/server.ts",
+   "Show the changes to packages/cli/src/workspace-advice.ts",
+   "Show the changes to packages/cli/src/workspace-advisor.ts",
+   "Show the changes to packages/cli/src/workspace-agent.ts",
+   "Show the changes to packages/cli/src/workspace-changes.ts",
+   "Show the changes to packages/cli/src/workspace-context.ts",
+   "Show the changes to packages/cli/src/workspace-lifecycle.ts",
+   "Show the changes to packages/cli/src/workspace-open.ts",
+   "Show the changes to packages/cli/src/workspace-options.ts",
+   "Show the changes to packages/cli/src/workspace-start.ts",
+   "Show the changes to packages/cli/src/workspace-summary.ts",
+   "Show the changes to packages/cli/src/workspace-trunk.ts",
+   "Show the changes to packages/cli/src/workspaces.ts",
+   "Show the changes to packages/cli/test/__snapshots__/mcp-tools.json",
+   "Show the changes to packages/cli/test/__snapshots__/server-routes-bare.txt",
+   "Show the changes to packages/cli/test/__snapshots__/server-routes-everything.txt",
+   "Show the changes to packages/cli/test/__snapshots__/server-routes-pr.txt",
+   "Show the changes to packages/cli/test/check-setting.test.ts",
+   "Show the changes to packages/cli/test/hive-pacing-runner.test.ts",
+   "Show the changes to packages/cli/test/hive-request-card-rounds.test.ts",
+   "Show the changes to packages/cli/test/hive-request-card.test.ts",
+   "Show the changes to packages/cli/test/hive-request-checkout.test.ts",
+   "Show the changes to packages/cli/test/hive-request-merged-forge.test.ts",
+   "Show the changes to packages/cli/test/hive-request-merged-mid-rounds.test.ts",
+   "Show the changes to packages/cli/test/hive-request-runner.test.ts",
+   "Show the changes to packages/cli/test/hive-request-unchecked-push.test.ts",
+   "Show the changes to packages/cli/test/hive-review.test.ts",
+   "Show the changes to packages/cli/test/hive-runner.test.ts",
+   "Show the changes to packages/cli/test/mcp-tools.test.ts",
+   "Show the changes to packages/cli/test/mcp.test.ts",
+   "Show the changes to packages/cli/test/merges.test.ts",
+   "Show the changes to packages/cli/test/nucleus.test.ts",
+   "Show the changes to packages/cli/test/prompts.test.ts",
+   "Show the changes to packages/cli/test/server-routes.test.ts",
+   "Show the changes to packages/cli/test/server.test.ts",
+   "Show the changes to packages/cli/test/workspace-advice.test.ts",
+   "Show the changes to packages/cli/test/workspaces.test.ts",
+   "Show the changes to packages/core/src/agents.ts",
+   "Show the changes to packages/core/src/hive.ts",
+   "Show the changes to packages/core/src/index.ts",
+   "Show the changes to packages/core/src/merges.ts",
+   "Show the changes to packages/core/src/nucleus-activity.ts",
+   "Show the changes to packages/core/src/page-agent.ts",
+   "Show the changes to packages/core/src/skills.ts",
+   "Show the changes to packages/core/src/workspace-activity.ts",
+   "Show the changes to packages/core/src/workspace-day.ts",
+   "Show the changes to packages/core/src/workspaces.ts",
+   "Show the changes to scripts/closures.mjs"
+  ],
+  "firstFileShown": ".claude/skills/writing-docs/SKILL.mdmodified1 of 122Open in VS CodeoViewed",
+  "headPills": [
+   "2 warnings"
+  ],
+  "fit": {
+   "zoom": 0.0569938,
+   "map": true,
+   "pane": {
+    "w": 2154,
+    "h": 1296
+   },
+   "drawn": {
+    "symbols": 658,
+    "changed": 464,
+    "context": 194,
+    "summaries": 38,
+    "files": 155,
+    "frames": 5,
+    "edges": 551,
+    "findingCounts": 66
+   },
+   "nameFontPx": 12,
+   "fileFontPx": 11,
+   "namesCut": 3,
+   "namesShown": 658,
+   "filesCut": 152,
+   "filesShown": 310,
+   "layoutScreen": {
+    "w": 1540,
+    "h": 1180
+   },
+   "elements": 11101
+  },
+  "findingsTab": "Findings 67",
+  "findingsListed": 67,
+  "findingSeverities": [
+   "warning",
+   "warning",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info"
+  ],
+  "firstFinding": "version was moved to packages/cli/src/command-context.ts, but 1 symbol still uses the old place: viewremoved-still-referenced@symbiote/cli",
+  "selectedAfterPick": {
+   "x": 1188.5,
+   "y": 692,
+   "width": 219,
+   "height": 58,
+   "inView": true
+  },
+  "zoomAfterPick": 1,
+  "panelTitle": "variableversionModified@symbiote/cli › src/command-context.ts (from packages/cli/src/main.ts#version) · line 13 at 18d979bsignaturemovedOpen in VS Codeo",
+  "neighbourLists": [
+   {
+    "title": "Still used by 1",
+    "links": 8
+   }
+  ],
+  "followed": "view",
+  "callerOnCanvas": {
+   "x": 1203,
+   "y": 692,
+   "width": 190,
+   "height": 58,
+   "inView": true
+  },
+  "focus": {
+   "zoom": 0.902907,
+   "map": false,
+   "pane": {
+    "w": 1810,
+    "h": 1296
+   },
+   "drawn": {
+    "symbols": 9,
+    "changed": 8,
+    "context": 1,
+    "summaries": 0,
+    "files": 6,
+    "frames": 0,
+    "edges": 13,
+    "findingCounts": 6
+   },
+   "nameFontPx": 12,
+   "fileFontPx": 11,
+   "namesCut": 0,
+   "namesShown": 9,
+   "filesCut": 3,
+   "filesShown": 12,
+   "layoutScreen": {
+    "w": 1646,
+    "h": 307
+   },
+   "elements": 1206
+  },
+  "zoomAfterFocusOffAndFit": 0.0569938,
+  "zoomInNotches": 21,
+  "zoomedFrom": 1,
+  "afterZoomIn": {
+   "x": 551.410400390625,
+   "y": 1269.533203125,
+   "width": 229.40234375,
+   "height": 60.755859375,
+   "inView": true
+  },
+  "excerpt": {
+   "rows": 2,
+   "cut": 2,
+   "firstChanged": "base:106",
+   "more": false,
+   "panelWidth": 336
+  },
+  "where": "@symbiote/cli › src/command-context.ts (from packages/cli/src/main.ts#version) · line 13 at 18d979b",
+  "filesPageOpenedOn": ".claude/skills/writing-docs/SKILL.md",
+  "fileIndex": 14,
+  "fileListScrolls": 0,
+  "lineScrolls": null,
+  "progressAfterOne": "1 of 464 changed symbols reviewedj / k next",
+  "progressWords": "1 of 464 changed symbols reviewedj / k next",
+  "changesTotal": "Changes 464",
+  "pageErrors": []
+ },
+ "tasks": [
+  {
+   "name": "open the diff",
+   "ops": {
+    "click": 1,
+    "key": 0,
+    "type": 0,
+    "wheel": 0,
+    "pan": 0,
+    "switch": 0,
+    "read": 1
+   },
+   "waits": [
+    {
+     "label": "Files page (or the analysis steps) drawn",
+     "ms": 197
+    },
+    {
+     "label": "analysis done, graph ready",
+     "ms": 11067
+    }
+   ],
+   "notes": [
+    {
+     "read": "the head: title, facts, pills"
+    }
+   ],
+   "wallMs": 11443,
+   "klmSeconds": 13.9
+  },
+  {
+   "name": "find the riskiest change",
+   "ops": {
+    "click": 1,
+    "key": 1,
+    "type": 0,
+    "wheel": 0,
+    "pan": 0,
+    "switch": 1,
+    "read": 2
+   },
+   "waits": [
+    {
+     "label": "Graph page drawn",
+     "ms": 481
+    },
+    {
+     "label": "finding selected, panel drawn",
+     "ms": 251
+    }
+   ],
+   "notes": [
+    {
+     "read": "the findings list"
+    },
+    {
+     "read": "the finding in the panel"
+    }
+   ],
+   "zoom": 1,
+   "selected": {
+    "x": 1188.5,
+    "y": 692,
+    "width": 219,
+    "height": 58,
+    "inView": true
+   },
+   "wallMs": 2077,
+   "klmSeconds": 5
+  },
+  {
+   "name": "follow callers and callees",
+   "ops": {
+    "click": 4,
+    "key": 2,
+    "type": 0,
+    "wheel": 21,
+    "pan": 0,
+    "switch": 0,
+    "read": 2
+   },
+   "waits": [
+    {
+     "label": "a caller selected",
+     "ms": 83
+    },
+    {
+     "label": "Focus laid out and fitted",
+     "ms": 423
+    }
+   ],
+   "notes": [
+    {
+     "read": "used by / uses lists"
+    },
+    {
+     "read": "the caller in the panel"
+    },
+    {
+     "lost": "no back from a followed symbol: re-picked the finding"
+    }
+   ],
+   "zoomInNotches": 21,
+   "wallMs": 6397,
+   "klmSeconds": 15.3
+  },
+  {
+   "name": "read a finding, get to its code",
+   "ops": {
+    "click": 1,
+    "key": 1,
+    "type": 0,
+    "wheel": 0,
+    "pan": 0,
+    "switch": 1,
+    "read": 2
+   },
+   "waits": [
+    {
+     "label": "Files page drawn",
+     "ms": 97
+    },
+    {
+     "label": "the file's diff drawn",
+     "ms": 85
+    }
+   ],
+   "notes": [
+    {
+     "read": "the changed lines in the panel"
+    },
+    {
+     "read": "find the symbol's file in the list"
+    },
+    {
+     "lost": "the symbol's changed line base:106 is not drawn (folded or the base side): had to search the diff"
+    }
+   ],
+   "panelFile": "packages/cli/src/command-context.ts",
+   "symbolLine": 13,
+   "wallMs": 309,
+   "klmSeconds": 4.5
+  },
+  {
+   "name": "leave a comment (Files: a line)",
+   "ops": {
+    "click": 1,
+    "key": 1,
+    "type": 33,
+    "wheel": 0,
+    "pan": 0,
+    "switch": 0,
+    "read": 0
+   },
+   "waits": [
+    {
+     "label": "comment drafted",
+     "ms": 207
+    }
+   ],
+   "notes": [],
+   "wallMs": 427,
+   "klmSeconds": 11
+  },
+  {
+   "name": "leave a comment (Graph: the panel)",
+   "ops": {
+    "click": 0,
+    "key": 4,
+    "type": 33,
+    "wheel": 0,
+    "pan": 0,
+    "switch": 1,
+    "read": 0
+   },
+   "waits": [
+    {
+     "label": "comment drafted",
+     "ms": 227
+    }
+   ],
+   "notes": [],
+   "wallMs": 1174,
+   "klmSeconds": 10.6
+  },
+  {
+   "name": "mark reviewed",
+   "ops": {
+    "click": 0,
+    "key": 1,
+    "type": 0,
+    "wheel": 0,
+    "pan": 0,
+    "switch": 0,
+    "read": 0
+   },
+   "waits": [
+    {
+     "label": "progress updated",
+     "ms": 31
+    }
+   ],
+   "notes": [],
+   "wallMs": 37,
+   "klmSeconds": 0.3
+  },
+  {
+   "name": "know when you are done",
+   "ops": {
+    "click": 1,
+    "key": 0,
+    "type": 0,
+    "wheel": 0,
+    "pan": 0,
+    "switch": 0,
+    "read": 2
+   },
+   "waits": [],
+   "notes": [
+    {
+     "read": "the progress line"
+    },
+    {
+     "read": "the review tab"
+    }
+   ],
+   "wallMs": 235,
+   "klmSeconds": 4
+  }
+ ]
+}

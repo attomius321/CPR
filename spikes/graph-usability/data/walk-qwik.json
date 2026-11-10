@@ -1,0 +1,385 @@
+{
+ "change": "qwik",
+ "facts": {
+  "files": [
+   "Show the changes to .changeset/sharp-fallbacks-stay.md",
+   "Show the changes to e2e/qwik-e2e/apps/e2e/src/components/suspense/suspense.tsx",
+   "Show the changes to e2e/qwik-e2e/tests/suspense.e2e.ts",
+   "Show the changes to packages/docs/scripts/generate-llms.ts",
+   "Show the changes to packages/docs/src/routes/api/qwik/api.json",
+   "Show the changes to packages/docs/src/routes/api/qwik/index.mdx",
+   "Show the changes to packages/docs/src/routes/demo/component/suspense-show-stale/index.tsx",
+   "Show the changes to packages/docs/src/routes/docs/labs/suspense/index.mdx",
+   "Show the changes to packages/qwik/src/core/client/dom-container.ts",
+   "Show the changes to packages/qwik/src/core/client/vnode-diff.ts",
+   "Show the changes to packages/qwik/src/core/control-flow/suspense-utils.ts",
+   "Show the changes to packages/qwik/src/core/control-flow/suspense.tsx",
+   "Show the changes to packages/qwik/src/core/qwik.core.api.md",
+   "Show the changes to packages/qwik/src/core/shared/cursor/cursor-walker.spec.ts",
+   "Show the changes to packages/qwik/src/core/shared/cursor/cursor-walker.ts",
+   "Show the changes to packages/qwik/src/core/shared/utils/markers.ts",
+   "Show the changes to packages/qwik/src/core/shared/utils/reveal.ts",
+   "Show the changes to packages/qwik/src/core/shared/vnode/vnode-dirty.ts",
+   "Show the changes to packages/qwik/src/core/ssr/ssr-render-jsx.ts",
+   "Show the changes to packages/qwik/src/core/tests/suspense.spec.tsx",
+   "Show the changes to packages/qwik/src/core/use/use-cursor-boundary.ts",
+   "Show the changes to packages/qwik/src/server/qwik-copy.ts",
+   "Show the changes to packages/qwik/src/server/ssr-container.ts"
+  ],
+  "firstFileShown": ".changeset/sharp-fallbacks-stay.mdadded+5 −01 of 23Open in VS Codeo",
+  "headPills": [
+   "2 warnings"
+  ],
+  "fit": {
+   "zoom": 0.242815,
+   "map": true,
+   "pane": {
+    "w": 2154,
+    "h": 1296
+   },
+   "drawn": {
+    "symbols": 152,
+    "changed": 62,
+    "context": 90,
+    "summaries": 9,
+    "files": 39,
+    "frames": 3,
+    "edges": 53,
+    "findingCounts": 16
+   },
+   "nameFontPx": 12,
+   "fileFontPx": 11,
+   "namesCut": 1,
+   "namesShown": 152,
+   "filesCut": 23,
+   "filesShown": 78,
+   "layoutScreen": {
+    "w": 1960,
+    "h": 1108
+   },
+   "elements": 2482
+  },
+  "findingsTab": "Findings 16",
+  "findingsListed": 16,
+  "findingSeverities": [
+   "warning",
+   "warning",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info",
+   "info"
+  ],
+  "firstFinding": "RevealItemLike changed its signature; 2 of 4 users not updated: OutOfOrderRevealCoordinator, RevealRegistrationLikesignature-changed@qwik.dev/core",
+  "selectedAfterPick": {
+   "x": 1151.5,
+   "y": 692,
+   "width": 293,
+   "height": 58,
+   "inView": true
+  },
+  "zoomAfterPick": 1,
+  "panelTitle": "interfaceRevealItemLikeModified@qwik.dev/core › src/core/shared/utils/reveal.ts · line 4 at 65661bfsignatureOpen in VS Codeo",
+  "neighbourLists": [
+   {
+    "title": "Used by 4",
+    "links": 4
+   }
+  ],
+  "followed": "createOutOfOrderRevealCoordinator",
+  "callerOnCanvas": {
+   "x": 1108,
+   "y": 692,
+   "width": 380,
+   "height": 58,
+   "inView": true
+  },
+  "focus": {
+   "zoom": 1.1,
+   "map": false,
+   "pane": {
+    "w": 1810,
+    "h": 1296
+   },
+   "drawn": {
+    "symbols": 4,
+    "changed": 3,
+    "context": 1,
+    "summaries": 0,
+    "files": 2,
+    "frames": 0,
+    "edges": 1,
+    "findingCounts": 2
+   },
+   "nameFontPx": 12,
+   "fileFontPx": 11,
+   "namesCut": 0,
+   "namesShown": 4,
+   "filesCut": 0,
+   "filesShown": 4,
+   "layoutScreen": {
+    "w": 906,
+    "h": 385
+   },
+   "elements": 565
+  },
+  "zoomAfterFocusOffAndFit": 0.203915,
+  "zoomInNotches": 12,
+  "zoomedFrom": 1,
+  "afterZoomIn": {
+   "x": 1624.0439453125,
+   "y": 866.077880859375,
+   "width": 315.3466796875,
+   "height": 62.423583984375,
+   "inView": true
+  },
+  "excerpt": {
+   "rows": 8,
+   "cut": 3,
+   "firstChanged": "base:6",
+   "more": false,
+   "panelWidth": 336
+  },
+  "where": "@qwik.dev/core › src/core/shared/utils/reveal.ts · line 4 at 65661bf",
+  "filesPageOpenedOn": ".changeset/sharp-fallbacks-stay.md",
+  "fileIndex": 16,
+  "fileListScrolls": 0,
+  "lineScrolls": 0,
+  "progressAfterOne": "1 of 62 changed symbols reviewedj / k next",
+  "progressWords": "1 of 62 changed symbols reviewedj / k next",
+  "changesTotal": "Changes 62",
+  "error": "TimeoutError: locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('tab', { name: /Review/ })\u001b[22m\n",
+  "pageErrors": []
+ },
+ "tasks": [
+  {
+   "name": "open the diff",
+   "ops": {
+    "click": 1,
+    "key": 0,
+    "type": 0,
+    "wheel": 0,
+    "pan": 0,
+    "switch": 0,
+    "read": 1
+   },
+   "waits": [
+    {
+     "label": "Files page (or the analysis steps) drawn",
+     "ms": 135
+    },
+    {
+     "label": "analysis done, graph ready",
+     "ms": 17
+    }
+   ],
+   "notes": [
+    {
+     "read": "the head: title, facts, pills"
+    }
+   ],
+   "wallMs": 279,
+   "klmSeconds": 2.8
+  },
+  {
+   "name": "find the riskiest change",
+   "ops": {
+    "click": 1,
+    "key": 1,
+    "type": 0,
+    "wheel": 0,
+    "pan": 0,
+    "switch": 1,
+    "read": 2
+   },
+   "waits": [
+    {
+     "label": "Graph page drawn",
+     "ms": 126
+    },
+    {
+     "label": "finding selected, panel drawn",
+     "ms": 69
+    }
+   ],
+   "notes": [
+    {
+     "read": "the findings list"
+    },
+    {
+     "read": "the finding in the panel"
+    }
+   ],
+   "zoom": 1,
+   "selected": {
+    "x": 1151.5,
+    "y": 692,
+    "width": 293,
+    "height": 58,
+    "inView": true
+   },
+   "wallMs": 1533,
+   "klmSeconds": 4.5
+  },
+  {
+   "name": "follow callers and callees",
+   "ops": {
+    "click": 4,
+    "key": 2,
+    "type": 0,
+    "wheel": 12,
+    "pan": 0,
+    "switch": 0,
+    "read": 2
+   },
+   "waits": [
+    {
+     "label": "a caller selected",
+     "ms": 74
+    },
+    {
+     "label": "Focus laid out and fitted",
+     "ms": 380
+    }
+   ],
+   "notes": [
+    {
+     "read": "used by / uses lists"
+    },
+    {
+     "read": "the caller in the panel"
+    },
+    {
+     "lost": "no back from a followed symbol: re-picked the finding"
+    }
+   ],
+   "zoomInNotches": 12,
+   "wallMs": 5369,
+   "klmSeconds": 12.5
+  },
+  {
+   "name": "read a finding, get to its code",
+   "ops": {
+    "click": 1,
+    "key": 1,
+    "type": 0,
+    "wheel": 0,
+    "pan": 0,
+    "switch": 1,
+    "read": 2
+   },
+   "waits": [
+    {
+     "label": "Files page drawn",
+     "ms": 50
+    },
+    {
+     "label": "the file's diff drawn",
+     "ms": 85
+    }
+   ],
+   "notes": [
+    {
+     "read": "the changed lines in the panel"
+    },
+    {
+     "read": "find the symbol's file in the list"
+    }
+   ],
+   "panelFile": "packages/qwik/src/core/shared/utils/reveal.ts",
+   "symbolLine": 4,
+   "wallMs": 228,
+   "klmSeconds": 4.4
+  },
+  {
+   "name": "leave a comment (Files: a line)",
+   "ops": {
+    "click": 0,
+    "key": 0,
+    "type": 0,
+    "wheel": 0,
+    "pan": 0,
+    "switch": 0,
+    "read": 0
+   },
+   "waits": [],
+   "notes": [
+    {
+     "lost": "no changed line to comment on in the first file"
+    }
+   ],
+   "wallMs": 2,
+   "klmSeconds": 0
+  },
+  {
+   "name": "leave a comment (Graph: the panel)",
+   "ops": {
+    "click": 0,
+    "key": 1,
+    "type": 0,
+    "wheel": 0,
+    "pan": 0,
+    "switch": 1,
+    "read": 0
+   },
+   "waits": [],
+   "notes": [
+    {
+     "lost": "no comment box in the panel"
+    }
+   ],
+   "wallMs": 10568,
+   "klmSeconds": 0.3
+  },
+  {
+   "name": "mark reviewed",
+   "ops": {
+    "click": 0,
+    "key": 1,
+    "type": 0,
+    "wheel": 0,
+    "pan": 0,
+    "switch": 0,
+    "read": 0
+   },
+   "waits": [
+    {
+     "label": "progress updated",
+     "ms": 16
+    }
+   ],
+   "notes": [],
+   "wallMs": 20,
+   "klmSeconds": 0.3
+  },
+  {
+   "name": "know when you are done",
+   "ops": {
+    "click": 0,
+    "key": 0,
+    "type": 0,
+    "wheel": 0,
+    "pan": 0,
+    "switch": 0,
+    "read": 1
+   },
+   "waits": [],
+   "notes": [
+    {
+     "read": "the progress line"
+    }
+   ],
+   "started": 1794342977786,
+   "klmSeconds": 1.4
+  }
+ ]
+}
