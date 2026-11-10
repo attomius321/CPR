@@ -249,6 +249,36 @@ test('a card keeps the focus when its workspace moves to another group', async (
   await expect(buttons.nth(1)).toBeFocused();
 });
 
+test('a workspace whose agent is still starting is at work, never "No agent" (fix/e2e-flakes)', async ({
+  page,
+}) => {
+  const symbiote = await serve();
+  // Claude Code's --bg takes 1.5 s, as under load: its record is there before its session is.
+  symbiote.slowStarts(1_500);
+  await page.goto(`${symbiote.url}git`);
+  await start(page, 'Add a half function');
+  const buttons = sidenav(page).locator('.workspace-row .workspace-about');
+  await expect(buttons).toHaveCount(1, POLL);
+  // Every state the sidenav shows while the second one starts.
+  await page.evaluate(() => {
+    const seen: string[] = [];
+    (window as { seen?: string[] }).seen = seen;
+    new MutationObserver(() => {
+      const side = document.querySelector('.sidenav');
+      for (const row of side?.querySelectorAll<HTMLElement>('.workspace-row[data-branch]') ?? []) {
+        const group = row.closest('.workspace-group')?.getAttribute('aria-label') ?? '';
+        seen.push(`${group}: ${row.textContent ?? ''}`);
+      }
+    }).observe(document.body, { subtree: true, childList: true, characterData: true });
+  });
+  await start(page, 'Add clamp');
+  await expect(group(page, 'Working').locator('.workspace-row')).toHaveCount(2, POLL);
+  // The start answered: the cards in the order they were started, both at work.
+  await expect(buttons.first()).toContainText('Add a half function');
+  const seen = await page.evaluate(() => (window as { seen?: string[] }).seen ?? []);
+  expect(seen.filter((s) => s.startsWith('Not running') || s.includes('No agent'))).toEqual([]);
+});
+
 /** A colour token as the page computes it (`rgb(…)`), to compare with a computed style. */
 const tokenColour = (page: Page, token: string) =>
   page.evaluate((name) => {

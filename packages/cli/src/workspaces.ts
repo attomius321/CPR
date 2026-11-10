@@ -11,6 +11,7 @@ import {
 } from '@symbiote/core';
 import { ADVISING_AGENTS } from './workspace-advice.js';
 import { workspaceCodex } from './workspace-codex.js';
+import { workspaceLaunches } from './workspace-launches.js';
 import { symbioteFolder } from './workspace-record.js';
 import { CONFIG_FILES } from './plugins.js';
 import { reviewPlace, type ReviewPlace } from './reviews.js';
@@ -184,6 +185,7 @@ export function workspaces(
     uploads,
     attached,
     shellsByBranch,
+    launches: workspaceLaunches(),
   };
   const trunk = workspaceTrunk(ctx);
   const agent = workspaceAgent(ctx);

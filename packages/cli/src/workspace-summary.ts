@@ -81,6 +81,7 @@ export function workspaceSummary(
     claude,
     env,
     hiveOn,
+    launches,
     now,
     place,
     repo,
@@ -89,7 +90,16 @@ export function workspaceSummary(
     viaCodex,
   }: Pick<
     WorkspacesContext,
-    'claude' | 'env' | 'hiveOn' | 'now' | 'place' | 'repo' | 'root' | 'terminals' | 'viaCodex'
+    | 'claude'
+    | 'env'
+    | 'hiveOn'
+    | 'launches'
+    | 'now'
+    | 'place'
+    | 'repo'
+    | 'root'
+    | 'terminals'
+    | 'viaCodex'
   >,
   {
     changesBase,
@@ -157,6 +167,8 @@ export function workspaceSummary(
     refs: RefList,
     trunk: string[],
     sessions: AgentSession[] | null,
+    /** Where the read began (`launches.mark()`): a launch that ended after it may be half seen. */
+    from?: number,
   ): Promise<WorkspaceSummary> {
     const tip = refs.branches.find((b) => b.name === workspace.branch)?.sha ?? null;
     // Its commits, counted again only when what they are counted from moved (V94d): a hook's
@@ -219,6 +231,13 @@ export function workspaceSummary(
         workspace.agent?.kind === 'codex'
           ? codexState(workspace, thread, await viaCodex.alive(workspace), ahead)
           : agentState(workspace, sessions, ahead, real, ended);
+      // Its record written, its session not listed yet: being started (fix/e2e-flakes).
+      if (
+        (agent.state === 'no-agent' || agent.state === 'not-running') &&
+        launches.since(workspace.branch, from)
+      ) {
+        agent = { state: 'working', kind: 'claude' };
+      }
       // Its tools (V48f), read only while it works and when they are recorded.
       const tools =
         agent.state === 'working' && workspace.agent?.activity
@@ -297,6 +316,7 @@ export function workspaceSummary(
     'list' | 'history' | 'finished' | 'summaryOf' | 'thread' | 'tools' | 'exportActivity'
   > = {
     async list() {
+      const from = launches.mark();
       const where = await place();
       const list = (await readRecords(where)).filter((f) => !f.finished);
       const head = { place: where.place, ...(where.note ? { note: where.note } : {}) };
@@ -309,7 +329,7 @@ export function workspaceSummary(
       const sessions = agent ? await agent.sessions() : null;
       const summaries: WorkspaceSummary[] = [];
       for (const workspace of list) {
-        summaries.push(await summary(where, workspace, refs, trunk, sessions));
+        summaries.push(await summary(where, workspace, refs, trunk, sessions, from));
       }
       const terminal = await terminals?.available();
       return { workspaces: summaries, ...head, ...(terminal ? { terminal } : {}) };
@@ -505,13 +525,14 @@ export function workspaceSummary(
     },
 
     async summaryOf(branch) {
+      const from = launches.mark();
       const where = await place();
       const workspace = await readRecord(where, branch).catch(() => null);
       if (!workspace || workspace.finished) return null;
       const refs = await listRefs(repo);
       const agent = workspace.agent?.kind === 'claude' ? await claude() : null;
       const sessions = agent ? await agent.sessions() : null;
-      return summary(where, workspace, refs, await trunkOf(refs), sessions);
+      return summary(where, workspace, refs, await trunkOf(refs), sessions, from);
     },
   };
   return { summary, ops };

@@ -61,6 +61,11 @@ export interface MergerOptions {
   models?: (kind: AgentKind) => Promise<AgentModels | null>;
   /** The symbols a side changed in the conflicting files; Symbiote's analysis by default. */
   changedSymbols?: ChangedSymbols;
+  /**
+   * A drain stopped by what no entry holds (its lock or the queue's file cannot be written): the
+   * next kick tries again, and nothing else says it (fix/e2e-flakes: `symbiote view` logs it).
+   */
+  onError?: (error: unknown) => void;
 }
 
 /** What `merger`'s steps share. */

@@ -155,6 +155,7 @@ export function merger(
     levels = () => Promise.resolve(null),
     models = () => Promise.resolve(null),
     changedSymbols = analyzedSymbols(repo, cacheDir),
+    onError,
   }: MergerOptions = {},
 ): Merger {
   const stateDir = join(cacheDir, 'state', repo.id);
@@ -289,8 +290,8 @@ export function merger(
       } while (again);
     })()
       // What failed is in its entry; a lock or queue file that cannot be written waits for the next
-      // kick.
-      .catch(() => undefined)
+      // kick, said where the view logs.
+      .catch((error: unknown) => onError?.(error))
       .finally(() => (running = null));
   }
 

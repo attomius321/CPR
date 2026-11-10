@@ -69,6 +69,7 @@ export function workspaceAgent({
   codex,
   config,
   hook,
+  launches,
   node,
   now,
   repo,
@@ -84,6 +85,7 @@ export function workspaceAgent({
   | 'codex'
   | 'config'
   | 'hook'
+  | 'launches'
   | 'node'
   | 'now'
   | 'repo'
@@ -239,27 +241,36 @@ export function workspaceAgent({
       await writeRecord(where, workspace);
       await viaCodex.firstEntry(where, workspace);
     } else {
-      // The session's first hooks run while `--bg` starts it: they look for this record.
-      await writeRecord(where, workspace);
-      const result = await agent.claude.start({
-        cwd: workspace.worktree,
-        name: workspace.branch,
-        prompt,
-        permissionMode,
-        addDir: symbioteFolder(where),
-        settings: await settingsFile(where),
-        ...level,
-      });
-      workspace.agent = result.ok
-        ? {
-            kind: 'claude',
-            permissionMode,
-            ...level,
-            started: now().toISOString(),
-            hooks: true,
-            activity: true,
-          }
-        : { kind: 'claude', permissionMode, ...level, error: result.error };
+      // Being started until its record says how that went: a read meanwhile, its session not
+      // listed yet, says it is at work (`launches`).
+      const launched = launches.begin(workspace.branch);
+      try {
+        // The session's first hooks run while `--bg` starts it: they look for this record.
+        await writeRecord(where, workspace);
+        const result = await agent.claude.start({
+          cwd: workspace.worktree,
+          name: workspace.branch,
+          prompt,
+          permissionMode,
+          addDir: symbioteFolder(where),
+          settings: await settingsFile(where),
+          ...level,
+        });
+        workspace.agent = result.ok
+          ? {
+              kind: 'claude',
+              permissionMode,
+              ...level,
+              started: now().toISOString(),
+              hooks: true,
+              activity: true,
+            }
+          : { kind: 'claude', permissionMode, ...level, error: result.error };
+        await writeRecord(where, workspace);
+      } finally {
+        launched();
+      }
+      return prompt;
     }
     await writeRecord(where, workspace);
     return prompt;

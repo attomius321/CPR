@@ -209,6 +209,11 @@ export async function view(argv: string[], ctx: CliContext): Promise<number> {
   const repoReviews = branchReviews(repo, cacheDir);
   const repoMerges = merger(repo, cacheDir, {
     onChange: mergeStates(log.log),
+    onError: (error) =>
+      log.log.warn(
+        { repo: repo.root, error: error instanceof Error ? error.message : String(error) },
+        'merger stopped: it merges again at the next kick',
+      ),
     mergerAgent: mergerFinder(repo.root, ctx.env),
     levels: levelsFinder(claudeOf, codexOf),
     models: modelsFinder(claudeOf, codexOf),

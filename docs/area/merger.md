@@ -265,5 +265,14 @@ These no longer hold:
   person had no card to open, and **Send to the agent** seemed to do nothing. `mergingAlone`
   (`packages/viewer/src/workspaces/merges.ts`) is the one rule
   ([the fix](../journal/fix-failed-merge-hides-workspace.md)).
+- **A page's own read can be older than the stream's push.** After Land, the merge page read the
+  five parts itself; its `/api/merges` answered "Queued" while the drain ran, then arrived after
+  the stream had pushed "Cannot fast-forward", and put "Queued" back. The stream sends only what
+  changed since it last sent, so the page stayed on Queued (workspaces.spec.ts:2303). A page's
+  own read now never replaces a part pushed after it began (`useWorkspaces.ts`,
+  [the fix](../journal/fix-e2e-flakes.md)).
+- **A drain stopped by its lock or the queue's file waits for the next kick.** `kick()` catches
+  what no entry holds; `symbiote view` logs it ("merger stopped", `onError`), and a read of the
+  merges or any action kicks again.
 - **`symbiote merge --help` lists the default target without the reviewed-against branch**, which
   the code checks first (`targets` in `merge-targets.ts`). Found while writing this page; not fixed.

@@ -106,8 +106,22 @@ function kept<T>(was: T, next: T): T {
   return JSON.stringify(was) === JSON.stringify(next) ? was : next;
 }
 
+/**
+ * Each field's last push from the stream, on a count of pushes (fix/e2e-flakes): a page's own read
+ * that began before it may have been answered before it too, and never replaces it. The stream
+ * sends what changed since what it sent, so an older answer put back would stay (a merge shown
+ * Queued after the stream had said it cannot fast-forward).
+ */
+let pushes = 0;
+const pushedAt = new Map<keyof WorkspacesState, number>();
+
+/** `read`, unless the stream pushed `field` after the read began at `from`: then `was`. */
+const newer = <T>(field: keyof WorkspacesState, from: number, was: T, read: T): T =>
+  (pushedAt.get(field) ?? 0) > from ? was : kept(was, read);
+
 /** Reads the workspaces (V18b), the reviews, the merges, Nucleus and Scribe, unless one is under way. */
 function refresh(): Promise<void> {
+  const from = pushes;
   loading ??= Promise.all([
     read<WorkspaceList>('/api/workspaces'),
     read<BranchReviewList>('/api/reviews'),
@@ -120,11 +134,11 @@ function refresh(): Promise<void> {
       // the stream keeps it. Polling replaces every part, as before.
       current = streaming()
         ? {
-            list: kept(current.list, list),
-            reviews: kept(current.reviews, reviews),
-            merges: kept(current.merges, merges),
-            nucleus: kept(current.nucleus, nucleus),
-            scribe: kept(current.scribe, scribe),
+            list: newer('list', from, current.list, list),
+            reviews: newer('reviews', from, current.reviews, reviews),
+            merges: newer('merges', from, current.merges, merges),
+            nucleus: newer('nucleus', from, current.nucleus, nucleus),
+            scribe: newer('scribe', from, current.scribe, scribe),
             readAt: Date.now(),
           }
         : { list, reviews, merges, nucleus, scribe, readAt: Date.now() };
@@ -216,6 +230,7 @@ function onPushed(changed: Parts, status: Status): void {
     keyof WorkspacesState,
   ][]) {
     if (!(part in changed)) continue;
+    pushedAt.set(field, ++pushes);
     next ??= { ...current, readAt: Date.now() };
     (next as unknown as Record<string, unknown>)[field] = changed[part] ?? null;
   }

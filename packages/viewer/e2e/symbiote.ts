@@ -12,7 +12,7 @@ import {
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Page } from '@playwright/test';
 import { mockApi, type Recorded } from '../../forge/test/mock-api.js';
@@ -297,6 +297,7 @@ say({ type: 'result', subtype: 'success', result, is_error: false, usage: { inpu
       running.child.kill('SIGINT');
       // The server may still be saving the review (cleared drafts after a verdict), or writing
       // its last log lines into its cache (fix-ci-green: ENOTEMPTY): retry.
+      keepCache(cache);
       rmSync(repo, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
       rmSync(origin, { recursive: true, force: true });
       rmSync(cache, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
@@ -642,6 +643,11 @@ export interface RunningWorkspaces extends Running {
   /** From now on the fake refuses to start, with Claude Code's trust message. */
   distrust(): void;
   /**
+   * From now on each new session takes `ms` to start, as Claude Code's `--bg` does under load:
+   * listed only once it has started (fix/e2e-flakes).
+   */
+  slowStarts(ms: number): void;
+  /**
    * From now on every resume starts a copy without the original's settings, as Claude Code does
    * for a session whose process still runs (fix/hive-runner-flaws): its hooks record nothing.
    */
@@ -706,6 +712,23 @@ export interface RunningWorkspaces extends Running {
   codexHangups(): string[];
   /** With `usage` (V29c): the requests the fake usage endpoint got, their Authorization. */
   usageRequests(): string[];
+}
+
+/**
+ * With `SYMBIOTE_E2E_KEEP=<folder>`, a served view's logs and state (its merge queue and merge
+ * logs) are copied there before its cache is removed, one folder each (fix/e2e-flakes): a flake
+ * seen once in a full run can be read afterwards.
+ */
+function keepCache(cache: string): void {
+  const keep = process.env.SYMBIOTE_E2E_KEEP;
+  if (!keep) return;
+  for (const part of ['logs', 'state']) {
+    try {
+      cpSync(join(cache, part), join(keep, basename(cache), part), { recursive: true });
+    } catch {
+      // Not there: nothing to keep.
+    }
+  }
 }
 
 /**
@@ -871,6 +894,8 @@ if (args[0] === '--bg' && args[1] === '--resume') {
     process.exit(1);
   }
   appendFileSync(join(dir, 'calls.jsonl'), JSON.stringify({ args, cwd: process.cwd() }) + '\\n');
+  // Slow to start (fix/e2e-flakes): nothing listed until it has.
+  if (existsSync(join(dir, 'slow-starts'))) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, Number(readFileSync(join(dir, 'slow-starts'), 'utf8')));
   const settings = option('--settings');
   const prompt = promptOf(args.slice(1));
   const session = started({ cwd: process.cwd(), name: args[2], ...(settings ? { settings } : {}), ...waiting(prompt) });
@@ -1396,6 +1421,9 @@ export async function serveWorkspaces({
     },
     distrust() {
       writeFileSync(join(fake, 'distrust'), '');
+    },
+    slowStarts(ms) {
+      writeFileSync(join(fake, 'slow-starts'), String(ms));
     },
     copies() {
       writeFileSync(join(fake, 'copies'), '');
