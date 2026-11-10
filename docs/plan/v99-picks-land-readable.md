@@ -118,3 +118,25 @@ on `main`'s build for the right reasons, then passed.
 - **A text size changed in another tab** runs the canvas's view effect again. A picked symbol
   moves only if its name is now unreadable or out of view. Focus and a group's reveal fit again
   at the new cap.
+
+## Results
+
+| Measure | `main` (15fce4b) | V99 |
+|---|---|---|
+| `callers` zoomed to 0.6, a finding picked: the name on screen | 7.2 px (stays at 0.6) | 15 px (zoom 1.25); compact 14, large 16 |
+| The same from the map (0.3) | zoom 1, 12 px | zoom 1.25, 15 px |
+| At 1.3: a pick in view; one dragged out of view | nothing moves; pans at 1.3 | the same |
+| `callers`' first fit, 1920 × 1080; 1440 × 900 | 1; 1 | 1.25; 1.22 (whole, wider than its canvas at 1.25) |
+| Focus on `legacy`, 1920 × 1080 | 1.1 | 1.25 |
+| A change list row at 0.6, then `j` three times | stays at 0.6 | 1.25 once, then 1.25 |
+| The small fix's first finding (`MergerOptions`), 2560 × 1440 | 0.494, 5.9 px | 1.25, 15 px ([before](../images/v99-picks-land-readable/small-fix-pick-before-dark.png), [after](../images/v99-picks-land-readable/small-fix-pick-after-dark.png); light: [before](../images/v99-picks-land-readable/small-fix-pick-before-light.png), [after](../images/v99-picks-land-readable/small-fix-pick-after-light.png)) |
+| Bitwarden `737ee3f`, select (`interactions.mjs`, median of 3, two runs each, alternated) | 64, 63 ms | 64, 65 ms |
+| Bitwarden, open; mark reviewed; `j` ×8 | 345–359; 8; 1,068–1,079 ms | 358–359; 8–9; 1,063–1,070 ms |
+| The refactor's merge (eb807773), select; open | 295–297; 893–894 ms | 287; 902–925 ms |
+
+Cost: none measurable. A pick still makes one `setCenter`, at another zoom.
+
+Tests: `mapzoom.test.ts` (4 new) and `e2e/pick.spec.ts` (8 new; 7 fail on `main`'s build);
+`pnpm check` (3,466 unit tests); `pnpm build`; `pnpm test:e2e`: the viewer's 446 and the nexus's
+32 passed (a first run, with Bitwarden's graph being made beside it, failed `resize.spec.ts`,
+changed above, and `events.spec.ts:201`, a 500 ms timing test that passed alone).
