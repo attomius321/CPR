@@ -127,6 +127,7 @@ loop steadier, from what the graph runs of 2026-11-02 found (Agents, below).
 | [V8](plan/v8-smooth-viewer.md) | A smooth viewer | ✅ | 37–41 | [journal](journal/v8-smooth-viewer.md) |
 | [V12](plan/v12-open-in-vscode.md) | Open in VS Code | ✅ | 60–64 | [journal](journal/v12-open-in-vscode.md) |
 | Fix | `open-pr.spec.ts`: two opens raced to VS Code's log; the spec waits for each | ✅ | | [journal](journal/fix-open-pr-spec-race.md) |
+| Refactor | `layoutFlow` in its phases: 378 lines to 108, each phase a pure function; the same layouts on five real graphs | ready for review | | [journal](journal/refactor-layout-flow.md) |
 | [Fix](plan/fix-graph-file-check.md) | A file that is not a graph says so; an error boundary around each page | planned | | |
 | [V96](plan/v96-map-labels.md) | Project names never cover file names on the map | planned | 938–939 | [journal](journal/v96-map-labels.md) |
 

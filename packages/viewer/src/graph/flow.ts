@@ -202,238 +202,38 @@ export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayou
     (e) => byId.has(e.from) && byId.has(e.to) && (typeReferences || e.kind !== 'type-reference'),
   );
 
-  // Unchanged neighbours of each changed symbol, by side.
-  const neighbours = new Map<string, Neighbours>();
-  const addNeighbour = (of: string, side: SummaryData['side'], member: string) => {
-    const id = summaryId(side, of);
-    let group = neighbours.get(id);
-    if (!group) neighbours.set(id, (group = { id, of, side, members: new Set() }));
-    group.members.add(member);
-  };
-  for (const edge of candidateEdges) {
-    const from = byId.get(edge.from) as GraphNode;
-    const to = byId.get(edge.to) as GraphNode;
-    if (to.status !== 'unchanged' && from.status === 'unchanged')
-      addNeighbour(to.id, 'users', from.id);
-    if (from.status !== 'unchanged' && to.status === 'unchanged')
-      addNeighbour(from.id, 'uses', to.id);
-  }
-
-  // Few neighbours are drawn; many become a summary. A neighbour another side draws anyway,
-  // or a user a finding names as still using something removed, is drawn too.
-  const drawn = new Set<string>();
-  const grouped = new Set<string>();
-  const summaries: (Neighbours & { expanded: boolean })[] = [];
-  for (const group of neighbours.values()) {
-    for (const member of group.members) grouped.add(member);
-    const big = group.members.size > NEIGHBOUR_LIMIT;
-    const open = expanded.has(group.id);
-    if (!big || open) for (const member of group.members) drawn.add(member);
-    if (big) summaries.push({ ...group, expanded: open });
-  }
-  for (const finding of graph.findings) {
-    if (finding.rule !== 'removed-still-referenced') continue;
-    for (const id of finding.related) if (grouped.has(id)) drawn.add(id);
-  }
-  const hidden = new Map<string, string>();
-  for (const summary of summaries) {
-    if (summary.expanded) continue;
-    for (const member of summary.members) {
-      if (!drawn.has(member) && !hidden.has(member)) hidden.set(member, summary.id);
-    }
-  }
-
-  // Unchanged symbols that are nobody's neighbour (deeper context) stay if an edge holds them.
-  const kept = (n: GraphNode) => n.status !== 'unchanged' || drawn.has(n.id) || !grouped.has(n.id);
-  const candidates = new Set(visible.filter(kept).map((n) => n.id));
-  const edges = candidateEdges.filter((e) => candidates.has(e.from) && candidates.has(e.to));
-  const connected = new Set(edges.flatMap((e) => [e.from, e.to]));
-  const nodes = visible.filter(
-    (n) => candidates.has(n.id) && (n.status !== 'unchanged' || connected.has(n.id)),
+  const { drawn, grouped, summaries, hidden } = summarize(
+    neighboursOf(candidateEdges, byId),
+    expanded,
+    graph.findings,
   );
 
-  // How many projects a summary's neighbours come from, when more than one.
+  const { nodes, edges } = drawnSymbols(visible, candidateEdges, drawn, grouped);
+
   const projects = graph.projects ?? [];
-  const spans = new Map<string, number>();
-  if (projects.length > 1) {
-    for (const summary of summaries) {
-      const held = new Set<Project>();
-      for (const member of summary.members) {
-        const { file } = groupOf(byId.get(member) as GraphNode);
-        const project = file === undefined ? undefined : projectOf(file, projects);
-        if (project) held.add(project);
-      }
-      if (held.size > 1) spans.set(summary.id, held.size);
-    }
-  }
+  const spans = summarySpans(summaries, byId, projects);
   const summaryWidth = (id: string) => (spans.has(id) ? SUMMARY_WIDE : SUMMARY_WIDTH);
 
-  // Boxes: a file or package each; a summary sits in its symbol's box.
-  const boxOf = new Map<string, string>();
-  const boxes = new Map<
-    string,
-    { label: string; file: string | undefined; changed: boolean; members: Member[] }
-  >();
-  const join = (member: Member, box: ReturnType<typeof groupOf>, changed: boolean) => {
-    let entry = boxes.get(box.id);
-    if (!entry) {
-      boxes.set(
-        box.id,
-        (entry = { label: box.label, file: box.file, changed: false, members: [] }),
-      );
-    }
-    entry.changed ||= changed;
-    entry.members.push(member);
-    boxOf.set(member.id, box.id);
-  };
-  for (const node of nodes) {
-    join(
-      { id: node.id, width: nodeWidth(node), changed: node.status !== 'unchanged' },
-      groupOf(node),
-      node.status !== 'unchanged',
-    );
-  }
-  for (const summary of summaries) {
-    const owner = byId.get(summary.of);
-    if (!owner || !boxOf.has(summary.of)) continue;
-    join(
-      { id: summary.id, width: summaryWidth(summary.id), changed: false },
-      groupOf(owner),
-      false,
-    );
-  }
+  const { boxes, boxOf } = fileBoxes(nodes, summaries, byId, summaryWidth);
 
-  const summaryEdges: FlowEdge[] = summaries
-    .filter((s) => boxOf.has(s.id))
-    .map((s) => ({
-      id: `summary-edge:${s.id}`,
-      source: s.side === 'users' ? s.id : s.of,
-      target: s.side === 'users' ? s.of : s.id,
-      className: 'edge-summary',
-      data: { edge: null },
-    }));
+  const summaryEdges = summaryEdgesOf(summaries, boxOf);
   const links = [
     ...edges.map((e) => ({ from: e.from, to: e.to })),
     ...summaryEdges.map((e) => ({ from: e.source, to: e.target })),
   ];
 
-  // Inside each box: dagre for symbols linked inside it, columns for the rest.
-  const inner = new Map<string, { x: number; y: number }>();
-  const boxSizes = new Map<string, { width: number; height: number }>();
-  for (const [id, box] of boxes) {
-    const internal = links.filter((l) => boxOf.get(l.from) === id && boxOf.get(l.to) === id);
-    const placed = layoutBox(box.members, internal);
-    for (const [member, at] of placed.positions) {
-      inner.set(member, { x: at.x + GROUP_PAD.side, y: at.y + GROUP_PAD.top });
-    }
-    boxSizes.set(id, {
-      width: placed.width + 2 * GROUP_PAD.side,
-      height: placed.height + GROUP_PAD.top + GROUP_PAD.bottom,
-    });
-  }
+  const { inner, boxSizes } = layoutBoxes(boxes, boxOf, links);
 
   const between = links
     .map((l) => ({ from: boxOf.get(l.from) ?? '', to: boxOf.get(l.to) ?? '' }))
     .filter((l) => l.from && l.to && l.from !== l.to);
 
-  // Projects: when the files drawn belong to two or more, each is a frame around its files.
-  const projectOfBox = new Map<string, Project>();
-  for (const [id, box] of boxes) {
-    const project = box.file === undefined ? undefined : projectOf(box.file, projects);
-    if (project) projectOfBox.set(id, project);
-  }
-  const frameOf = new Map<string, string>();
-  const frames = new Map<string, { project: Project; changed: number }>();
-  if (new Set(projectOfBox.values()).size > 1) {
-    for (const [box, project] of projectOfBox) {
-      const id = `project:${project.folder}`;
-      let frame = frames.get(id);
-      if (!frame) frames.set(id, (frame = { project, changed: 0 }));
-      frame.changed += boxes.get(box)?.members.filter((m) => m.changed).length ?? 0;
-      frameOf.set(box, id);
-    }
-  }
-  // A box in no project (a package, the dynamic calls) is drawn in the frame it has the most links
-  // with, among its users as without frames: beside every frame, a package used by hundreds of
-  // symbols drew long fans of edges (Qwik). It still belongs to no project.
-  const placedIn = new Map(frameOf);
-  if (frames.size > 0) {
-    const weights = new Map<string, Map<string, number>>();
-    for (const { from, to } of between) {
-      for (const [box, other] of [
-        [from, to],
-        [to, from],
-      ] as const) {
-        const frame = frameOf.get(other);
-        if (frameOf.has(box) || !frame) continue;
-        const byFrame = weights.get(box) ?? new Map<string, number>();
-        byFrame.set(frame, (byFrame.get(frame) ?? 0) + 1);
-        weights.set(box, byFrame);
-      }
-    }
-    for (const [box, byFrame] of weights) {
-      let best: [string, number] | undefined;
-      for (const entry of byFrame) if (!best || entry[1] > best[1]) best = entry;
-      if (best) placedIn.set(box, best[0]);
-    }
-  }
+  const { projectOfBox, frameOf, frames } = projectFrames(boxes, projects);
+  const placedIn = placedInFrames(frameOf, frames, between);
 
-  // Between boxes: clusters connected by edges, each laid out by dagre, packed into a page. With
-  // frames, the boxes in a frame are packed so inside it; frames (and a box in none, linked to no
-  // frame) are placed in rows in the order of the links between them.
-  const boxPositions = new Map<string, { x: number; y: number }>();
-  const frameRects = new Map<string, Rect>();
-  if (frames.size === 0) {
-    const packed = packClusters([...boxSizes], between, { x: MARGIN, y: MARGIN });
-    for (const [id, at] of packed.positions) boxPositions.set(id, at);
-  } else {
-    for (const [id, frame] of frames) {
-      const light = frame.changed === 0;
-      const pad = light ? LIGHT_FRAME_PAD : FRAME_PAD;
-      const inside = new Set([...placedIn].filter(([, at]) => at === id).map(([box]) => box));
-      const packed = packClusters(
-        [...inside].map((box) => [box, boxSizes.get(box) ?? { width: 0, height: 0 }]),
-        between.filter((l) => inside.has(l.from) && inside.has(l.to)),
-        { x: pad.side, y: pad.top },
-      );
-      for (const [box, at] of packed.positions) boxPositions.set(box, at);
-      frameRects.set(id, {
-        x: 0,
-        y: 0,
-        width: Math.max(bandWidth(frame.project, light), packed.width + 2 * pad.side),
-        height: packed.height + pad.top + pad.bottom,
-      });
-    }
-    const outer = (box: string) => placedIn.get(box) ?? box;
-    const placed = packFrames(
-      [...frameRects, ...[...boxSizes].filter(([id]) => !placedIn.has(id))],
-      between.map((l) => ({ from: outer(l.from), to: outer(l.to) })).filter((l) => l.from !== l.to),
-      { x: MARGIN, y: MARGIN },
-    );
-    for (const [id, at] of placed.positions) {
-      const frame = frameRects.get(id);
-      if (frame) frameRects.set(id, { ...frame, ...at });
-      else boxPositions.set(id, at);
-    }
-  }
+  const { boxPositions, frameRects } = placeBoxes(boxSizes, between, frames, placedIn);
 
-  const projectNodes: ProjectFlowNode[] = [...frames].map(([id, { project, changed }]) => {
-    const rect = frameRects.get(id) ?? { x: 0, y: 0, width: 0, height: 0 };
-    return {
-      id,
-      type: 'project',
-      position: { x: rect.x, y: rect.y },
-      width: rect.width,
-      height: rect.height,
-      selectable: false,
-      data: {
-        name: project.name,
-        folder: project.folder,
-        ...(project.kind ? { kind: project.kind } : {}),
-        changed,
-      },
-    };
-  });
+  const projectNodes = projectNodesOf(frames, frameRects);
 
   const fileNodes: FileFlowNode[] = [...boxes].map(([id, box]) => {
     const size = boxSizes.get(id) ?? { width: 0, height: 0 };
@@ -455,29 +255,7 @@ export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayou
     };
   });
 
-  const symbolNodes: SymbolFlowNode[] = nodes.map((node) => ({
-    id: node.id,
-    type: 'symbol',
-    parentId: boxOf.get(node.id) ?? '',
-    extent: 'parent',
-    position: inner.get(node.id) ?? { x: 0, y: 0 },
-    width: nodeWidth(node),
-    height: NODE_HEIGHT,
-    data: {
-      node,
-      tone: tone(node),
-      label: label(node),
-      file: fileOf(node),
-      tags: node.delta
-        ? Object.entries(node.delta)
-            .filter(([, on]) => on)
-            .map(([tag]) => tag)
-        : [],
-      findings: findings.get(node.id) ?? { error: 0, warning: 0, info: 0 },
-      reviewed: false,
-      settled: false,
-    },
-  }));
+  const symbolNodes = symbolNodesOf(nodes, boxOf, inner, findings);
 
   const summaryNodes: SummaryFlowNode[] = summaries
     .filter((s) => boxOf.has(s.id))
@@ -509,60 +287,12 @@ export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayou
     return from !== undefined && to !== undefined && from !== to;
   };
 
-  // A file pair's edge is drawn as its symbols' edges are when they all share a side.
-  const pairs = new Map<
-    string,
-    { source: string; target: string; sides: Set<GraphEdge['side']>; count: number; cross: boolean }
-  >();
-  for (const edge of edges) {
-    const source = boxOf.get(edge.from);
-    const target = boxOf.get(edge.to);
-    if (!source || !target || source === target) continue;
-    const id = `files:${source} → ${target}`;
-    let pair = pairs.get(id);
-    if (!pair) pairs.set(id, (pair = { source, target, sides: new Set(), count: 0, cross: false }));
-    pair.sides.add(edge.side);
-    pair.count++;
-    pair.cross ||= crosses(edge);
-  }
-  const fileEdges: FlowEdge[] = [...pairs].map(([id, pair]) => {
-    const [side = 'both'] = pair.sides.size === 1 ? pair.sides : [];
-    return {
-      id,
-      source: pair.source,
-      target: pair.target,
-      className: [
-        'edge-files',
-        `edge-files-${pair.count >= 10 ? 4 : pair.count >= 4 ? 3 : pair.count >= 2 ? 2 : 1}`,
-        `edge-${side}`,
-        pair.cross ? 'edge-cross' : '',
-      ]
-        .filter(Boolean)
-        .join(' '),
-      data: { edge: null, count: pair.count },
-    };
-  });
+  const fileEdges = fileEdgesOf(edges, boxOf, crosses);
 
   return {
     // Parents before their children, as React Flow requires.
     nodes: [...projectNodes, ...fileNodes, ...symbolNodes, ...summaryNodes],
-    edges: [
-      ...edges.map((edge) => ({
-        id: edge.id,
-        source: edge.from,
-        target: edge.to,
-        className: [
-          `edge-${edge.side}`,
-          `edge-${edge.kind}`,
-          edge.resolution === 'unknown' ? 'edge-unknown' : '',
-          crosses(edge) ? 'edge-cross' : '',
-        ]
-          .filter(Boolean)
-          .join(' '),
-        data: { edge },
-      })),
-      ...summaryEdges,
-    ],
+    edges: [...edges.map((edge) => symbolEdge(edge, crosses(edge))), ...summaryEdges],
     fileEdges,
     hidden,
     members: new Map(summaries.map((s) => [s.id, [...s.members]])),
@@ -695,6 +425,438 @@ interface Member {
   id: string;
   width: number;
   changed: boolean;
+}
+
+/** The unchanged neighbours of each changed symbol, by side: one group per summary id. */
+function neighboursOf(
+  edges: readonly GraphEdge[],
+  byId: ReadonlyMap<string, GraphNode>,
+): Map<string, Neighbours> {
+  const neighbours = new Map<string, Neighbours>();
+  const addNeighbour = (of: string, side: SummaryData['side'], member: string) => {
+    const id = summaryId(side, of);
+    let group = neighbours.get(id);
+    if (!group) neighbours.set(id, (group = { id, of, side, members: new Set() }));
+    group.members.add(member);
+  };
+  for (const edge of edges) {
+    const from = byId.get(edge.from) as GraphNode;
+    const to = byId.get(edge.to) as GraphNode;
+    if (to.status !== 'unchanged' && from.status === 'unchanged')
+      addNeighbour(to.id, 'users', from.id);
+    if (from.status !== 'unchanged' && to.status === 'unchanged')
+      addNeighbour(from.id, 'uses', to.id);
+  }
+  return neighbours;
+}
+
+/** A group of neighbours past `NEIGHBOUR_LIMIT`, drawn as one node unless expanded. */
+type Summary = Neighbours & { expanded: boolean };
+
+/**
+ * Few neighbours are drawn; many become a summary. A neighbour another side draws anyway, or a
+ * user a finding names as still using something removed, is drawn too. `grouped` is every
+ * neighbour; `hidden` the symbols drawn only inside a collapsed summary (symbol → summary).
+ */
+function summarize(
+  neighbours: ReadonlyMap<string, Neighbours>,
+  expanded: ReadonlySet<string>,
+  findings: Graph['findings'],
+): { drawn: Set<string>; grouped: Set<string>; summaries: Summary[]; hidden: Map<string, string> } {
+  const drawn = new Set<string>();
+  const grouped = new Set<string>();
+  const summaries: Summary[] = [];
+  for (const group of neighbours.values()) {
+    for (const member of group.members) grouped.add(member);
+    const big = group.members.size > NEIGHBOUR_LIMIT;
+    const open = expanded.has(group.id);
+    if (!big || open) for (const member of group.members) drawn.add(member);
+    if (big) summaries.push({ ...group, expanded: open });
+  }
+  for (const finding of findings) {
+    if (finding.rule !== 'removed-still-referenced') continue;
+    for (const id of finding.related) if (grouped.has(id)) drawn.add(id);
+  }
+  const hidden = new Map<string, string>();
+  for (const summary of summaries) {
+    if (summary.expanded) continue;
+    for (const member of summary.members) {
+      if (!drawn.has(member) && !hidden.has(member)) hidden.set(member, summary.id);
+    }
+  }
+  return { drawn, grouped, summaries, hidden };
+}
+
+/**
+ * The symbols drawn and the edges between them: changed ones, neighbours drawn, and unchanged
+ * symbols that are nobody's neighbour (deeper context) if an edge holds them.
+ */
+function drawnSymbols(
+  visible: readonly GraphNode[],
+  candidateEdges: readonly GraphEdge[],
+  drawn: ReadonlySet<string>,
+  grouped: ReadonlySet<string>,
+): { nodes: GraphNode[]; edges: GraphEdge[] } {
+  const kept = (n: GraphNode) => n.status !== 'unchanged' || drawn.has(n.id) || !grouped.has(n.id);
+  const candidates = new Set(visible.filter(kept).map((n) => n.id));
+  const edges = candidateEdges.filter((e) => candidates.has(e.from) && candidates.has(e.to));
+  const connected = new Set(edges.flatMap((e) => [e.from, e.to]));
+  const nodes = visible.filter(
+    (n) => candidates.has(n.id) && (n.status !== 'unchanged' || connected.has(n.id)),
+  );
+  return { nodes, edges };
+}
+
+/** How many projects a summary's neighbours come from, when more than one: summary → count. */
+function summarySpans(
+  summaries: readonly Summary[],
+  byId: ReadonlyMap<string, GraphNode>,
+  projects: readonly Project[],
+): Map<string, number> {
+  const spans = new Map<string, number>();
+  if (projects.length > 1) {
+    for (const summary of summaries) {
+      const held = new Set<Project>();
+      for (const member of summary.members) {
+        const { file } = groupOf(byId.get(member) as GraphNode);
+        const project = file === undefined ? undefined : projectOf(file, projects);
+        if (project) held.add(project);
+      }
+      if (held.size > 1) spans.set(summary.id, held.size);
+    }
+  }
+  return spans;
+}
+
+/** A file's or a package's box: its symbols and summaries, and whether any of them changed. */
+interface Box {
+  label: string;
+  file: string | undefined;
+  changed: boolean;
+  members: Member[];
+}
+
+/** Boxes: a file or package each; a summary sits in its symbol's box. `boxOf`: member → box. */
+function fileBoxes(
+  nodes: readonly GraphNode[],
+  summaries: readonly Summary[],
+  byId: ReadonlyMap<string, GraphNode>,
+  summaryWidth: (id: string) => number,
+): { boxes: Map<string, Box>; boxOf: Map<string, string> } {
+  const boxOf = new Map<string, string>();
+  const boxes = new Map<string, Box>();
+  const join = (member: Member, box: ReturnType<typeof groupOf>, changed: boolean) => {
+    let entry = boxes.get(box.id);
+    if (!entry) {
+      boxes.set(
+        box.id,
+        (entry = { label: box.label, file: box.file, changed: false, members: [] }),
+      );
+    }
+    entry.changed ||= changed;
+    entry.members.push(member);
+    boxOf.set(member.id, box.id);
+  };
+  for (const node of nodes) {
+    join(
+      { id: node.id, width: nodeWidth(node), changed: node.status !== 'unchanged' },
+      groupOf(node),
+      node.status !== 'unchanged',
+    );
+  }
+  for (const summary of summaries) {
+    const owner = byId.get(summary.of);
+    if (!owner || !boxOf.has(summary.of)) continue;
+    join(
+      { id: summary.id, width: summaryWidth(summary.id), changed: false },
+      groupOf(owner),
+      false,
+    );
+  }
+  return { boxes, boxOf };
+}
+
+/** Each summary drawn, linked to its symbol: from the summary for users, to it for uses. */
+function summaryEdgesOf(
+  summaries: readonly Summary[],
+  boxOf: ReadonlyMap<string, string>,
+): FlowEdge[] {
+  return summaries
+    .filter((s) => boxOf.has(s.id))
+    .map((s) => ({
+      id: `summary-edge:${s.id}`,
+      source: s.side === 'users' ? s.id : s.of,
+      target: s.side === 'users' ? s.of : s.id,
+      className: 'edge-summary',
+      data: { edge: null },
+    }));
+}
+
+/**
+ * Inside each box: dagre for symbols linked inside it, columns for the rest. `inner`: each
+ * member's position in its box, padding included; `boxSizes`: each box's size.
+ */
+function layoutBoxes(
+  boxes: ReadonlyMap<string, Box>,
+  boxOf: ReadonlyMap<string, string>,
+  links: readonly { from: string; to: string }[],
+): {
+  inner: Map<string, { x: number; y: number }>;
+  boxSizes: Map<string, { width: number; height: number }>;
+} {
+  const inner = new Map<string, { x: number; y: number }>();
+  const boxSizes = new Map<string, { width: number; height: number }>();
+  for (const [id, box] of boxes) {
+    const internal = links.filter((l) => boxOf.get(l.from) === id && boxOf.get(l.to) === id);
+    const placed = layoutBox(box.members, internal);
+    for (const [member, at] of placed.positions) {
+      inner.set(member, { x: at.x + GROUP_PAD.side, y: at.y + GROUP_PAD.top });
+    }
+    boxSizes.set(id, {
+      width: placed.width + 2 * GROUP_PAD.side,
+      height: placed.height + GROUP_PAD.top + GROUP_PAD.bottom,
+    });
+  }
+  return { inner, boxSizes };
+}
+
+/** A project's frame: its project and how many of its symbols drawn changed. */
+interface Frame {
+  project: Project;
+  changed: number;
+}
+
+/**
+ * Projects: when the files drawn belong to two or more, each is a frame around its files.
+ * `projectOfBox`: each box's project, framed or not; `frameOf`: each framed box's frame.
+ */
+function projectFrames(
+  boxes: ReadonlyMap<string, Box>,
+  projects: readonly Project[],
+): {
+  projectOfBox: Map<string, Project>;
+  frameOf: Map<string, string>;
+  frames: Map<string, Frame>;
+} {
+  const projectOfBox = new Map<string, Project>();
+  for (const [id, box] of boxes) {
+    const project = box.file === undefined ? undefined : projectOf(box.file, projects);
+    if (project) projectOfBox.set(id, project);
+  }
+  const frameOf = new Map<string, string>();
+  const frames = new Map<string, Frame>();
+  if (new Set(projectOfBox.values()).size > 1) {
+    for (const [box, project] of projectOfBox) {
+      const id = `project:${project.folder}`;
+      let frame = frames.get(id);
+      if (!frame) frames.set(id, (frame = { project, changed: 0 }));
+      frame.changed += boxes.get(box)?.members.filter((m) => m.changed).length ?? 0;
+      frameOf.set(box, id);
+    }
+  }
+  return { projectOfBox, frameOf, frames };
+}
+
+/**
+ * The frame each box is drawn in: its own, or for a box in no project (a package, the dynamic
+ * calls) the frame it has the most links with, among its users as without frames: beside every
+ * frame, a package used by hundreds of symbols drew long fans of edges (Qwik). It still belongs to
+ * no project.
+ */
+function placedInFrames(
+  frameOf: ReadonlyMap<string, string>,
+  frames: ReadonlyMap<string, Frame>,
+  between: readonly { from: string; to: string }[],
+): Map<string, string> {
+  const placedIn = new Map(frameOf);
+  if (frames.size > 0) {
+    const weights = new Map<string, Map<string, number>>();
+    for (const { from, to } of between) {
+      for (const [box, other] of [
+        [from, to],
+        [to, from],
+      ] as const) {
+        const frame = frameOf.get(other);
+        if (frameOf.has(box) || !frame) continue;
+        const byFrame = weights.get(box) ?? new Map<string, number>();
+        byFrame.set(frame, (byFrame.get(frame) ?? 0) + 1);
+        weights.set(box, byFrame);
+      }
+    }
+    for (const [box, byFrame] of weights) {
+      let best: [string, number] | undefined;
+      for (const entry of byFrame) if (!best || entry[1] > best[1]) best = entry;
+      if (best) placedIn.set(box, best[0]);
+    }
+  }
+  return placedIn;
+}
+
+/**
+ * Between boxes: clusters connected by edges, each laid out by dagre, packed into a page. With
+ * frames, the boxes in a frame are packed so inside it; frames (and a box in none, linked to no
+ * frame) are placed in rows in the order of the links between them. A box in a frame is placed
+ * from its frame's corner.
+ */
+function placeBoxes(
+  boxSizes: ReadonlyMap<string, { width: number; height: number }>,
+  between: readonly { from: string; to: string }[],
+  frames: ReadonlyMap<string, Frame>,
+  placedIn: ReadonlyMap<string, string>,
+): { boxPositions: Map<string, { x: number; y: number }>; frameRects: Map<string, Rect> } {
+  const boxPositions = new Map<string, { x: number; y: number }>();
+  const frameRects = new Map<string, Rect>();
+  if (frames.size === 0) {
+    const packed = packClusters([...boxSizes], between, { x: MARGIN, y: MARGIN });
+    for (const [id, at] of packed.positions) boxPositions.set(id, at);
+  } else {
+    for (const [id, frame] of frames) {
+      const light = frame.changed === 0;
+      const pad = light ? LIGHT_FRAME_PAD : FRAME_PAD;
+      const inside = new Set([...placedIn].filter(([, at]) => at === id).map(([box]) => box));
+      const packed = packClusters(
+        [...inside].map((box) => [box, boxSizes.get(box) ?? { width: 0, height: 0 }]),
+        between.filter((l) => inside.has(l.from) && inside.has(l.to)),
+        { x: pad.side, y: pad.top },
+      );
+      for (const [box, at] of packed.positions) boxPositions.set(box, at);
+      frameRects.set(id, {
+        x: 0,
+        y: 0,
+        width: Math.max(bandWidth(frame.project, light), packed.width + 2 * pad.side),
+        height: packed.height + pad.top + pad.bottom,
+      });
+    }
+    const outer = (box: string) => placedIn.get(box) ?? box;
+    const placed = packFrames(
+      [...frameRects, ...[...boxSizes].filter(([id]) => !placedIn.has(id))],
+      between.map((l) => ({ from: outer(l.from), to: outer(l.to) })).filter((l) => l.from !== l.to),
+      { x: MARGIN, y: MARGIN },
+    );
+    for (const [id, at] of placed.positions) {
+      const frame = frameRects.get(id);
+      if (frame) frameRects.set(id, { ...frame, ...at });
+      else boxPositions.set(id, at);
+    }
+  }
+  return { boxPositions, frameRects };
+}
+
+/** Each frame as a node, at its place on the page. */
+function projectNodesOf(
+  frames: ReadonlyMap<string, Frame>,
+  frameRects: ReadonlyMap<string, Rect>,
+): ProjectFlowNode[] {
+  return [...frames].map(([id, { project, changed }]) => {
+    const rect = frameRects.get(id) ?? { x: 0, y: 0, width: 0, height: 0 };
+    return {
+      id,
+      type: 'project',
+      position: { x: rect.x, y: rect.y },
+      width: rect.width,
+      height: rect.height,
+      selectable: false,
+      data: {
+        name: project.name,
+        folder: project.folder,
+        ...(project.kind ? { kind: project.kind } : {}),
+        changed,
+      },
+    };
+  });
+}
+
+/** Each symbol drawn as a node in its box, with its findings counted; no review state yet. */
+function symbolNodesOf(
+  nodes: readonly GraphNode[],
+  boxOf: ReadonlyMap<string, string>,
+  inner: ReadonlyMap<string, { x: number; y: number }>,
+  findings: ReadonlyMap<string, Record<Severity, number>>,
+): SymbolFlowNode[] {
+  return nodes.map((node) => ({
+    id: node.id,
+    type: 'symbol',
+    parentId: boxOf.get(node.id) ?? '',
+    extent: 'parent',
+    position: inner.get(node.id) ?? { x: 0, y: 0 },
+    width: nodeWidth(node),
+    height: NODE_HEIGHT,
+    data: {
+      node,
+      tone: tone(node),
+      label: label(node),
+      file: fileOf(node),
+      tags: node.delta
+        ? Object.entries(node.delta)
+            .filter(([, on]) => on)
+            .map(([tag]) => tag)
+        : [],
+      findings: findings.get(node.id) ?? { error: 0, warning: 0, info: 0 },
+      reviewed: false,
+      settled: false,
+    },
+  }));
+}
+
+/** A symbol's edge, styled by its side, kind and resolution, and whether it crosses frames. */
+function symbolEdge(edge: GraphEdge, cross: boolean): FlowEdge {
+  return {
+    id: edge.id,
+    source: edge.from,
+    target: edge.to,
+    className: [
+      `edge-${edge.side}`,
+      `edge-${edge.kind}`,
+      edge.resolution === 'unknown' ? 'edge-unknown' : '',
+      cross ? 'edge-cross' : '',
+    ]
+      .filter(Boolean)
+      .join(' '),
+    data: { edge },
+  };
+}
+
+/**
+ * For the map: one edge per pair of linked boxes, as thick as its symbols' edges are many. A file
+ * pair's edge is drawn as its symbols' edges are when they all share a side.
+ */
+function fileEdgesOf(
+  edges: readonly GraphEdge[],
+  boxOf: ReadonlyMap<string, string>,
+  crosses: (edge: GraphEdge) => boolean,
+): FlowEdge[] {
+  const pairs = new Map<
+    string,
+    { source: string; target: string; sides: Set<GraphEdge['side']>; count: number; cross: boolean }
+  >();
+  for (const edge of edges) {
+    const source = boxOf.get(edge.from);
+    const target = boxOf.get(edge.to);
+    if (!source || !target || source === target) continue;
+    const id = `files:${source} → ${target}`;
+    let pair = pairs.get(id);
+    if (!pair) pairs.set(id, (pair = { source, target, sides: new Set(), count: 0, cross: false }));
+    pair.sides.add(edge.side);
+    pair.count++;
+    pair.cross ||= crosses(edge);
+  }
+  return [...pairs].map(([id, pair]) => {
+    const [side = 'both'] = pair.sides.size === 1 ? pair.sides : [];
+    return {
+      id,
+      source: pair.source,
+      target: pair.target,
+      className: [
+        'edge-files',
+        `edge-files-${pair.count >= 10 ? 4 : pair.count >= 4 ? 3 : pair.count >= 2 ? 2 : 1}`,
+        `edge-${side}`,
+        pair.cross ? 'edge-cross' : '',
+      ]
+        .filter(Boolean)
+        .join(' '),
+      data: { edge: null, count: pair.count },
+    };
+  });
 }
 
 /**
