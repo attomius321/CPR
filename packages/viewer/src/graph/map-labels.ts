@@ -76,12 +76,10 @@ export function nameWidth(name: string, context: boolean): number {
 /**
  * Where a frame's name is drawn at `zoom`, in graph coordinates: its size on screen while the frame
  * holds it, smaller to fit the frame's width (never under the floor), cut at that width, centred
- * on the frame's top edge.
+ * on the frame's top edge. `wide` is its box at scale 1, measured once (`boxWidth`).
  */
-export function nameBox(frame: ProjectFlowNode, zoom: number): Rect {
-  const context = frame.data.changed === 0;
-  const kind = context ? PROJECT_NAME.context : PROJECT_NAME.changed;
-  const wide = nameWidth(frame.data.name, context) + 2 * PROJECT_NAME.pad.x;
+export function nameBox(frame: ProjectFlowNode, zoom: number, wide = boxWidth(frame)): Rect {
+  const kind = frame.data.changed === 0 ? PROJECT_NAME.context : PROJECT_NAME.changed;
   const scale = Math.max(kind.floor / zoom, Math.min(frame.width / wide, 1 / zoom));
   const height = (kind.font * PROJECT_NAME.line + 2 * PROJECT_NAME.pad.y) * scale;
   return {
@@ -90,6 +88,11 @@ export function nameBox(frame: ProjectFlowNode, zoom: number): Rect {
     width: Math.min(wide * scale, frame.width),
     height,
   };
+}
+
+/** A frame's name's box at scale 1: its width and padding (map.css's `width`). */
+function boxWidth(frame: ProjectFlowNode): number {
+  return nameWidth(frame.data.name, frame.data.changed === 0) + 2 * PROJECT_NAME.pad.x;
 }
 
 /** `src/app/foo.component.ts` → `foo.component.ts`; packages and dynamic calls as they are. */
@@ -138,7 +141,7 @@ export function mapLabels(layout: FlowLayout): FlowLayout {
   const nodes = layout.nodes.map((node): FlowNode => {
     if (node.type !== 'file') return node;
     const cover = coverOf(node, frames);
-    const frame = node.parentId ? frames.get(node.parentId) : undefined;
+    const frame = node.parentId ? frames.get(node.parentId)?.frame : undefined;
     const moved = frame ? node.data.counts : undefined;
     if (frame && moved) {
       const shifted = moved.map((c) => ({
@@ -164,26 +167,27 @@ export function mapLabels(layout: FlowLayout): FlowLayout {
   };
 }
 
-function framesOf(nodes: readonly FlowNode[]): Map<string, ProjectFlowNode> {
+/** The frames by id, each with its name's box measured once. */
+type Frames = ReadonlyMap<string, { frame: ProjectFlowNode; wide: number }>;
+
+function framesOf(nodes: readonly FlowNode[]): Frames {
   return new Map(
-    nodes.flatMap((n): [string, ProjectFlowNode][] => (n.type === 'project' ? [[n.id, n]] : [])),
+    nodes.flatMap((n): [string, { frame: ProjectFlowNode; wide: number }][] =>
+      n.type === 'project' ? [[n.id, { frame: n, wide: boxWidth(n) }]] : [],
+    ),
   );
 }
 
 /** Whether a frame's name meets the file's name at `zoom`, or comes within `MARGIN_PX` of it. */
-function coversAt(
-  file: FileFlowNode,
-  frames: ReadonlyMap<string, ProjectFlowNode>,
-  zoom: number,
-): boolean {
-  const parent = file.parentId ? frames.get(file.parentId) : undefined;
+function coversAt(file: FileFlowNode, frames: Frames, zoom: number): boolean {
+  const parent = file.parentId ? frames.get(file.parentId)?.frame : undefined;
   const at = parent
     ? { x: parent.position.x + file.position.x, y: parent.position.y + file.position.y }
     : file.position;
   const name = fileNameBox(file, at, zoom);
   const margin = MARGIN_PX / zoom;
-  for (const frame of frames.values()) {
-    const box = nameBox(frame, zoom);
+  for (const { frame, wide } of frames.values()) {
+    const box = nameBox(frame, zoom, wide);
     if (
       box.x - margin < name.x + name.width &&
       name.x < box.x + box.width + margin &&
@@ -200,10 +204,7 @@ function coversAt(
  * The zoom below which a project's name covers the file's name, or none on the whole map. Names
  * only grow as the zoom goes down, so it is found by halving: covered under it, not above.
  */
-function coverOf(
-  file: FileFlowNode,
-  frames: ReadonlyMap<string, ProjectFlowNode>,
-): number | undefined {
+function coverOf(file: FileFlowNode, frames: Frames): number | undefined {
   if (!coversAt(file, frames, LEAST_ZOOM)) return undefined;
   if (coversAt(file, frames, MAP_ZOOM)) return MAP_ZOOM;
   let low = LEAST_ZOOM;
