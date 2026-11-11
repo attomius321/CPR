@@ -1,0 +1,138 @@
+{
+ "about": "The findings (without related) and projects of symbiote diff on Symbiote, fix/e2e-flakes merge 4cbcae0c (4cbcae0c^1 4cbcae0c^2), schema 0.7.0: the graph usability spike walked these five changes (V100, foldFindings).",
+ "projects": [
+  {
+   "folder": "",
+   "name": "symbiote-monorepo",
+   "source": "root"
+  },
+  {
+   "folder": "packages/cli",
+   "name": "@symbiote/cli",
+   "source": "workspace"
+  },
+  {
+   "folder": "packages/core",
+   "name": "@symbiote/core",
+   "source": "workspace"
+  },
+  {
+   "folder": "packages/log",
+   "name": "@symbiote/log",
+   "source": "workspace"
+  },
+  {
+   "folder": "packages/monitor",
+   "name": "@symbiote/monitor",
+   "source": "workspace"
+  },
+  {
+   "folder": "packages/nexus",
+   "name": "@symbiote/nexus",
+   "source": "workspace"
+  },
+  {
+   "folder": "packages/viewer",
+   "name": "@symbiote/viewer",
+   "source": "workspace"
+  }
+ ],
+ "findings": [
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/merge-context.ts#MergerOptions",
+   "message": "MergerOptions changed its signature compatibly; existing users keep working (1 user, 0 untouched)",
+   "data": {
+    "callers": 1,
+    "updated": 1,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f1"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/merges.ts#merger",
+   "message": "merger changed its signature compatibly; existing users keep working (2 users, 1 untouched · 10 test users, 9 not updated)",
+   "data": {
+    "callers": 12,
+    "updated": 2,
+    "untouched": 10,
+    "untouchedElsewhere": 1,
+    "tests": 10,
+    "untouchedTests": 9,
+    "compatibility": "compatible"
+   },
+   "id": "f2"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/workspace-agent.ts#workspaceAgent",
+   "message": "workspaceAgent changed its signature; 1 of 2 users not updated: WorkspaceAgent",
+   "data": {
+    "callers": 2,
+    "updated": 1,
+    "untouched": 1,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "breaking"
+   },
+   "id": "f3"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/workspace-context.ts#WorkspacesContext",
+   "message": "WorkspacesContext gained required members; code that creates it must add them (9 users, 6 untouched)",
+   "data": {
+    "callers": 9,
+    "updated": 3,
+    "untouched": 6,
+    "untouchedElsewhere": 6,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "additive"
+   },
+   "id": "f4"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/workspace-summary.ts#workspaceSummary",
+   "message": "workspaceSummary changed its signature; 1 of 2 users not updated: WorkspaceSummaries",
+   "data": {
+    "callers": 2,
+    "updated": 1,
+    "untouched": 1,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "breaking"
+   },
+   "id": "f5"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/viewer/e2e/symbiote.ts#RunningWorkspaces",
+   "message": "RunningWorkspaces gained required members; code that creates it must add them (32 test users, 31 not updated)",
+   "data": {
+    "callers": 32,
+    "updated": 1,
+    "untouched": 31,
+    "untouchedElsewhere": 0,
+    "tests": 32,
+    "untouchedTests": 31,
+    "compatibility": "additive"
+   },
+   "id": "f6"
+  }
+ ]
+}

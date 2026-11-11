@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   CUT_REST_MS,
+  MAP_LABELS,
   MAP_ZOOM,
   NAME_PX,
   mapZoomStyle,
@@ -124,6 +125,30 @@ describe('pickView (V99, decision 966)', () => {
     for (const zoom of [11 / NAME_PX, 1, 1.3]) {
       expect(pickView(zoom, true), `${zoom}, shown`).toBe('stay');
       expect(pickView(zoom, false), `${zoom}`).toBe('pan');
+    }
+  });
+});
+
+describe("the map's labels (V100, decision 970)", () => {
+  it('scale the findings count with the names: every rule that reads the zoom aims at one', () => {
+    const labels = MAP_LABELS.split(',').map((label) => label.trim());
+    expect(labels).toContain('.map-count');
+    const css = readFileSync(new URL('../src/graph/map.css', import.meta.url), 'utf8').replace(
+      /\/\*[\s\S]*?\*\//g,
+      '',
+    );
+    const readers = [...css.matchAll(/([^{}]+)\{([^}]*)\}/g)].filter(([, , body]) =>
+      /--symbiote-(zoom|cut)/.test(body ?? ''),
+    );
+    expect(readers.length).toBeGreaterThan(0);
+    for (const [, selectors = ''] of readers) {
+      for (const selector of selectors.split(',').map((s) => s.trim())) {
+        const element = selector.split(/\s+/).pop() ?? '';
+        expect(
+          labels.some((label) => element.startsWith(label)),
+          selector,
+        ).toBe(true);
+      }
     }
   });
 });

@@ -1,0 +1,272 @@
+{
+ "about": "The findings (without related) and projects of symbiote diff on Bitwarden 737ee3f~1 737ee3f --no-merge-base --plugin angular, schema 0.7.0: the graph usability spike walked these five changes (V100, foldFindings).",
+ "projects": [
+  {
+   "folder": "apps/browser",
+   "name": "browser",
+   "kind": "application",
+   "source": "nx"
+  },
+  {
+   "folder": "apps/cli",
+   "name": "cli",
+   "kind": "application",
+   "source": "nx"
+  },
+  {
+   "folder": "apps/desktop",
+   "name": "desktop",
+   "kind": "application",
+   "source": "nx"
+  },
+  {
+   "folder": "apps/web",
+   "name": "web",
+   "kind": "application",
+   "source": "nx"
+  },
+  {
+   "folder": "bitwarden_license/bit-browser",
+   "name": "bit-browser",
+   "source": "tsconfig"
+  },
+  {
+   "folder": "bitwarden_license/bit-common",
+   "name": "bit-common",
+   "source": "tsconfig"
+  },
+  {
+   "folder": "bitwarden_license/bit-web",
+   "name": "bit-web",
+   "kind": "application",
+   "source": "plugin",
+   "plugin": "angular"
+  },
+  {
+   "folder": "libs/admin-console",
+   "name": "@bitwarden/admin-console",
+   "kind": "library",
+   "source": "nx"
+  },
+  {
+   "folder": "libs/angular",
+   "name": "@bitwarden/angular",
+   "kind": "library",
+   "source": "nx"
+  },
+  {
+   "folder": "libs/auth",
+   "name": "@bitwarden/auth",
+   "kind": "library",
+   "source": "nx"
+  },
+  {
+   "folder": "libs/automation-driver",
+   "name": "automation-driver",
+   "kind": "library",
+   "source": "nx"
+  },
+  {
+   "folder": "libs/common",
+   "name": "@bitwarden/common",
+   "kind": "library",
+   "source": "nx"
+  },
+  {
+   "folder": "libs/components",
+   "name": "@bitwarden/components",
+   "kind": "library",
+   "source": "nx"
+  },
+  {
+   "folder": "libs/importer",
+   "name": "@bitwarden/importer",
+   "kind": "library",
+   "source": "nx"
+  },
+  {
+   "folder": "libs/key-management",
+   "name": "@bitwarden/key-management",
+   "kind": "library",
+   "source": "nx"
+  },
+  {
+   "folder": "libs/logging",
+   "name": "logging",
+   "kind": "library",
+   "source": "nx"
+  },
+  {
+   "folder": "libs/state",
+   "name": "state",
+   "kind": "library",
+   "source": "nx"
+  },
+  {
+   "folder": "libs/storybook",
+   "name": "storybook",
+   "kind": "library",
+   "source": "nx"
+  },
+  {
+   "folder": "libs/tools/send/send-ui",
+   "name": "@bitwarden/send-ui",
+   "kind": "library",
+   "source": "nx"
+  },
+  {
+   "folder": "libs/tools/share",
+   "name": "tools-share",
+   "kind": "library",
+   "source": "nx"
+  },
+  {
+   "folder": "libs/ui/common",
+   "name": "@bitwarden/ui-common",
+   "kind": "library",
+   "source": "nx"
+  },
+  {
+   "folder": "libs/user-core",
+   "name": "user-core",
+   "kind": "library",
+   "source": "nx"
+  },
+  {
+   "folder": "libs/vault",
+   "name": "@bitwarden/vault",
+   "kind": "library",
+   "source": "nx"
+  }
+ ],
+ "findings": [
+  {
+   "rule": "exported-api-changed",
+   "severity": "warning",
+   "symbol": "libs/vault/src/components/assign-collections.component.ts#AssignCollectionsComponent.constructor",
+   "message": "AssignCollectionsComponent.constructor is public API and its new signature may break code outside the repo",
+   "data": {
+    "change": "signature",
+    "compatibility": "breaking"
+   },
+   "id": "f1"
+  },
+  {
+   "rule": "exported-api-changed",
+   "severity": "warning",
+   "symbol": "libs/vault/src/components/vault-item-event.ts#VaultItemEvent",
+   "message": "VaultItemEvent is public API and its new signature may break code outside the repo",
+   "data": {
+    "change": "signature",
+    "compatibility": "breaking"
+   },
+   "id": "f2"
+  },
+  {
+   "rule": "exported-api-changed",
+   "severity": "warning",
+   "symbol": "libs/vault/src/services/vault-batch-bar.service.ts#VaultBatchBarService.enabled",
+   "message": "VaultBatchBarService.enabled was removed from the package's public API",
+   "data": {
+    "change": "removed"
+   },
+   "id": "f3"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "warning",
+   "symbol": "apps/web/src/app/vault/components/vault-items/vault-item-event.ts#VaultItemEvent",
+   "message": "VaultItemEvent changed its signature; 4 of 6 users not updated: VaultCipherRowComponent.onEvent, VaultCollectionRowComponent.onEvent, VaultItemsComponent.event, VaultItemsComponent.onEvent",
+   "data": {
+    "callers": 6,
+    "updated": 2,
+    "untouched": 4,
+    "untouchedElsewhere": 4,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "breaking"
+   },
+   "id": "f4"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "warning",
+   "symbol": "libs/common/src/enums/feature-flag.enum.ts#DefaultFeatureFlagValue",
+   "message": "DefaultFeatureFlagValue changed its signature; 4 of 4 users not updated: DefaultFeatureFlagValueType, getFeatureFlagValue, FEATURE_FLAG_CATALOG, StorybookConfigService.valueFor · 1 test user, 1 not updated",
+   "data": {
+    "callers": 5,
+    "updated": 0,
+    "untouched": 5,
+    "untouchedElsewhere": 2,
+    "tests": 1,
+    "untouchedTests": 1,
+    "compatibility": "unknown"
+   },
+   "id": "f5"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "warning",
+   "symbol": "libs/common/src/enums/feature-flag.enum.ts#FeatureFlag",
+   "message": "FeatureFlag changed its signature; 356 of 358 users not updated: CurrentAccountComponent.vfo1Enabled, AccountSwitcherService.accountSwitchingEnabled$, AccountSecurityComponent.changePassword, AccountSecurityComponent.constructor, NotificationBackground.useUndeterminedCipherScenarioTriggeringLogic$ and 351 more · 64 test users, 64 not updated",
+   "data": {
+    "callers": 422,
+    "updated": 2,
+    "untouched": 420,
+    "untouchedElsewhere": 354,
+    "tests": 64,
+    "untouchedTests": 64,
+    "compatibility": "breaking"
+   },
+   "id": "f6"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "warning",
+   "symbol": "libs/vault/src/components/vault-item-event.ts#VaultItemEvent",
+   "message": "VaultItemEvent changed its signature; 1 of 2 users not updated: VaultItemEvent · 1 test user",
+   "data": {
+    "callers": 3,
+    "updated": 2,
+    "untouched": 1,
+    "untouchedElsewhere": 1,
+    "tests": 1,
+    "untouchedTests": 0,
+    "compatibility": "breaking"
+   },
+   "id": "f7"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "apps/web/src/app/admin-console/organizations/collections/bulk-collections-dialog/bulk-collections-dialog.component.spec.ts#createComponent",
+   "message": "createComponent changed its signature; only tests use it · 1 test user",
+   "data": {
+    "callers": 1,
+    "updated": 1,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 1,
+    "untouchedTests": 0,
+    "compatibility": "breaking"
+   },
+   "id": "f8"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "apps/web/src/app/admin-console/organizations/collections/bulk-collections-dialog/bulk-collections-dialog.component.spec.ts#CreateOptions",
+   "message": "CreateOptions changed its signature; only tests use it · 1 test user",
+   "data": {
+    "callers": 1,
+    "updated": 1,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 1,
+    "untouchedTests": 0,
+    "compatibility": "breaking"
+   },
+   "id": "f9"
+  }
+ ]
+}

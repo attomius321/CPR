@@ -34,8 +34,11 @@ export function pickView(zoom: number, shown: boolean): 'stay' | 'pan' | 'zoom' 
   return shown ? 'stay' : 'pan';
 }
 
-/** The map's labels: the only elements that read `--symbiote-zoom` (see styles.css). */
-const LABELS = '.file-name, .project-frame, .project-name';
+/**
+ * The map's labels: the only elements that read `--symbiote-zoom` (see map.css): the names, the
+ * frames, and a symbol's findings count (V100, decision 970).
+ */
+export const MAP_LABELS = '.file-name, .project-frame, .project-name, .map-count';
 
 /**
  * How long the zoom rests before the map's file names are cut to their boxes at it
@@ -57,7 +60,7 @@ export function nextMapZoom(zoom: number, written: number | undefined): number |
  */
 export function mapZoomStyle(doc: Document): { update(zoom: number): void; remove(): void } {
   const style = doc.createElement('style');
-  style.textContent = `${LABELS} { --symbiote-zoom: 1; }`;
+  style.textContent = `${MAP_LABELS} { --symbiote-zoom: 1; }`;
   doc.head.append(style);
   const rule = style.sheet?.cssRules[0];
   let written: number | undefined;

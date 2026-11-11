@@ -23,8 +23,9 @@
    the file. Map labels keep fixed sizes and are scaled by `1 / --symbiote-zoom`: a transform needs
    no text layout, a font size does on every zoom frame. The cut, the box's width times the zoom,
    is laid out: it reads `--symbiote-cut`, the zoom once it rests, so a name may run past its box
-   while the view zooms out. Both are set by mapzoom.ts on these labels only (`.file-name`,
-   `.project-frame`, `.project-name`): add any other element that reads them there. */
+   while the view zooms out. Both are set by mapzoom.ts on these labels only (`MAP_LABELS`:
+   `.file-name`, `.project-frame`, `.project-name`, `.map-count`): add any other element that
+   reads them there (`test/mapzoom.test.ts` checks it). */
 .react-flow.map .file-name {
   display: inline-block;
   box-sizing: border-box;
@@ -53,6 +54,20 @@
   font-size: var(--size-caption);
 }
 
+/* A file holding a finding the head counts (V100, decision 970): its name in the worst
+   severity's colour, set by the layout, the same at every zoom. */
+.react-flow.map .file-box.findings-error .file-name {
+  color: var(--error);
+}
+
+.react-flow.map .file-box.findings-warning .file-name {
+  color: var(--warning);
+}
+
+.react-flow.map .file-box.findings-info .file-name {
+  color: var(--info);
+}
+
 /* A name taller than its box (at the lowest zooms) may run over the box below: clicks go to the
    box under the pointer. */
 .react-flow.map .file-name {
@@ -71,6 +86,22 @@
 .react-flow.map .symbol > *,
 .react-flow.map .summary-node > * {
   visibility: hidden;
+}
+
+/* A symbol's findings count on the map, for a finding the head counts (V100, decision 970): drawn
+   by its file's box, above the box's name (the cards are drawn under both), centred on its card's
+   top-right corner, at the card's 16 px on screen: scaled like the names (decision 37). A settled
+   signature change keeps its count on its card only. */
+.file-box .map-count {
+  display: none;
+}
+
+.react-flow.map .file-box .map-count {
+  display: inline-grid;
+  position: absolute;
+  pointer-events: none;
+  transform: scale(calc(1 / var(--symbiote-zoom, 1))) translate(-50%, -50%);
+  transform-origin: 0 0;
 }
 
 .react-flow.map .react-flow__edge path.react-flow__edge-path {

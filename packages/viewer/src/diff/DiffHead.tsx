@@ -1,14 +1,14 @@
 // A diff's head (V60, V72, V76c): its name, its facts, Files and Graph, its findings' counts.
 import { Fragment, type ReactNode } from 'react';
-import type { BranchReviewInfo, Graph, ReviewFile } from '@symbiote/core';
+import type { BranchReviewInfo, Finding, Graph, ReviewFile, Severity } from '@symbiote/core';
 import { FileTotals, reviewSince } from './DiffProgress.js';
 import { StatusLabel } from '../ui/StatusLabel.js';
 import { diffName, type DiffView } from '../shell/pages.js';
 import { briefTip, workspaceHref, workspaceName } from '../workspaces/workspaces.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
-import { SpinIcon } from '../ui/icons.js';
+import { HelpIcon, SpinIcon } from '../ui/icons.js';
 import { tip } from '../ui/tip.js';
-import { plural } from '../ui/plural.js';
+import { findingPills } from './review.js';
 
 /**
  * The diff's two pages (V60, decision 431): Files and Graph, `g` between them; while it is
@@ -162,23 +162,41 @@ function WorkspaceLink({ branch }: { branch: string }) {
   );
 }
 
-/** The change's findings in the head (V90): an error and a warning pill, each its icon and word. */
-export function FindingPills({ graph }: { graph: Graph }) {
-  const severity = (s: string) => graph.findings.filter((f) => f.severity === s).length;
-  const errors = severity('error');
-  const warnings = severity('warning');
+const PILL_TONES = { error: 'error', warning: 'warning', info: 'info' } as const;
+
+/**
+ * The change's findings in the head (V90; V100, decision 968, amending 839): a pill per severity
+ * the Findings tab lists, infos as notes, each its icon and words. The settled signature changes
+ * folded in the tab are counted there, not here. A pill opens the tab at its severity.
+ */
+export function FindingPills({
+  shown,
+  onPick,
+}: {
+  /** The findings the tab lists (`foldFindings`' `shown`). */
+  shown: readonly Finding[];
+  onPick: (severity: Severity) => void;
+}) {
   return (
     <>
-      {errors > 0 && (
-        <StatusLabel tone="error" className="finding-pill pill-error">
-          {plural(errors, 'error')}
-        </StatusLabel>
-      )}
-      {warnings > 0 && (
-        <StatusLabel tone="warning" className="finding-pill pill-warning">
-          {plural(warnings, 'warning')}
-        </StatusLabel>
-      )}
+      {findingPills(shown).map(({ severity, words }) => (
+        <button
+          key={severity}
+          type="button"
+          className="finding-pill-button"
+          onClick={() => onPick(severity)}
+          {...tip('Show them in the Findings tab')}
+        >
+          <StatusLabel
+            tone={PILL_TONES[severity]}
+            // A note's icon is its row's in the tab, not a paused state's.
+            icon={severity === 'info' ? <HelpIcon /> : undefined}
+            className={`finding-pill pill-${severity}`}
+          >
+            {words}
+          </StatusLabel>
+        </button>
+      ))}
     </>
   );
 }

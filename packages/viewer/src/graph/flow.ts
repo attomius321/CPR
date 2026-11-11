@@ -1,5 +1,13 @@
 import dagre, { type Graph as DagreGraph } from '@dagrejs/dagre';
-import type { Graph, GraphEdge, GraphNode, Project, ProjectKind, Severity } from '@symbiote/core';
+import type {
+  Finding,
+  Graph,
+  GraphEdge,
+  GraphNode,
+  Project,
+  ProjectKind,
+  Severity,
+} from '@symbiote/core';
 import { pathInProject, projectOf } from './projects.js';
 
 /** How a node is drawn: what changed, or what kind of neighbour it is. */
@@ -63,6 +71,27 @@ export interface FileData extends Record<string, unknown> {
   /** In a project's frame: the path from the project's folder. */
   local?: string;
   changed: boolean;
+  /**
+   * The worst severity among its symbols' findings that the head counts (V100, decision 970):
+   * its name's colour on the map.
+   */
+  severity?: Severity;
+  /**
+   * Its symbols' findings counts drawn on the map (V100, decision 970), for the symbols with a
+   * finding the head counts: each its card's count, at the card's top-right corner in the box.
+   * The box draws them, not the card: on the map a box and its name are drawn above its cards.
+   */
+  counts?: MapCount[];
+}
+
+/** A symbol's findings count on the map: its card's, at the card's top-right corner. */
+export interface MapCount {
+  symbol: string;
+  /** In the box, as the card's position. */
+  x: number;
+  y: number;
+  count: number;
+  severity: Severity;
 }
 
 /** A box around the symbols of one file, package, or the dynamic calls. */
@@ -193,6 +222,7 @@ export function toFlow(graph: Graph, options: FlowOptions = {}): FlowLayout {
 export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayout {
   const { typeReferences = false, context = true, focus, expanded = new Set<string>() } = options;
   const findings = countFindings(graph);
+  const listed = listedSeverities(graph.findings);
 
   const visible = graph.nodes.filter(
     (n) => (context || n.status !== 'unchanged') && (!focus || focus.has(n.id)),
@@ -235,6 +265,8 @@ export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayou
 
   const projectNodes = projectNodesOf(frames, frameRects);
 
+  const boxSeverity = worstByBox(nodes, boxOf, listed);
+  const boxCounts = mapCounts(nodes, boxOf, inner, findings, listed);
   const fileNodes: FileFlowNode[] = [...boxes].map(([id, box]) => {
     const size = boxSizes.get(id) ?? { width: 0, height: 0 };
     const frame = placedIn.get(id);
@@ -251,6 +283,8 @@ export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayou
         label: box.label,
         ...(project && box.file ? { local: pathInProject(box.file, project) } : {}),
         changed: box.changed,
+        ...(boxSeverity.has(id) ? { severity: boxSeverity.get(id) } : {}),
+        ...(boxCounts.has(id) ? { counts: boxCounts.get(id) } : {}),
       },
     };
   });
@@ -412,6 +446,78 @@ export function findingCount(
     severity: worst,
     words: present.map((severity) => severityWords(findings[severity], severity)).join(', '),
   };
+}
+
+/**
+ * A signature change with nothing left to update (V100, decision 969): an info whose change is
+ * compatible, or whose users were all updated in this change. The Findings tab folds it, and the
+ * head and the map do not count it. A graph from before `compatibility` and `untouched` has none.
+ */
+export function settled(finding: Finding): boolean {
+  const { compatibility, untouched } = finding.data;
+  return (
+    finding.rule === 'signature-changed' &&
+    finding.severity === 'info' &&
+    (compatibility === 'compatible' || untouched === 0)
+  );
+}
+
+/** Each symbol's worst finding that is not settled: what the map shows of it. */
+function listedSeverities(findings: readonly Finding[]): Map<string, Severity> {
+  const worst = new Map<string, Severity>();
+  for (const finding of findings) {
+    if (settled(finding)) continue;
+    const was = worst.get(finding.symbol);
+    if (!was || SEVERITIES.indexOf(finding.severity) < SEVERITIES.indexOf(was)) {
+      worst.set(finding.symbol, finding.severity);
+    }
+  }
+  return worst;
+}
+
+/** Each file box's map counts: its drawn symbols with a listed finding, at their cards' corners. */
+function mapCounts(
+  nodes: readonly GraphNode[],
+  boxOf: ReadonlyMap<string, string>,
+  inner: ReadonlyMap<string, { x: number; y: number }>,
+  findings: ReadonlyMap<string, Record<Severity, number>>,
+  listed: ReadonlyMap<string, Severity>,
+): Map<string, MapCount[]> {
+  const counts = new Map<string, MapCount[]>();
+  for (const node of nodes) {
+    const box = boxOf.get(node.id);
+    const at = inner.get(node.id);
+    const count = findingCount(findings.get(node.id) ?? { error: 0, warning: 0, info: 0 });
+    if (!listed.has(node.id) || !box || !at || !count) continue;
+    counts.set(box, [
+      ...(counts.get(box) ?? []),
+      {
+        symbol: node.id,
+        x: at.x + nodeWidth(node),
+        y: at.y,
+        count: count.count,
+        severity: count.severity,
+      },
+    ]);
+  }
+  return counts;
+}
+
+/** Each file box's worst listed finding, over the symbols drawn in it. */
+function worstByBox(
+  nodes: readonly GraphNode[],
+  boxOf: ReadonlyMap<string, string>,
+  listed: ReadonlyMap<string, Severity>,
+): Map<string, Severity> {
+  const worst = new Map<string, Severity>();
+  for (const node of nodes) {
+    const severity = listed.get(node.id);
+    const box = boxOf.get(node.id);
+    if (!severity || !box) continue;
+    const was = worst.get(box);
+    if (!was || SEVERITIES.indexOf(severity) < SEVERITIES.indexOf(was)) worst.set(box, severity);
+  }
+  return worst;
 }
 
 interface Neighbours {
