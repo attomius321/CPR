@@ -24,14 +24,13 @@ import { Shell } from '../shell/Shell.js';
 import { DetailPanel } from './DetailPanel.js';
 import { FilesKeys, FilesPage, useReviewFiles, type FileFocus } from './FilesPage.js';
 import type { Draft } from './comments.js';
-import { decorate } from '../graph/flow.js';
+import { decorate, onCanvas } from '../graph/flow.js';
 import {
   changeList,
   filterChanges,
   foldFindings,
-  neighbourhood,
+  layoutView,
   onlyProject,
-  projectNeighbourhood,
   reviewStatus,
   withoutCollapsed,
 } from './review.js';
@@ -248,16 +247,15 @@ export function App() {
     [load],
   );
 
-  // Layout once per view; selecting and marking only decorate it, so nothing moves.
-  // Focus on a symbol narrows further than showing one project.
-  const focusSet = useMemo(() => {
-    if (!graph) return undefined;
-    if (focus && selected) return neighbourhood(graph, selected);
-    return project === null ? undefined : projectNeighbourhood(graph, changes, project);
-  }, [graph, focus, selected, project, changes]);
+  // Layout once per view; selecting and marking only decorate it, so nothing moves. Focus on a
+  // symbol narrows further than showing one project, type references included (V101).
+  const focusOn = focus ? selected : null;
   const view = useMemo(
-    () => ({ typeReferences, context, expanded, ...(focusSet ? { focus: focusSet } : {}) }),
-    [typeReferences, context, expanded, focusSet],
+    () =>
+      graph
+        ? layoutView(graph, changes, { typeReferences, context, expanded, focusOn, project })
+        : { typeReferences, context, expanded },
+    [graph, changes, typeReferences, context, expanded, focusOn, project],
   );
   // Made in a worker: the last layout stays drawn until the one for this view arrives.
   const { layout, pending } = useLayout(graph, view);
@@ -266,6 +264,8 @@ export function App() {
       layout ? decorate(layout.nodes, { reviewed, sinceOnly: onlySince, selected }) : undefined,
     [layout, reviewed, onlySince, selected],
   );
+  /** For the detail panel's marks: the symbols on the canvas (V101, decision 972). */
+  const shownOnCanvas = useMemo(() => (layout ? onCanvas(layout) : undefined), [layout]);
 
   // Selecting a symbol that sits inside a collapsed summary (from the detail panel) shows it.
   useEffect(() => {
@@ -571,6 +571,8 @@ export function App() {
                   onToggleReviewed={() => toggleReviewed(selected)}
                   onSelect={setSelected}
                   onClose={() => setSelected(null)}
+                  // Focus draws every neighbour, but unchanged ones while Context is off.
+                  canvas={shownOnCanvas && { shown: shownOnCanvas, focusShows: !focus && context }}
                   comments={
                     forge
                       ? {

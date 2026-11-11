@@ -126,6 +126,7 @@ export function CanvasCard({
           nodes={flowNodes}
           edges={layout.edges}
           fileEdges={layout.fileEdges}
+          hiddenEdges={layout.hiddenEdges}
           layoutNodes={layout.nodes}
           pending={pending}
           selected={selected}

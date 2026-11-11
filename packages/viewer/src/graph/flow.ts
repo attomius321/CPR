@@ -150,6 +150,11 @@ export interface FlowLayout {
   edges: FlowEdge[];
   /** For the map: one edge per pair of linked file boxes, in place of their symbols' edges. */
   fileEdges: FlowEdge[];
+  /**
+   * The type references the view hides, between symbols it draws (V101, decision 972): they
+   * place nothing, and only a pick's are drawn (`edgesToDraw`). None when the view shows them.
+   */
+  hiddenEdges: FlowEdge[];
   /** Symbols drawn only as part of a collapsed summary: symbol → summary node. */
   hidden: Map<string, string>;
   /** Every summary's neighbours, shown or not: summary → symbols. */
@@ -322,12 +327,19 @@ export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayou
   };
 
   const fileEdges = fileEdgesOf(edges, boxOf, crosses);
+  // After placement, so they move nothing.
+  const hiddenEdges = typeReferences
+    ? []
+    : graph.edges
+        .filter((e) => e.kind === 'type-reference' && boxOf.has(e.from) && boxOf.has(e.to))
+        .map((edge) => symbolEdge(edge, crosses(edge)));
 
   return {
     // Parents before their children, as React Flow requires.
     nodes: [...projectNodes, ...fileNodes, ...symbolNodes, ...summaryNodes],
     edges: [...edges.map((edge) => symbolEdge(edge, crosses(edge))), ...summaryEdges],
     fileEdges,
+    hiddenEdges,
     hidden,
     members: new Map(summaries.map((s) => [s.id, [...s.members]])),
   };
@@ -376,17 +388,35 @@ export function projectAt(
 /**
  * The edges React Flow is given, decorated. It checks every one on every frame of a move, and
  * edges were up to half the map's elements (V8c): on the map, a file pair's edges are drawn as
- * one; while the view of a large graph moves, only the selected symbol's are.
+ * one; while the view of a large graph moves, only the selected symbol's are. The selected
+ * symbol's edges include its type references the view hides (V101, decision 972); no other
+ * hidden edge is given.
  */
 export function edgesToDraw(
-  layout: Pick<FlowLayout, 'edges' | 'fileEdges'>,
+  layout: Pick<FlowLayout, 'edges' | 'fileEdges' | 'hiddenEdges'>,
   view: { map: boolean; moving: boolean; selected: string | null },
 ): FlowEdge[] {
   const { selected } = view;
   const own = (e: FlowEdge) => e.source === selected || e.target === selected;
-  const all = view.map ? [...layout.fileEdges, ...layout.edges.filter(own)] : layout.edges;
-  const drawn = view.moving && all.length > MOVING_EDGE_LIMIT ? layout.edges.filter(own) : all;
+  const picked = selected ? layout.hiddenEdges.filter(own) : [];
+  const ownEdges = () => [...layout.edges.filter(own), ...picked];
+  const all = view.map
+    ? [...layout.fileEdges, ...ownEdges()]
+    : picked.length > 0
+      ? [...layout.edges, ...picked]
+      : layout.edges;
+  const drawn = view.moving && all.length > MOVING_EDGE_LIMIT ? ownEdges() : all;
   return decorateEdges(drawn, selected);
+}
+
+/**
+ * The symbols on the canvas: drawn, or inside a collapsed summary, which picking one opens. The
+ * detail panel marks a neighbour that is neither (V101, decision 972).
+ */
+export function onCanvas(layout: Pick<FlowLayout, 'nodes' | 'hidden'>): Set<string> {
+  const ids = new Set(layout.hidden.keys());
+  for (const node of layout.nodes) if (node.type === 'symbol') ids.add(node.id);
+  return ids;
 }
 
 /**

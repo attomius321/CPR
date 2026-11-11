@@ -1,5 +1,5 @@
 import type { Finding, Graph, GraphNode, GraphSide, Project, Severity } from '@symbiote/core';
-import { label, settled } from '../graph/flow.js';
+import { label, settled, type LayoutOptions } from '../graph/flow.js';
 import { projectOf } from '../graph/projects.js';
 import { plural } from '../ui/plural.js';
 
@@ -202,6 +202,31 @@ export function neighbourhood(graph: Graph, id: string, hops = 1): Set<string> {
     frontier = next;
   }
   return ids;
+}
+
+/** The page's choices that make the view to lay out. */
+export interface ViewChoice {
+  typeReferences: boolean;
+  context: boolean;
+  expanded: ReadonlySet<string>;
+  /** The symbol Focus is on: Focus is on and a symbol picked. */
+  focusOn: string | null;
+  /** The one project shown (by folder), or null. */
+  project: string | null;
+}
+
+/**
+ * The view to lay out. Focus on a symbol narrows further than one project, and lays out every
+ * kind of link in its neighbourhood, type references whatever the toggle (V101, decision 971):
+ * the links the panel lists, and a finding speaks of. It changes no other view.
+ */
+export function layoutView(graph: Graph, list: FileChanges[], choice: ViewChoice): LayoutOptions {
+  const { typeReferences, context, expanded, focusOn, project } = choice;
+  if (focusOn !== null) {
+    return { typeReferences: true, context, expanded, focus: neighbourhood(graph, focusOn) };
+  }
+  const focus = project === null ? undefined : projectNeighbourhood(graph, list, project);
+  return { typeReferences, context, expanded, ...(focus ? { focus } : {}) };
 }
 
 /**

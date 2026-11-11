@@ -346,6 +346,24 @@
   white-space: nowrap;
 }
 
+/* A neighbour not on the canvas (V101): a quiet chip after its name, never cut with its place. */
+.neighbour-away {
+  flex: none;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--raised);
+  color: var(--muted);
+  font-size: var(--size-caption);
+  white-space: nowrap;
+}
+
+/* What draws them: Focus's key (V101). */
+.neighbours-hint {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: var(--size-caption);
+}
+
 .neighbour-icon {
   display: inline-grid;
   flex: none;

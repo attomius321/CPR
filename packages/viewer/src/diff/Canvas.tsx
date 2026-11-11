@@ -53,6 +53,8 @@ interface CanvasProps {
   /** The layout's: the canvas picks and decorates those it draws (`edgesToDraw`). */
   edges: FlowEdge[];
   fileEdges: FlowEdge[];
+  /** The type references the view hides: the selected symbol's are drawn (V101). */
+  hiddenEdges: FlowEdge[];
   /** The undecorated layout: it changes only when what is drawn changes. */
   layoutNodes: FlowNode[];
   /** A layout for a newer view is being made: this one stays until it arrives. */
@@ -91,6 +93,7 @@ export function Canvas({
   nodes,
   edges,
   fileEdges,
+  hiddenEdges,
   layoutNodes,
   pending,
   selected,
@@ -139,8 +142,8 @@ export function Canvas({
   }, []);
   useEffect(() => () => clearTimeout(stop.current), []);
   const drawn = useMemo(
-    () => edgesToDraw({ edges, fileEdges }, { map, moving, selected }),
-    [edges, fileEdges, map, moving, selected],
+    () => edgesToDraw({ edges, fileEdges, hiddenEdges }, { map, moving, selected }),
+    [edges, fileEdges, hiddenEdges, map, moving, selected],
   );
 
   // Stable, as React Flow hands them to every node: a new one re-renders thousands of them.
