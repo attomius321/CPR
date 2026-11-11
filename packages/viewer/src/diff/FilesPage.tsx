@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 import type { Graph, ReviewFile } from '@symbiote/core';
-import { label } from '../graph/flow.js';
+import { findingCount, label } from '../graph/flow.js';
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -36,6 +36,7 @@ import {
   type FileDiff,
   type Fold,
 } from './file-diff.js';
+import { fileFindings, riskOrder } from './file-order.js';
 import { describeOpen, openInEditor, type OpenTarget } from './open.js';
 import { OpenIcon } from './OpenIcon.js';
 import { ReviewTab, type ReviewProps } from './ReviewTab.js';
@@ -66,7 +67,8 @@ export interface FileFocus {
 /**
  * The change's files with git's lines (`./api/files`), read once per graph; meanwhile, and where
  * the server has none (a graph opened from a file), the graph's own files without lines. While the
- * pair is analyzed (`analyzing`, its key), git's files from the pair (V90, decision 847).
+ * pair is analyzed (`analyzing`, its key), git's files from the pair, in git's order (V90, decision
+ * 847); once the graph is there, in order of risk (V102, decision 973): what `j`/`k` walk too.
  */
 export function useReviewFiles(
   graph: Graph | undefined,
@@ -88,7 +90,7 @@ export function useReviewFiles(
       live = false;
     };
   }, [graph, served, analyzing]);
-  return files;
+  return useMemo(() => (graph ? riskOrder(files, graph) : files), [files, graph]);
 }
 
 type DiffState =
@@ -183,7 +185,13 @@ export function FilesPage({
   focus,
   handle,
 }: Props) {
-  const shown = files.find((file) => file.path === open) ?? files[0];
+  const kept = useKeptOpen(graph, files, open, onOpenFile);
+  const shown =
+    files.find((file) => file.path === open) ??
+    (kept === null ? undefined : files.find((file) => file.path === kept)) ??
+    files[0];
+  // Each file's listed findings (V102, decision 974), counted on its row.
+  const risks = useMemo(() => (graph ? fileFindings(files, graph) : null), [files, graph]);
   const commented = useMemo(() => {
     const counts = new Map<string, number>();
     for (const file of files) {
@@ -203,6 +211,8 @@ export function FilesPage({
             <ul className="changes-list files-list">
               {files.map((file) => {
                 const count = commented.get(file.path);
+                const findings = risks?.get(file.path);
+                const risk = findings && findingCount(findings);
                 const viewed = fileViewed(marks, file);
                 const current = file === shown;
                 return (
@@ -215,19 +225,30 @@ export function FilesPage({
                     </span>
                     <FileRow
                       file={file}
-                      label={`Show the changes to ${file.path}`}
+                      label={`Show the changes to ${file.path}${risk ? ` (${risk.words})` : ''}`}
                       hover={fileFacts(file)}
                       current={current}
                       after={
-                        count !== undefined && (
-                          <span
-                            className="files-commented"
-                            aria-label={`${count} comment${count === 1 ? '' : 's'}`}
-                          >
-                            <CommentIcon />
-                            {count}
-                          </span>
-                        )
+                        <>
+                          {count !== undefined && (
+                            <span
+                              className="files-commented"
+                              aria-label={`${count} comment${count === 1 ? '' : 's'}`}
+                            >
+                              <CommentIcon />
+                              {count}
+                            </span>
+                          )}
+                          {/* Its findings as the graph's cards count them (decision 974). */}
+                          {risk && (
+                            <span
+                              className={`symbol-count count-${risk.severity} files-findings`}
+                              {...tip(risk.words, { tone: TIP_TONES[risk.severity] })}
+                            >
+                              {risk.count}
+                            </span>
+                          )}
+                        </>
                       }
                       onOpen={() => onOpenFile(file.path)}
                     />
@@ -271,6 +292,45 @@ export function FilesPage({
       )}
     </>
   );
+}
+
+/** A severity as a tooltip's tone, as a graph card's count has it. */
+const TIP_TONES = { error: 'bad', warning: 'warn', info: 'info' } as const;
+
+/**
+ * The file open while the change is analyzed, kept open when the graph arrives and puts the list
+ * in order of risk (V102): null once it is App's again, or when there is none. Meanwhile the page
+ * holds it by path, as App would hold one the person picked: the first file is another one in the
+ * new order. App starts each new graph at its first file (`open` null), after the page's own
+ * effects have run, so the page opens it again on its next run, once.
+ */
+function useKeptOpen(
+  graph: Graph | undefined,
+  files: readonly ReviewFile[],
+  open: string | null,
+  onOpenFile: (path: string) => void,
+): string | null {
+  const [kept, setKept] = useState<string | null>(null);
+  /** The graph's first run is over: App's reset has run after it. */
+  const arrived = useRef(false);
+  const shown = (files.find((file) => file.path === open) ?? files[0])?.path;
+  useEffect(() => {
+    if (!graph) {
+      arrived.current = false;
+      if (shown === undefined) return;
+      setKept(shown);
+      if (open === null) onOpenFile(shown);
+      return;
+    }
+    if (kept === null) return;
+    if (!arrived.current) {
+      arrived.current = true;
+      return;
+    }
+    setKept(null);
+    if (open === null) onOpenFile(kept);
+  }, [graph, shown, open, kept, onOpenFile]);
+  return kept;
 }
 
 /** A file's kind of change as a node's tone: its pill's colour (V90). */
