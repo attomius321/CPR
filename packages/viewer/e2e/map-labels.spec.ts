@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { graphPage, serveFixture, type Running } from './symbiote.js';
+import { graphPage, serveFixture, wholeFirst, type Running } from './symbiote.js';
 
 // V96 (decisions 938–939): on the map, a project's name never covers a file's name. The name sits
 // on its frame's top edge, half outside, inside its frame's width; a file name it still covers is
@@ -17,6 +17,8 @@ test.beforeAll(async () => {
 test.afterAll(() => symbiote.stop());
 
 test.beforeEach(async ({ page }) => {
+  // The whole change first (V109): `legacy`'s warning would open the page focused on it.
+  await wholeFirst(page);
   errors.length = 0;
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto(graphPage(symbiote.url));
