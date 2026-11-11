@@ -56,8 +56,10 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   (`./api/file`: git's, the whole file as context) and comments under their lines. Its pure part
   is `file-diff.ts` (reading git's diff, folding it to 3 lines of context as git's hunks, where a
   line's comment goes); a line's comment names the innermost symbol holding it
-  (`comments.ts`'s `symbolAt`, `newLineDraft`), none outside every symbol. Never `files.ts`:
-  `test/files.test.ts` is the file names' guard.
+  (`comments.ts`'s `symbolAt`, `newLineDraft`), none outside every symbol. Its order (V102) is
+  `file-order.ts` (pure: files with listed findings, code, tests, the rest), applied in
+  `useReviewFiles` so `j`/`k` walk it. Never `files.ts`: `test/files.test.ts` is the file
+  names' guard.
 - `src/diff/Sidebar.tsx` (change list with search, findings, review tab), `DetailPanel.tsx`
   (diff, comments, users/uses), `ReviewTab.tsx`.
 - `src/ui/Resizer.tsx` — the one drag handle for panels (the diff's sidebar and detail panel, the

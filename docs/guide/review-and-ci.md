@@ -32,7 +32,19 @@ are no diffs to show.
 **Files** lists every file the change touches, as a workspace's **Changes** panel does: its
 status (`A` added, `M` modified, `D` deleted, `R` renamed), its name and folder, and the lines
 added and removed. Files the graph has no symbols for, such as Markdown, JSON or images, are
-listed too. Click a file, or press `j` and `k`, to see its diff. The diff is git's: its lines are
+listed too.
+
+The riskiest files come first, and a change opens on the first one:
+
+1. files with findings, the worst first. Each shows its count of findings in the colour of its
+   worst one;
+2. other code;
+3. tests;
+4. everything else, such as docs and configuration.
+
+In each group, files keep their path order. While Symbiote is still analyzing the change, the
+list is in path order. When the graph is ready, it reorders, and the file you have open stays
+open. Click a file, or press `j` and `k`, to see its diff. The diff is git's: its lines are
 the ones the list counts. TypeScript, JavaScript and HTML are in colour: keywords, strings,
 comments and called names. Unchanged lines are folded to three around each change; click a fold to
 open it. To open the file in VS Code at its first change, press `o`. To open one line, Ctrl+click

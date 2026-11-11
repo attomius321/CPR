@@ -67,7 +67,10 @@ test('opens a review on its files; a comment on a line of a note is recorded wit
   await expect(page.locator('.files-list .changes-file')).toHaveCount(2);
   await expect(fileRow(page, 'docs/notes.md')).toContainText('notes.mddocs+4 −0');
   await expect(fileRow(page, 'src/math.ts')).toContainText('math.tssrc+8 −0');
-  // The first is open.
+  // Code first, the note last (V102, decision 973); the first is open.
+  await expect(fileRow(page, 'src/math.ts')).toHaveAttribute('aria-current', 'true');
+  await expect(page.locator('.file-path')).toHaveText('src/math.ts');
+  await fileRow(page, 'docs/notes.md').click();
   await expect(fileRow(page, 'docs/notes.md')).toHaveAttribute('aria-current', 'true');
   await expect(page.locator('.file-path')).toHaveText('docs/notes.md');
   await expect(page.locator('.file-words')).toHaveText('added');
@@ -112,8 +115,11 @@ test("a comment in a function names it, and the Graph page shows it in the symbo
   page,
 }) => {
   await page.goto(`${symbiote.url}review/agent/`);
-  await expect(page.locator('.file-path')).toHaveText('docs/notes.md');
+  // It opens on the code (V102); j shows the note after it, k the code again.
+  await expect(page.locator('.file-path')).toHaveText('src/math.ts');
   await page.keyboard.press('j');
+  await expect(page.locator('.file-path')).toHaveText('docs/notes.md');
+  await page.keyboard.press('k');
   await expect(page.locator('.file-path')).toHaveText('src/math.ts');
   await expect(fileRow(page, 'src/math.ts')).toHaveAttribute('aria-current', 'true');
 
@@ -231,8 +237,12 @@ test('marks a file viewed by its version, edits a comment, finishes from the sum
   await expect(page.locator('.file-position')).toHaveText('1 of 2');
   await expect(page.getByRole('button', { name: 'The file before' })).toBeDisabled();
   await page.getByRole('button', { name: 'The file after' }).click();
-  await expect(page.locator('.file-path')).toHaveText('src/math.ts');
+  await expect(page.locator('.file-path')).toHaveText('docs/notes.md');
   await expect(page.locator('.file-position')).toHaveText('2 of 2');
+  await expect(page.getByRole('button', { name: 'The file after' })).toBeDisabled();
+  await page.getByRole('button', { name: 'The file before' }).click();
+  await expect(page.locator('.file-path')).toHaveText('src/math.ts');
+  await expect(page.locator('.file-position')).toHaveText('1 of 2');
   // The file shown has the eye; none is viewed yet.
   const state = (path: string) =>
     page.locator('.files-item', { has: fileRow(page, path) }).locator('.files-state');
