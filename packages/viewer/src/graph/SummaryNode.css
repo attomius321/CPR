@@ -1,7 +1,11 @@
 /* ---- summary nodes: many neighbours of one changed symbol ---------------------------- */
 
-/* As a neighbour's node (V90): no ground, a dashed hairline. */
+/* As a neighbour's node (V90): no ground, a dashed hairline. Its two lines centred in the
+   layout's height (V106: at the caption's size they no longer fill it). */
 .summary-node {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   height: 100%;
   padding: 6px 10px;
   background: transparent;
@@ -14,12 +18,18 @@
   border-color: var(--edge);
 }
 
+/* Shown: a step back, its words still 4.5:1 (V106: the muted count at 0.8 was 4.08:1 in light). */
 .summary-node.expanded {
-  opacity: 0.8;
+  opacity: 0.9;
 }
 
+/* The context is quieter than the change (V106, decision 981): the count is drawn as an unchanged
+   symbol's name, and no text of the card is larger or bolder than a changed symbol's name
+   (`e2e/context.spec.ts`). The card's width is the layout's, not its text's. */
 .summary-count {
-  font-weight: 600;
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-weight: 500;
 }
 
 .summary-where {
@@ -28,7 +38,7 @@
   gap: 6px;
   margin-top: 4px;
   color: var(--muted);
-  font-size: var(--size-small);
+  font-size: var(--size-caption);
   white-space: nowrap;
 }
 
