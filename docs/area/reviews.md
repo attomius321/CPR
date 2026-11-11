@@ -103,9 +103,9 @@ opens it in VS Code. The result is not stored.
 
 ## The Files page
 
-A review opens on its **Files** page. One card at the left lists every changed file in git's
-order, and the review under them: its comments, the summary, the verdict and the merge check. A
-file shows git's diff of the whole file, folded to 3 lines of context. **Graph** is one switch away (key
+A review opens on its **Files** page. One card at the left lists every changed file, in order
+of risk (V102, below), and the review under them: its comments, the summary, the verdict and the
+merge check. A file shows git's diff of the whole file, folded to 3 lines of context. **Graph** is one switch away (key
 `g`), and `?view=graph` keeps it on reload. On a branch review, every line shown takes a comment.
 Under `symbiote pr`, only added and removed lines take one, because forges accept comments only in
 their own hunks. A diff over 5 MB is not sent, and a file's diff draws 2,000 rows before **Show
@@ -141,6 +141,17 @@ worst listed finding, and its box draws its symbols' counts at their cards' top-
 (`.map-count`), scaled like the names (970). The box draws them because the map draws a box and
 its name above its cards.
 
+Since V102 the list is in order of risk (973, amending 431's first file), and the page opens on
+its first file. Files with listed findings come first: the worst severity first, then the most
+of each severity in turn. Then other code, then tests (a `.test.` or `.spec.` name, or a file in a
+`test/`, `tests/`, `__tests__/` or `e2e/` folder), then every other file. Each group keeps git's
+order. A finding counts in its symbol's file (the head's, the base's for a removed symbol), and
+a settled change does not count (`fileFindings`, `riskOrder` in `diff/file-order.ts`). The order
+comes from `useReviewFiles`, so `j`/`k` and the arrows walk it. Each row counts its listed
+findings as a graph card does (974): `.symbol-count`, in the worst severity's colour, after the
+comments count. Its tooltip and the row's accessible name give the severities. A workspace's
+Changes panel keeps git's order.
+
 Since V103 the detail panel's code wraps at its width (975, keeping 887's 336 px): a wrapped line
 goes on under its own code, at its indent (`hangOf`, at most 8 columns), in its row's colour, its
 line number beside its first line. Its rules are the panel's own, `.symbol-code`. A changed
@@ -158,7 +169,8 @@ steps, what needs no graph: the change's files, which the server reads from git 
 before the graph exists, and for a workspace's branch the agent's newest report, its commits and
 its brief. The commits show only when the workspace's changes start at the review's own base. The
 Files page opens meanwhile, read only: comments wait for the graph, because a comment names the
-symbol holding its line.
+symbol holding its line. Its list is in git's order until the graph arrives. Then it takes the
+order of risk, and the file open stays open (`useKeptOpen` in `FilesPage.tsx`, V102).
 
 ## Where things are
 
@@ -170,6 +182,7 @@ symbol holding its line.
 | The Review tab | `packages/viewer/src/diff/ReviewTab.tsx` |
 | The marks, the drafts and the verdict picked, for both pages | `packages/viewer/src/diff/useReview.ts` |
 | The Files page and its diff | `packages/viewer/src/diff/FilesPage.tsx`, `packages/viewer/src/diff/file-diff.ts` |
+| The Files page's order and each file's findings | `riskOrder`, `fileFindings`, `fileKind` in `packages/viewer/src/diff/file-order.ts`; applied in `useReviewFiles` (`FilesPage.tsx`) |
 | The head's findings pills; the Findings tab's fold | `FindingPills` in `packages/viewer/src/diff/DiffHead.tsx`; `foldFindings`, `findingPills` in `diff/review.ts`; `Sidebar.tsx` |
 | Findings on the map: a file name's colour, the counts | `layoutFlow` in `packages/viewer/src/graph/flow.ts` (`FileData.severity`, `counts`), `FileNode.tsx`, `map.css` |
 | Opening a review: the steps, their times, what needs no graph | `packages/viewer/src/diff/DiffProgress.tsx`, `analysis-steps.ts` |
@@ -209,10 +222,13 @@ when a later decision or a fix changed it.
 | 886–890 | A review as proof 03: the first fit whole (≤ 1×), no zoom to a pick but from the map; the detail 336 px; Open ↗ per use; syntax colours from our own tokenizer (supersedes 845); a finding's message as its title | [V93](../plan/v93-redesign-finish.md) |
 | 968–970 | The head's pills: each severity the Findings tab lists, infos as notes, a click opening the tab at it (amends 839); settled signature changes folded per project, counted in their fold only; on the map a file's name in its worst listed finding's colour, its box drawing its symbols' counts | [V100](../plan/v100-findings-where-you-look.md) |
 | 966–967 | A pick lands readable: a name under 11 px on screen comes to the reading zoom, a readable pick in view moves nothing (amends 886); the reading zoom is the body size over the graph's 12 px names, and no fit comes closer | [V99](../plan/v99-picks-land-readable.md) |
+| 973–974 | The Files page in order of risk: files with listed findings (worst severity, then the most of each), other code, tests, then every other file, git's order inside each and until the graph arrives (amends 431's first file); a file's listed findings counted on its row in the worst severity's colour | [V102](../plan/v102-files-by-risk.md) |
 | 975–976 | The panel's code wraps under its own code, at its indent (keeps 887); a changed signature is one, removed words struck and added words marked, folded past 400 characters; core cuts a signature at 2,000 | [V103](../plan/v103-panel-code-whole.md) |
 
 These no longer hold:
 
+- **431's first file, git's first**: since V102 (973) the page opens on the first file in order
+  of risk. On the spike's 30 merges, git's first was never code.
 - **839's pills for errors and warnings only**: since V100 (968) a pill per severity the Findings
   tab lists, and the tab counts what it lists, not every finding.
 
@@ -229,6 +245,14 @@ These no longer hold:
 
 ## Traps
 
+- **`App.tsx` sets the Files page's open file to none on every new graph**, which means the
+  first file, and its effect runs after the page's. A file opened while the change was analyzed
+  jumped to the riskiest once the graph reordered the list, so `useKeptOpen` opens it again
+  after App's reset (V102).
+- **`?view=files` is not an address.** `diffView` reads only `?view=graph`. While a change is
+  analyzed, the Files page is reached by **Read the files** or the Files tab (V102's e2e).
+- **`fileOf` in `graph/flow.ts` is a node's signature line, not its file.** A symbol's file is
+  `(node.head ?? node.base).file` (V102).
 - **On the map, a file's box and its name are drawn above its cards** (z-index 2000, so that a
   click zooms into the file). A card's count shown there was under the name on 26 of 43 at the
   five walked first views, so the box draws the counts (`FileData.counts`, V100).

@@ -132,11 +132,12 @@ are calls and other uses. Grey symbols did not change but call or are called by 
 An error is most likely a bug, a warning is worth a look, and info is for your attention only.
 The page's head counts them by severity; click a count to list them.
 
-A change has two pages. **Files** lists every changed file with its diff, including files the graph
-does not read, such as Markdown. **Graph** is the picture above. On a change's page, `g` switches
-between them. Click a line or a symbol to comment on it. In the **Review** tab, pick **Approve**,
-**Request changes** or **Comment**, and click **Finish review**. If you review the branch again
-after new commits, only what changed since is left to look at.
+A change has two pages. **Files** lists every changed file with its diff, the files with findings
+first and docs last, including files the graph does not read, such as Markdown. **Graph** is the
+picture above. On a change's page, `g` switches between them. Click a line or a symbol to comment
+on it. In the **Review** tab, pick **Approve**, **Request changes** or **Comment**, and click
+**Finish review**. If you review the branch again after new commits, only what changed since is
+left to look at.
 
 Open a change in one of these ways:
 
