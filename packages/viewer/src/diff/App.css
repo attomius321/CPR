@@ -205,7 +205,7 @@
   border-top: 3px solid var(--context);
 }
 
-/* Dotted, as canvas.css draws a type reference. */
+/* The Type references toggle's line (V101): dotted, as canvas.css draws one. */
 .legend-edge.edge-type-reference::before {
   border-top: 2px dotted var(--context);
 }

@@ -264,10 +264,13 @@ export function App() {
       layout ? decorate(layout.nodes, { reviewed, sinceOnly: onlySince, selected }) : undefined,
     [layout, reviewed, onlySince, selected],
   );
-  /** For the detail panel's marks: the symbols on the canvas (V101, decision 972). */
+  /**
+   * For the detail panel's marks: the symbols on the canvas (V101, decision 972). None while a
+   * new view is laid out (Focus moving to the next pick): the old one would mark its neighbours.
+   */
   const shownOnCanvas = useMemo(
-    () => (layout && selected ? onCanvas(layout, selected) : undefined),
-    [layout, selected],
+    () => (layout && selected && !pending ? onCanvas(layout, selected) : undefined),
+    [layout, selected, pending],
   );
 
   // Selecting a symbol that sits inside a collapsed summary (from the detail panel) shows it.

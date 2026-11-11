@@ -274,7 +274,12 @@ symbol glyph. Measure first paint (`/git`) and Bitwarden's graph after any font 
   `MOVING_EDGE_LIMIT` edges) only the selected symbol's. A move starts at `onMove`, not
   `onMoveStart` (which comes with every click). The selected symbol's edges are drawn above every
   node (V90, `decorateEdges`: `RAISED_EDGE_Z`, `.edge-raised` with no pointer, so a node under one
-  keeps its click); only they change identity on a selection.
+  keeps its click); only they change identity on a selection. The type references the toggle
+  hides are carried between drawn symbols in a list of their own (V101, `hiddenEdges`), made after
+  placement so they move nothing; only the selected symbol's reach React Flow, as its own edges
+  (never React Flow's `hidden: true`: it still checks those every frame). Focus lays out type
+  references whatever the toggle (`layoutView` in `diff/review.ts`); the panel's "not on the
+  canvas" is `onCanvas`: drawn, or in the pick's own summary.
 - A graph node (V90, `SymbolNode`) is a neutral card: the kind of change is a mark (`kindMark`),
   findings one count (`findingCount`), never a tinted ground or coloured name; `--tone` stays for
   the map's blocks and the marks.

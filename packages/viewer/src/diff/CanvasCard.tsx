@@ -41,9 +41,8 @@ export function DropZone({
 }
 
 /**
- * The canvas's foot (V90): the marks for a change's kinds, the edges (type references since
- * V101), the frames' parts when drawn; the view's toggles (`children`) at its end. `frames`: the
- * canvas draws projects' frames.
+ * The canvas's foot (V90): the marks for a change's kinds, the edges, the frames' parts when
+ * drawn; the view's toggles (`children`) at its end. `frames`: the canvas draws projects' frames.
  */
 function Legend({ frames, children }: { frames: boolean; children: ReactNode }) {
   return (
@@ -66,8 +65,6 @@ function Legend({ frames, children }: { frames: boolean; children: ReactNode }) 
       <span className="legend-item legend-context">unchanged</span>
       <span className="legend-edge edge-head">added call</span>
       <span className="legend-edge edge-base">removed call</span>
-      {/* Drawn in Focus and for a pick whatever the toggle (V101). */}
-      <span className="legend-edge edge-type-reference">type reference</span>
       {frames && <span className="legend-edge edge-cross">call between projects</span>}
       <span className="legend-item legend-summary">many neighbours, grouped</span>
       {frames && <span className="legend-item legend-project">project (app or library)</span>}
@@ -183,7 +180,9 @@ export function CanvasCard({
               checked={typeReferences}
               onChange={(e) => setTypeReferences(e.target.checked)}
             />
-            Type references
+            {/* Its line, as the legend's (V101): Focus and a pick draw them whatever the toggle.
+                Beside the toggle, not an entry of its own, which wrapped the legend at 1920 px. */}
+            <span className="legend-edge edge-type-reference">Type references</span>
           </label>
         </Legend>
       )}
