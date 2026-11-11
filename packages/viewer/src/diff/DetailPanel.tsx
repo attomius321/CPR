@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useState, type KeyboardEvent, type MouseEvent } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+  type MouseEvent,
+} from 'react';
 import type { Finding, Graph, GraphNode, Project } from '@symbiote/core';
 import {
   anchorFor,
@@ -12,7 +19,9 @@ import {
 import {
   diffRows,
   excerpt,
+  hangOf,
   neighbourGroups,
+  signatureDiff,
   symbolDetail,
   type DiffRow,
   type NeighbourGroup,
@@ -264,14 +273,7 @@ export function DetailPanel({
       {signatures.length > 0 && (
         <section className="panel-block">
           <h3>Signature</h3>
-          {node.base && node.head && node.base.signature !== node.head.signature ? (
-            <>
-              <code className="sig sig-del">{node.base.signature}</code>
-              <code className="sig sig-add">{node.head.signature}</code>
-            </>
-          ) : (
-            <code className="sig">{signatures[0]}</code>
-          )}
+          <Signature before={node.base?.signature} after={node.head?.signature} />
         </section>
       )}
 
@@ -347,6 +349,39 @@ const KIND_PILLS: Record<Tone, string> = {
   unknown: 'Dynamic',
 };
 
+/**
+ * A symbol's signature (V103, decision 976): one, its removed words struck and its added words
+ * marked when it changed; the two whole when more than half of it differs.
+ */
+function Signature({ before, after }: { before?: string | undefined; after?: string | undefined }) {
+  const runs = useMemo(
+    () => (before !== undefined && after !== undefined ? signatureDiff(before, after) : undefined),
+    [before, after],
+  );
+  if (runs === null) {
+    return (
+      <>
+        <code className="sig sig-del">{before}</code>
+        <code className="sig sig-add">{after}</code>
+      </>
+    );
+  }
+  if (!runs) return <code className="sig">{after ?? before}</code>;
+  return (
+    <code className="sig">
+      {runs.map((run, i) =>
+        run.type === 'del' ? (
+          <del key={i}>{run.text}</del>
+        ) : run.type === 'add' ? (
+          <ins key={i}>{run.text}</ins>
+        ) : (
+          run.text
+        ),
+      )}
+    </code>
+  );
+}
+
 /** Long symbols show this many rows until expanded. */
 const MAX_ROWS = 300;
 
@@ -375,35 +410,35 @@ function SymbolDiff({ state, anchor, onPick, onOpen, path }: SymbolDiffProps) {
   }
   const rows = all ? state.rows : state.rows.slice(0, MAX_ROWS);
   return (
-    <div className="code" role="table">
-      {/* As wide as the longest line, so every row's colour spans it when the code scrolls. */}
-      <div className="code-rows">
-        {rows.map((row, i) => {
-          const pick = onPick && row.type !== 'same' ? () => onPick(row) : undefined;
-          const title = [pick && 'Comment on this line', onOpen && `${MOD}+click: open in VS Code`]
-            .filter(Boolean)
-            .join(' · ');
-          const onClick = (event: MouseEvent) => {
-            if (onOpen && (event.ctrlKey || event.metaKey)) onOpen(row);
-            else pick?.();
-          };
-          return (
-            <div
-              key={i}
-              className={`row row-${row.type}${pick ? ' pickable' : ''}${isAnchor(row, anchor) ? ' anchored' : ''}`}
-              role="row"
-              {...(pick || onOpen ? { onClick, title } : {})}
-            >
-              <LineNumber row={row} side="base" onOpen={onOpen} />
-              <LineNumber row={row} side="head" onOpen={onOpen} />
-              <span className="mark">
-                {row.type === 'add' ? '+' : row.type === 'del' ? '−' : ' '}
-              </span>
-              <CodeText text={row.text} tokens={tokens?.get(row)} />
-            </div>
-          );
-        })}
-      </div>
+    <div className="code symbol-code" role="table">
+      {rows.map((row, i) => {
+        const pick = onPick && row.type !== 'same' ? () => onPick(row) : undefined;
+        const title = [pick && 'Comment on this line', onOpen && `${MOD}+click: open in VS Code`]
+          .filter(Boolean)
+          .join(' · ');
+        const onClick = (event: MouseEvent) => {
+          if (onOpen && (event.ctrlKey || event.metaKey)) onOpen(row);
+          else pick?.();
+        };
+        // A wrapped line goes on under its own code (V103, decision 975).
+        const hang = hangOf(row.text);
+        return (
+          <div
+            key={i}
+            className={`row row-${row.type}${pick ? ' pickable' : ''}${isAnchor(row, anchor) ? ' anchored' : ''}`}
+            role="row"
+            {...(hang ? { style: { '--hang': `${hang}ch` } as CSSProperties } : {})}
+            {...(pick || onOpen ? { onClick, title } : {})}
+          >
+            <LineNumber row={row} side="base" onOpen={onOpen} />
+            <LineNumber row={row} side="head" onOpen={onOpen} />
+            <span className="mark">
+              {row.type === 'add' ? '+' : row.type === 'del' ? '−' : ' '}
+            </span>
+            <CodeText text={row.text} tokens={tokens?.get(row)} />
+          </div>
+        );
+      })}
       {rows.length < state.rows.length && (
         <button className="more" onClick={() => setAll(true)}>
           Show all {state.rows.length} lines

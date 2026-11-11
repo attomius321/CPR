@@ -1,4 +1,4 @@
-import { diffLines } from 'diff';
+import { diffLines, diffWordsWithSpace } from 'diff';
 import type { Finding, Graph, GraphEdge, GraphNode, Range } from '@symbiote/core';
 
 export interface Neighbour {
@@ -126,4 +126,95 @@ export function diffRows(base: Excerpt | undefined, head: Excerpt | undefined): 
 
 function withNewline(text: string | undefined): string {
   return text === undefined ? '' : `${text}\n`;
+}
+
+/** A tab's columns in the panel's code (`.code`'s `tab-size`). */
+const TAB = 2;
+/** The most a wrapped line hangs: past it, a deep line keeps room for its words. */
+const HANG_MAX = 8;
+
+/**
+ * Where a wrapped line of the panel's code goes on (V103, decision 975): under its own code, at
+ * its indent in columns, at most `HANG_MAX`; 0 for a line of spaces only.
+ */
+export function hangOf(text: string): number {
+  const indent = /^[\t ]*/.exec(text)?.[0] ?? '';
+  if (indent.length === text.length) return 0;
+  const columns = [...indent].reduce((sum, c) => sum + (c === '\t' ? TAB : 1), 0);
+  return Math.min(columns, HANG_MAX);
+}
+
+/** A run of a changed signature's words: kept, removed or added (V103, decision 976). */
+export interface SignatureRun {
+  type: 'same' | 'del' | 'add';
+  text: string;
+}
+
+/** Past this share of the two signatures' characters changed, the panel shows both whole. */
+const MOST_CHANGED = 0.5;
+
+/** A letter or a digit: a word's, unlike spaces and punctuation. */
+const WORD = /[\p{L}\p{N}]/u;
+
+/**
+ * A signature's two versions as one: the words kept, removed and added (a diff of words,
+ * punctuation and spaces). The changes between two kept words are one removed run then one added
+ * run, the spaces and punctuation between them in both; null when more than half differs.
+ */
+export function signatureDiff(before: string, after: string): SignatureRun[] | null {
+  const parts = diffWordsWithSpace(before, after).map((part): SignatureRun => ({
+    type: part.added ? 'add' : part.removed ? 'del' : 'same',
+    text: part.value,
+  }));
+  const runs: SignatureRun[] = [];
+  const push = (type: SignatureRun['type'], text: string) => {
+    const last = runs.at(-1);
+    if (!text) return;
+    if (last?.type === type) last.text += text;
+    else runs.push({ type, text });
+  };
+  let del = '';
+  let add = '';
+  const flush = () => {
+    // Spaces and punctuation both runs start or end with are kept, not changed.
+    const [head, tail] = del && add ? sharedEnds(del, add) : [0, 0];
+    push('same', del.slice(0, head));
+    push('del', del.slice(head, del.length - tail));
+    push('add', add.slice(head, add.length - tail));
+    push('same', del.slice(del.length - tail));
+    del = add = '';
+  };
+  parts.forEach((part, i) => {
+    if (part.type === 'del') del += part.text;
+    else if (part.type === 'add') add += part.text;
+    else if ((del || add) && parts[i + 1] && !WORD.test(part.text)) {
+      // Only spaces or punctuation between two changes: part of both, not a word kept.
+      del += part.text;
+      add += part.text;
+    } else {
+      flush();
+      push('same', part.text);
+    }
+  });
+  flush();
+  // The share is the diff's own: spaces and punctuation drawn in both runs count once.
+  const changed = parts.reduce(
+    (sum, part) => sum + (part.type === 'same' ? 0 : part.text.length),
+    0,
+  );
+  return changed > MOST_CHANGED * (before.length + after.length) ? null : runs;
+}
+
+/** How many spaces and punctuation marks two texts share at their start and at their end. */
+function sharedEnds(a: string, b: string): [number, number] {
+  const same = (i: number, j: number) => a[i] === b[j] && !WORD.test(a[i] ?? '');
+  let head = 0;
+  while (head < Math.min(a.length, b.length) && same(head, head)) head++;
+  let tail = 0;
+  while (
+    tail < Math.min(a.length, b.length) - head &&
+    same(a.length - 1 - tail, b.length - 1 - tail)
+  )
+    tail++;
+  return [head, tail];
 }

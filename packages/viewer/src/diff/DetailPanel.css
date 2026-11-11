@@ -169,6 +169,24 @@
   background: color-mix(in srgb, var(--added) 16%, var(--panel));
 }
 
+/* A changed signature as one (V103, decision 976): its removed words struck, its added words
+   marked; a run cut by the wrap keeps its corners on each line. */
+.sig del,
+.sig ins {
+  border-radius: 4px;
+  box-decoration-break: clone;
+}
+
+.sig del {
+  background: var(--removed-gutter);
+  text-decoration: line-through;
+}
+
+.sig ins {
+  background: var(--added-gutter);
+  text-decoration: none;
+}
+
 .code {
   overflow-x: auto;
   tab-size: 2;
@@ -178,15 +196,31 @@
   font: var(--size-code)/1.5 var(--mono);
 }
 
-.code-rows {
-  width: max-content;
-  min-width: 100%;
-}
-
 .row {
   display: grid;
   grid-template-columns: 3.2em 3.2em 1.4em auto;
   white-space: pre;
+}
+
+/* The panel's code wraps at its width (V103, decision 975, keeps 887's 336 px): a wrapped line
+   goes on under its own code, at its indent (`--hang`, from `hangOf`), and its row keeps its
+   colour and gutter on every line. */
+.symbol-code .row {
+  grid-template-columns: 3.2em 3.2em 1.4em minmax(0, 1fr);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.symbol-code .text {
+  padding-left: var(--hang, 0ch);
+  text-indent: calc(-1 * var(--hang, 0ch));
+}
+
+/* A button centres its number in a wrapped row's height: at the top, beside the line's start. */
+.symbol-code .ln-open {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
 }
 
 .row-add {
