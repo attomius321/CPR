@@ -149,6 +149,7 @@ toolbar.
 | r | | | Mark the selected symbol reviewed; a rule of a stylesheet shown as one card marks all its rules |
 | x | Compare mode: pick two commits | | |
 | f | Find a commit: Enter and Shift+Enter step through what it finds | | Focus: show only the selected symbol and every symbol it links to, type references included |
+| F | | | The whole change, from any selected symbol; with nothing selected, the change's worst error or warning, focused. The page opens next time on the one you left |
 | d | Show or fold the commit's details | | |
 | p, P | | | Next or previous project, in a monorepo |
 | o | Open the file shown as a diff in VS Code | Open the file in VS Code at its first change | Open the selected symbol in VS Code |

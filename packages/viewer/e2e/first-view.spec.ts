@@ -153,6 +153,13 @@ test('a change with only notes opens whole, as before, and F leaves it so', asyn
   expect(await zoomOf(page)).toBeCloseTo(zoom, 3);
 });
 
+test("a head's pill clicked on Files opens Graph on the risk too", async ({ page }) => {
+  await page.goto(callers.url);
+  await expect(page.locator('.file-view')).toBeVisible();
+  await page.locator('.bar .finding-pill', { hasText: '1 warning' }).click();
+  await expectRisk(page);
+});
+
 test('from Files, g opens Graph on the risk; a line clicked there is picked instead', async ({
   page,
 }) => {

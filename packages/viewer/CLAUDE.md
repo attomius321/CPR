@@ -46,9 +46,12 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   The worker is `new URL('./layout-worker.ts', import.meta.url)`: the two files move together.
 - `src/diff/App.tsx` — state, the page shown (Files first, Graph by `?view=graph`, `g` between
   them; V60; `g` and the page switch follow the pick, `follow`, V104), the view to lay out,
-  toolbar; `Canvas.tsx` the canvas (map mode, reveal/fit; a
-  pick's move, `pickView`, and every fit's cap, the reading zoom from Settings' text size,
-  `readingZoom` in `graph/mapzoom.ts`, V99),
+  toolbar; the Graph page's first view (V109): the riskiest finding's symbol, focused, set while
+  App renders (`useFirstView.ts`, which binds `F`; `first-view.ts` pure); `Canvas.tsx` the canvas
+  (map mode, reveal/fit; a pick's move, `pickView`, and every fit's cap, the reading zoom from
+  Settings' text size, `readingZoom` in `graph/mapzoom.ts`, V99; the first view's and Focus's
+  pick at the reading zoom when their fit would draw it under 11 px, and `framing`, F's new first
+  view, V109),
   `CanvasCard.tsx` its card (the legend and the view's toggles), `DiffHead.tsx` the head's parts;
   `useDiffGraph.ts` the graph's loading and polling, `useReview.ts` marks and drafts,
   `useDiffKeys.ts` the keys.
