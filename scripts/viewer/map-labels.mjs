@@ -247,7 +247,12 @@ try {
           dimmed: count(seen.dimmed),
           outside: count(seen.outside),
           countsUnder: count(seen.countsUnder),
-          detail: { covered: seen.covered, outside: seen.outside, countsUnder: seen.countsUnder },
+          detail: {
+            covered: seen.covered,
+            dimmed: seen.dimmed,
+            outside: seen.outside,
+            countsUnder: seen.countsUnder,
+          },
           errors,
         }),
       );

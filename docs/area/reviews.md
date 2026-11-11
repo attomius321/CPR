@@ -139,7 +139,8 @@ tab folds the settled ones into one row per project, below the rest, opened on a
 opens first only when a finding is listed. On the map, a file's name takes the colour of its
 worst listed finding, and its box draws its symbols' counts at their cards' top-right corners
 (`.map-count`), scaled like the names (970). The box draws them because the map draws a box and
-its name above its cards.
+its name above its cards. In a project's frame, the frame draws them instead, above its name
+(998, V96, amending 970): the map draws a frame above its files.
 
 Since V102 the list is in order of risk (973, amending 431's first file), and the page opens on
 its first file. Files with listed findings come first: the worst severity first, then the most
@@ -206,7 +207,7 @@ shown, and the first graph does not reset it (V104, in place of V102's `useKeptO
 | Graph and Files following the pick: `g`, the page switch, **Show its lines** | `follow` and `pickedLines` in `packages/viewer/src/diff/App.tsx`; `symbolFocus`, `firstChangedRow`, `anchorKey`, `foldsDrawn` in `diff/file-diff.ts`; the button in `DetailPanel.tsx` |
 | The Files page's order and each file's findings | `riskOrder`, `fileFindings`, `fileKind` in `packages/viewer/src/diff/file-order.ts`; applied in `useReviewFiles` (`FilesPage.tsx`) |
 | The head's findings pills; the Findings tab's fold | `FindingPills` in `packages/viewer/src/diff/DiffHead.tsx`; `foldFindings`, `findingPills` in `diff/review.ts`; `Sidebar.tsx` |
-| Findings on the map: a file name's colour, the counts | `layoutFlow` in `packages/viewer/src/graph/flow.ts` (`FileData.severity`, `counts`), `FileNode.tsx`, `map.css` |
+| Findings on the map: a file name's colour, the counts | `layoutFlow` in `packages/viewer/src/graph/flow.ts` (`FileData.severity`, `counts`), `FileNode.tsx`, `map.css`; in a frame, `mapLabels` in `graph/map-labels.ts` and `ProjectNode.tsx` |
 | A stylesheet as one card, one row and one item | `stylesheetFiles`, `foldStylesheets` in `packages/viewer/src/graph/flow.ts`, `StylesheetNode.tsx`; `reviewItems`, `reviewProgress`, `toggleMark` in `diff/review.ts`; `Sidebar.tsx` |
 | Opening a review: the steps, their times, what needs no graph | `packages/viewer/src/diff/DiffProgress.tsx`, `analysis-steps.ts` |
 | The files before the graph exists | `pairFiles` in `packages/cli/src/server-sites.ts` |
@@ -244,6 +245,7 @@ when a later decision or a fix changed it.
 | 900 | The reviews list keeps what git said of each review under a key of its file's commits, its refs' tips, the tips it is counted against and its verdict's target's tips: git runs only for a review whose key changed | [V94](../plan/v94-push-not-polling.md) |
 | 886–890 | A review as proof 03: the first fit whole (≤ 1×), no zoom to a pick but from the map; the detail 336 px; Open ↗ per use; syntax colours from our own tokenizer (supersedes 845); a finding's message as its title | [V93](../plan/v93-redesign-finish.md) |
 | 968–970 | The head's pills: each severity the Findings tab lists, infos as notes, a click opening the tab at it (amends 839); settled signature changes folded per project, counted in their fold only; on the map a file's name in its worst listed finding's colour, its box drawing its symbols' counts | [V100](../plan/v100-findings-where-you-look.md) |
+| 998 | On the map, a project's frame draws its files' findings counts, above its name (amends 970's "its box draws its symbols' counts") | [V96](../plan/v96-map-labels.md) |
 | 979–980 | A stylesheet with two or more changed symbols, all stylesheet symbols, is one card (its counts, its rules' findings, links merged onto it) opened like a group; a pick inside it rings it, Focus opens it. It is one row, one item of the progress, one `j`/`k` stop, and one mark for all its rules | [V105](../plan/v105-stylesheet-cards.md) |
 | 966–967 | A pick lands readable: a name under 11 px on screen comes to the reading zoom, a readable pick in view moves nothing (amends 886); the reading zoom is the body size over the graph's 12 px names, and no fit comes closer | [V99](../plan/v99-picks-land-readable.md) |
 | 973–974 | The Files page in order of risk: files with listed findings (worst severity, then the most of each), other code, tests, then every other file, git's order inside each and until the graph arrives (amends 431's first file); a file's listed findings counted on its row in the worst severity's colour | [V102](../plan/v102-files-by-risk.md) |
@@ -289,7 +291,9 @@ These no longer hold:
   its block back for good. `drawnAs` gives the canvas the card to bring into view (V105).
 - **On the map, a file's box and its name are drawn above its cards** (z-index 2000, so that a
   click zooms into the file). A card's count shown there was under the name on 26 of 43 at the
-  five walked first views, so the box draws the counts (`FileData.counts`, V100).
+  five walked first views, so the box draws the counts (`FileData.counts`, V100). A frame's node
+  is drawn above its files' (2001), so in a frame its name hid a count; there the frame draws
+  them (`ProjectData.counts`, V96).
 
 - **Claude Code loads a folder's `AGENTS.md` by itself**, git-ignored folders included. A
   `symbiote/CLAUDE.md` would load the rules twice ([V17](../journal/v17-approve-means-merge.md)).

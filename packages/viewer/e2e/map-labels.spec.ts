@@ -151,6 +151,6 @@ test("a faint file name's box keeps its click: a click zooms into the file", asy
   );
   expect(hit).toBe(target.id);
   await page.mouse.click(target.x, target.y);
-  // The click zooms into the file: off the map, its name drawn whole in its box's label.
+  // The click zooms into the file, off the map.
   await expect(page.locator('.react-flow.map')).toHaveCount(0);
 });
