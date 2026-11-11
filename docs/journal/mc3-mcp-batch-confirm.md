@@ -36,3 +36,56 @@ branch's build, in both themes at 1x (`packages/viewer/coverage/mc3-mockup/`, no
 - **`mark-merged.mjs` reads a branch with no commits of its own as merged**: V96 and V108, started
   that day and not yet committed, were listed as notes ("merged, but its row says planned"), not
   marked. Harmless, since only rows that say built are marked; the tool's answer gives the notes.
+
+## MC3 — one Confirm for many actions, mark merged, and the gaps Nucleus hit (2026-11-11, branch `feature/mcp-batch-confirm`)
+
+Built as the person OK'd it (decisions 987–997): `start_workspace` takes `workspaces` and
+`clean_workspace` `branches`, one Confirm with a tick a row, answered per item; `mark_merged` from
+the repository's `merged` commands; an MCP approval queues its merge in the same Confirm, and
+`queue_merge` approves a tip nobody approved; `needsYou` without merged workspaces; a lapsed
+Confirm stays on the bar 24 hours for a late yes (B); `interrupted` only from Claude Code's
+transcript; fix-mcp-annotations built whole.
+
+**Learned**:
+- **"Interrupted" had three more believers than the code**: decision 810's test, three of Hive's
+  and the e2e fake each encoded `working` and idle as an Esc. The full e2e run caught the fake
+  (468 of 469): its Esc kept the permission prompt it had named, and with a named wait first the
+  row read "Waiting: permission prompt". The fake now does what Claude Code does: names every hook
+  a `transcript_path` and writes its Esc there.
+- **Nucleus's own page has the same guess** (`page-agent-conversation.ts:70`, `working` and idle
+  read as interrupted). Not changed: the brief names a workspace's state. A fix of its own.
+- **The page compared asks by their IDs** (`useAsks`): a batch's row changing state would never
+  have redrawn. Found writing the bar, before a test showed it.
+- **Unknown arguments refused meets decision 583**: `suggest_settings` takes `start_workspace`'s
+  whole brief by design. Its schema now lists those fields too; refusing them would have broken
+  "one brief fits both". Two of today's tests called `workspaces` with an argument it never took.
+- **`git()` from core keeps its output's newline**: `mark_merged`'s first commit SHA carried one,
+  and `merge --ff-only` said "not something we can merge". Trimmed.
+- **A clone's `origin/HEAD` names the branch it was cloned from**: the first real run of
+  `mark_merged`, in a scratch clone of this worktree, marked that branch, as `defaultBranch` reads
+  it. `git remote set-head origin main` and it marked `main`. A person's clone of GitHub has the
+  right one.
+- **The batch's answer waits for its items**: the page's answer route waits up to 30 s for what
+  was confirmed to be done; three fake starts took about 1 s, nine clean-ups would take a few.
+
+**Verification**: tests first, red for the right reason: 17 for the batch and the lapse
+(`mcp-batch.test.ts`), 8 for the approval that queues and `queue_merge` on any branch (5 red, the
+3 others today's behaviour), 9 for `mark-merged.ts` on a temp repository with a bare `origin`
+(red: no module), 3 for the tool (red against the commit before it), 3 for fix-mcp-annotations
+(red; `wait {"seconds": 1}` waited until the test's 5 s cap), 6 for `interrupted` and the
+transcript (the start test reproduced v99's `needs-you`, `interrupted`) and 4 changed that
+encoded the guess, 1 for `needsYou` (9 of 9 merged, as measured), 2 for the Activity tab, 7 for
+the bar's words. The Markdown export's test of a batch was written after its code. The tools/list snapshot
+updated on purpose and read per listing: 26 tools, each with annotations and
+`additionalProperties: false`, changes only as MC3 meant; the routes snapshots unchanged. Two e2e
+tests through Nucleus's bridge and the fake agent: three starts in one Confirm, one unticked, two
+started; their clean-up in another, one with a file not committed kept as "can't" until Close; a
+lapse confirmed late, another dismissed. The real bar screenshotted in both themes at 1x
+(`packages/viewer/coverage/mc3-shots/out/`, not committed): it draws as the mockup. A real
+`mark_merged` on this repository's docs, in a scratch clone with a bare remote: dry run 452 ms, 20
+files, 9 rows; marked 506 ms, one "Docs: merged" commit with the IDs in its body, `main` moved in
+the clone's checkout, pushed.
+
+Not verified: a real Nucleus session (it would write into the main checkout's `symbiote/`; the
+e2e fake drove the bridge instead); a batch being done in a screenshot (a second or two); Codex as
+the client of a lapse (the call still ends at 10 minutes, as before).

@@ -244,6 +244,17 @@ tools (1, 3, 4, 2); the bar and the Activity tab; docs.
 "Approve and merge" on the Review tab; batches of other asked tools (`restart_agent`, merges'
 actions); Hive's interrupted-turn guard.
 
+**Results.** Each of the seven with tests red first, then green (the journal lists them).
+`pnpm check`: 3,592 unit tests in 258 files, lint, types and format; `pnpm build`; `pnpm
+test:e2e`: the viewer's 469 and the nexus's 32 passed (a first full run failed 1 of 469: the
+fake's Esc, fixed). The tools/list snapshot updated on purpose, read per listing: 26 tools with
+annotations; the routes snapshots unchanged. Through Nucleus's bridge and the fake agent: three
+starts in one Confirm, one unticked, two started; their clean-up in another, one kept as "can't";
+a lapse confirmed late, another dismissed. A real `mark_merged` of this repository's docs in a
+scratch clone: dry run 452 ms (20 files, 9 rows), marked in 506 ms, one commit, landed, pushed.
+The measured cases: `needsYou` 9 of 9 merged entries now 0; v99's start reads `working`; three
+starts were three Confirms 9–71 s apart, now one; nine clean-ups one.
+
 ## The mockup
 
 Prototype markup over a real `symbiote view` (this branch's build, its tokens and fonts), at 1x,
