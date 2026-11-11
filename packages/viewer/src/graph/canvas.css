@@ -118,9 +118,13 @@
   stroke: var(--muted);
 }
 
-/* Drawn above the nodes (decorateEdges' z-index): a node under one still takes its click. */
+/* Drawn above the nodes (decorateEdges' z-index): a node under one still takes its click. A
+   layer of its own (V101): a long dotted or dashed path was painted again on every frame of a
+   move, and a pick's 30 type references across the refactor's map took a drag from 0.67 s to
+   1.54 s; a layer moves with the view. */
 .react-flow__edge.edge-raised {
   pointer-events: none;
+  will-change: transform;
 }
 
 /* Between two projects: what one app or library asks of another. */
