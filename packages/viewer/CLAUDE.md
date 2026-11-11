@@ -66,7 +66,8 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   shell's sidenav, a workspace's changes; V34): keys, limits, double-click for the default.
   Widths are kept in the browser through `src/ui/widths.ts`, each panel merged into one entry.
 - `src/diff/review.ts` (change list — by project when it spans several —, search, j/k order, one
-  project and its neighbourhood, marks), `detail.ts` (excerpts, diff rows; V103: a signature's
+  project and its neighbourhood, marks; V105: a stylesheet of changed rules is one item,
+  `reviewItems`, for the progress, j/k and one mark), `detail.ts` (excerpts, diff rows; V103: a signature's
   word diff and its fold, a wrapped line's indent; the panel's code wraps under `.symbol-code`,
   because `.code` and `.row` are the Files page's and Git's too),
   `comments.ts` (draft comments and anchors), `store.ts` (server or browser state).
@@ -84,7 +85,8 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   card, the rows mounted and `inert` under it, so their scroll and cursor are kept; the commit's
   read and the uncommitted lines are the page's (`useCommitRead`, `useChangesRead`), shared by the
   pane and the layer. Its Open in VS Code is `POST /api/git/open` (VS Code's diff editor).
-- `src/graph/ProjectNode.tsx`, `FileNode.tsx`, `SymbolNode.tsx`, `SummaryNode.tsx`.
+- `src/graph/ProjectNode.tsx`, `FileNode.tsx`, `SymbolNode.tsx`, `SummaryNode.tsx`,
+  `StylesheetNode.tsx` (V105: a stylesheet's changed rules as one card).
 - `src/skills/skills.ts` — **pure**: a small reader of a `SKILL.md`'s frontmatter (plain, quoted
   and block text; a value YAML refuses is `invalid`, an anchor or a tag `unknown`) and the checks
   the page shows as one types (V41, decision 274): only what the open standard, Anthropic's API or
@@ -251,6 +253,15 @@ symbol glyph. Measure first paint (`/git`) and Bitwarden's graph after any font 
   moves the view for a new layout (fitting a project, the focus, a group) waits until it is
   drawn. What crosses to the worker is structured-cloned: options and layouts stay plain data
   (Maps, Sets, no functions).
+- Stylesheets (V105, decisions 979–980): a file whose changed symbols are all stylesheet symbols,
+  two or more (`stylesheetFiles`), is one card, `rules:<file>`, unless `expanded` holds it. Its
+  symbols leave the layout before anything else is decided (`foldStylesheets`): their links
+  become the card's, one per neighbour and direction with the `count` they stand for, and its
+  neighbours are grouped as a changed symbol's. Opened, the card stays beside its rules to close
+  them. A pick inside a closed card rings it (`decorate`) and the canvas brings the card into view
+  (`drawnAs`); it never opens it (no `hidden` entry), but Focus on it does (`layoutView`). With no
+  such file the layout is exactly main's: `test/__snapshots__/layouts-without-stylesheets.json`,
+  and `scripts/viewer/layout-compare.mjs` on real graphs against another build.
 - Big graphs: neighbourhoods over `NEIGHBOUR_LIMIT` (8) become summary nodes; below zoom 0.45
   (`MAP_ZOOM`, `src/graph/mapzoom.ts`) the canvas is a map (CSS class `map`), React Flow draws only
   on-screen nodes (`onlyRenderVisibleElements`).

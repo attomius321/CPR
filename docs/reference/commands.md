@@ -143,10 +143,10 @@ toolbar.
 
 | Key | On Git | A change's Files page | A change's Graph page |
 |---|---|---|---|
-| j, k | Next or previous commit (above the first: your uncommitted changes); with a file shown, its next or previous file | Next or previous file | Next or previous changed symbol |
+| j, k | Next or previous commit (above the first: your uncommitted changes); with a file shown, its next or previous file | Next or previous file | Next or previous changed symbol; a stylesheet shown as one card is one stop, at its first rule |
 | / | Find a branch | | Search the change list |
 | c | Check out the commit or one of its branches (asks first) | Comment on the file's first change | Comment on the selected symbol |
-| r | | | Mark the selected symbol reviewed |
+| r | | | Mark the selected symbol reviewed; a rule of a stylesheet shown as one card marks all its rules |
 | x | Compare mode: pick two commits | | |
 | f | Find a commit: Enter and Shift+Enter step through what it finds | | Focus: show only the selected symbol and every symbol it links to, type references included |
 | d | Show or fold the commit's details | | |

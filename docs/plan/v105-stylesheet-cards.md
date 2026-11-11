@@ -2,8 +2,8 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v105-stylesheet-cards.md)
 
-**Status:** planned (2026-11-10), to be built on branch `feature/v105-stylesheet-cards` in its own
-workspace; written by the graph usability spike (`spike/graph-usability`). Not started.
+**Status:** built, ready for review (2026-11-11), on branch `feature/v105-stylesheet-cards`;
+planned (2026-11-10) by the graph usability spike (`spike/graph-usability`).
 
 **Kind** feature (milestone) · **Branch** `feature/v105-stylesheet-cards` · **Size** M ·
 **Depends on** none · **Rank** 7 of 12
@@ -73,9 +73,62 @@ of code a reviewer reads as symbols.
 | A risky stylesheet change hides in a card | The card shows its counts and its findings badge; findings on a rule still list in the Findings tab |
 | Mixed files (styles in a component) | Only files whose changed nodes are all stylesheet symbols fold |
 
-## Proposed decisions
+## Decisions
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 979 | Changed stylesheet rules on the canvas | **One card per stylesheet, with its counts by kind of change, opened like a summary; links into its rules attach to the card** | 46 % of changed symbols on 26 merges were CSS rules; they made the largest block of the map |
-| 980 | Stylesheets in the change list and the progress | **One row and one item per stylesheet; one mark marks its rules** | A rule counted as much as a function in "x of N reviewed" |
+| 979 | Changed stylesheet rules on the canvas | **One card per stylesheet with two or more changed symbols, all stylesheet symbols, with its counts by kind of change, opened like a summary; links into its rules attach to the card. A pick inside a closed card rings the card and leaves it closed; Focus on one opens it** | 46 % of changed symbols on 26 merges were CSS rules; they made the largest block of the map. Opening the card on a pick would put the block back with the first `j` |
+| 980 | Stylesheets in the change list and the progress | **One row and one item per stylesheet: one stop of `j`/`k` (its first rule), one mark for all its rules from its row, `r` or the panel** | A rule counted as much as a function in "x of N reviewed"; a stylesheet marked in part would read as not reviewed, with no way to see which rules were |
+
+## As built
+
+Decisions 979 and 980 as proposed, made precise where the plan left a choice: which files fold,
+what a pick inside a card does, what `j`/`k` and `r` do. Tests first: `flow.test.ts` (8 V105 cases)
+and `review.test.ts` (4) failed for the right reasons (no card, no `stylesheet` entry, `j` stopping
+on every rule, a mark marking one rule), then passed; the three new e2e tests in
+`stylesheets.spec.ts` fail on `main`'s build and pass on this one.
+
+- **Which files fold** (`stylesheetFiles`, `graph/flow.ts`): a file whose changed symbols are all
+  stylesheet symbols (`language` `css` or `scss`: rules, custom properties, keyframes, SCSS
+  members), **two or more**. A stylesheet with one changed rule is that rule: a card would say less
+  and cost a click. The same set makes the change list's rows and the marks, from the graph alone
+  (not the `--since` filter), so the card, the row and the item are always one thing.
+- **The card takes the whole file** (`foldStylesheets`, before neighbours are counted): every
+  symbol of the file in view, changed or not, leaves the layout and a node of its own, changed,
+  takes the place of the file's first symbol (boxes keep their order). Links to and from them
+  become the card's, one per neighbour and direction, with the number they stand for
+  (`data.count`; the map's file pairs count them too); links between its own symbols are gone. So
+  its neighbours are grouped as a changed symbol's: IssuesPage.css's 79 tokens are one "79 uses"
+  box. With no such file in view, the nodes and edges are the ones `main` lays out.
+- **The card** (`StylesheetNode.tsx`, `StylesheetNode.css`): a symbol's neutral card on a second
+  edge, "STYLESHEET", the file's name, "62 rules", and one mark per kind of change with its count
+  (`+62`; `+2 ~20 −19`). It counts `rules` or `variables` when all are one kind, else `symbols`.
+  Its rules' findings are one count on it, and on the map at its corner, the box's name in the
+  worst one's colour. On the map it is a block of its kind's colour; a minimap node too. The
+  legend adds "a stylesheet's rules, as one card" when the canvas draws one.
+- **Opening it** is a group's: the same `expanded` set and `toggleSummary`, so `App.tsx` was not
+  changed. Opened, the rules are laid out as without the card, and the card stays in the box,
+  dashed, to hide them.
+- **A pick inside a closed card rings the card** (added: the plan did not say). A rule picked from
+  the list, the panel or `j` leaves the card closed: the card is ringed (`decorate`) and brought
+  into view (`drawnAs` in `Canvas.tsx`). A group of neighbours opens instead (its members are in
+  `hidden`); a card's symbols are not, or the first `j` into a stylesheet would put its block back
+  and leave it there. Focus on such a pick opens its card (`layoutView`): Focus shows the pick.
+  The panel counts a closed card's symbols, and for a pick inside it the card's groups, as on the
+  canvas (`onCanvas`).
+- **The change list** (`Sidebar.tsx`): the file's name, then one row: a box that marks all its
+  rules, a caret that shows them, "62 rules" (a click picks its first rule) and its marks. Shown,
+  its rules have no box of their own. While searching, a stylesheet shows the rules that match.
+- **One item** (`reviewItems`, `diff/review.ts`): the progress and the Changes tab count a
+  stylesheet once, reviewed when all its rules are ("0 of 151 changes reviewed", with a tip
+  "92 symbols and 1 stylesheet"; without stylesheets the words are `main`'s). `j`/`k` stop on it
+  once, at its first rule (added). Marking any of its rules marks them all, from its row's box,
+  `r` or the panel (`toggleMark`; the plan said one mark marks them all, and `r` at the stop `j`
+  makes must mark the item). One of them changed since keeps the item unreviewed and the next mark
+  reviews them all again.
+- **Not changed**: the graph JSON and core; the Files page; `App.tsx`, `DetailPanel.tsx` and
+  `useDiffKeys.ts` (V104's files in this round). The panel's button still says "Mark it
+  reviewed" for a rule whose mark marks its stylesheet: a follow-up for `DetailPanel.tsx`.
+- **`scripts/viewer/layout-compare.mjs`** (added): two builds' layout workers, run in Node on the
+  same graphs and views, compared whole. `main` against itself: 0 differences.
+

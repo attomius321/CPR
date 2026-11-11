@@ -160,6 +160,16 @@ draws the two whole when more than half differs. Past 400 characters `foldSignat
 around each change (an unchanged one its first 300), with **Show the whole signature**. Core cuts
 a signature at 2,000 characters (`MAX_DISPLAY`), not 300.
 
+Since V105 a stylesheet is one thing to look at and to mark (979–980). A file whose changed
+symbols are all stylesheet symbols, two or more (`stylesheetFiles` in `graph/flow.ts`), is one
+card on the canvas, `rules:<file>`: its name, its counts by kind of change, its rules' findings.
+Its symbols leave the layout and their links become the card's (`foldStylesheets`). A click opens
+it as a group opens (`expanded`, `toggleSummary`). A pick inside a closed card rings the card and
+leaves it closed; Focus on it opens it. In the change list it is one row: a box marking all its
+rules, a caret showing them (with no box of their own). The progress, the Changes tab and `j`/`k`
+count it once (`reviewItems` in `diff/review.ts`), `j` landing on its first rule, and marking any
+of its rules marks them all (`toggleMark`): the marks stay one per rule, by fingerprint.
+
 ## Opening a review
 
 While a review's change is analyzed, its page shows the six steps of the analysis as a timeline
@@ -185,6 +195,7 @@ order of risk, and the file open stays open (`useKeptOpen` in `FilesPage.tsx`, V
 | The Files page's order and each file's findings | `riskOrder`, `fileFindings`, `fileKind` in `packages/viewer/src/diff/file-order.ts`; applied in `useReviewFiles` (`FilesPage.tsx`) |
 | The head's findings pills; the Findings tab's fold | `FindingPills` in `packages/viewer/src/diff/DiffHead.tsx`; `foldFindings`, `findingPills` in `diff/review.ts`; `Sidebar.tsx` |
 | Findings on the map: a file name's colour, the counts | `layoutFlow` in `packages/viewer/src/graph/flow.ts` (`FileData.severity`, `counts`), `FileNode.tsx`, `map.css` |
+| A stylesheet as one card, one row and one item | `stylesheetFiles`, `foldStylesheets` in `packages/viewer/src/graph/flow.ts`, `StylesheetNode.tsx`; `reviewItems`, `reviewProgress`, `toggleMark` in `diff/review.ts`; `Sidebar.tsx` |
 | Opening a review: the steps, their times, what needs no graph | `packages/viewer/src/diff/DiffProgress.tsx`, `analysis-steps.ts` |
 | The files before the graph exists | `pairFiles` in `packages/cli/src/server-sites.ts` |
 | Comments and sending a verdict | `packages/viewer/src/diff/comments.ts` (`POST /api/review`) |
@@ -224,6 +235,7 @@ when a later decision or a fix changed it.
 | 966–967 | A pick lands readable: a name under 11 px on screen comes to the reading zoom, a readable pick in view moves nothing (amends 886); the reading zoom is the body size over the graph's 12 px names, and no fit comes closer | [V99](../plan/v99-picks-land-readable.md) |
 | 973–974 | The Files page in order of risk: files with listed findings (worst severity, then the most of each), other code, tests, then every other file, git's order inside each and until the graph arrives (amends 431's first file); a file's listed findings counted on its row in the worst severity's colour | [V102](../plan/v102-files-by-risk.md) |
 | 975–976 | The panel's code wraps under its own code, at its indent (keeps 887); a changed signature is one, removed words struck and added words marked, folded past 400 characters; core cuts a signature at 2,000 | [V103](../plan/v103-panel-code-whole.md) |
+| 979–980 | A stylesheet with two or more changed symbols, all stylesheet symbols, is one card (its counts, its rules' findings, links merged onto it) opened like a group; a pick inside it rings it, Focus opens it. It is one row, one item of the progress, one `j`/`k` stop, and one mark for all its rules | [V105](../plan/v105-stylesheet-cards.md) |
 
 These no longer hold:
 
@@ -253,6 +265,9 @@ These no longer hold:
   analyzed, the Files page is reached by **Read the files** or the Files tab (V102's e2e).
 - **`fileOf` in `graph/flow.ts` is a node's signature line, not its file.** A symbol's file is
   `(node.head ?? node.base).file` (V102).
+- **A stylesheet card's symbols are not in the layout's `hidden`**, unlike a group's members:
+  `App.tsx` opens whatever holds a pick there, and the first `j` into a stylesheet would have put
+  its block back for good. `drawnAs` gives the canvas the card to bring into view (V105).
 - **On the map, a file's box and its name are drawn above its cards** (z-index 2000, so that a
   click zooms into the file). A card's count shown there was under the name on 26 of 43 at the
   five walked first views, so the box draws the counts (`FileData.counts`, V100).
