@@ -106,6 +106,11 @@ Large changes stay readable in three ways:
 
 - If more than 8 unchanged symbols use a changed symbol, or are used by it, they are drawn as one
   box, such as "390 users in 220 files". Click the box to open it.
+- A stylesheet with two or more changed rules is drawn as one card, such as "IssuesPage.css, 62
+  rules, +62": how many rules were added (`+`), modified (`~`) and removed (`−`). Lines to its
+  rules go to the card. Click the card to show its rules, and again to hide them. In the change
+  list the stylesheet is one row: its box marks all its rules reviewed, and its arrow shows them.
+  The bar under the tabs counts it as one change, and `j` and `k` stop on it once.
 - Zoomed out, the graph becomes a map of file names. A name longer than its file's box is cut
   short; point at the box to see the file's path. Click a name to zoom in. A file's name takes
   the colour of its worst finding, and a symbol with findings keeps its count, at the corner of
@@ -349,6 +354,8 @@ Symbiote reads `.css` and `.scss` files as code. A reformat is not a change.
 - **Uses from markup**: a static class name in JSX (`className`), a `classList` call or a CSS
   module's `styles.title` uses the rules that style it. So a rule's users include the components
   it affects. The Angular and Qwik plugins add their templates' classes and scoped styles.
+- **On the graph**: a stylesheet with two or more changed rules is one card, one row of the change
+  list and one change to review (see [Read the graph](#read-the-graph)).
 
 Symbiote does not read Less, indented Sass, CSS-in-JS or `<style>` blocks. Tailwind utility
 classes link to nothing.

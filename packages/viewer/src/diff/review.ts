@@ -1,10 +1,22 @@
 import type { Finding, Graph, GraphNode, GraphSide, Project, Severity } from '@symbiote/core';
-import { label, settled, type LayoutOptions } from '../graph/flow.js';
+import {
+  groupOf,
+  label,
+  settled,
+  stylesheetFiles,
+  stylesheetId,
+  type LayoutOptions,
+} from '../graph/flow.js';
 import { projectOf } from '../graph/projects.js';
 import { plural } from '../ui/plural.js';
 
 export interface FileChanges {
   file: string;
+  /**
+   * A stylesheet of changed rules (V105, decision 980): one row, one item of the review, one mark
+   * for all its symbols, one stop of j/k.
+   */
+  stylesheet?: true;
   symbols: GraphNode[];
   /** The file's app or library, when the changes span two or more. */
   project?: Project;
@@ -31,9 +43,14 @@ export function changeList(graph: Graph, { sinceOnly = false } = {}): FileChange
     byFile.set(file, [...(byFile.get(file) ?? []), node]);
   }
   const line = (n: GraphNode) => (n.head ?? n.base)?.range.start.line ?? 0;
+  const sheets = stylesheetFiles(graph.nodes);
   const list: FileChanges[] = [...byFile]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([file, symbols]) => ({ file, symbols: symbols.sort((a, b) => line(a) - line(b)) }));
+    .map(([file, symbols]) => ({
+      file,
+      ...(sheets.has(file) ? { stylesheet: true as const } : {}),
+      symbols: symbols.sort((a, b) => line(a) - line(b)),
+    }));
 
   const projects = graph.projects ?? [];
   const held = list.map((f) => projectOf(f.file, projects));
@@ -169,17 +186,35 @@ export function projectNeighbourhood(
   return near;
 }
 
-/** The next (or previous) changed symbol after `current`, wrapping around. */
+/**
+ * The review's items in list order, each its symbols: a changed symbol, or a stylesheet with all
+ * its rules (V105, decision 980).
+ */
+export function reviewItems(list: readonly FileChanges[]): string[][] {
+  return list.flatMap((f) =>
+    f.stylesheet ? [f.symbols.map((s) => s.id)] : f.symbols.map((s) => [s.id]),
+  );
+}
+
+/**
+ * The next (or previous) item after the one holding `current`, wrapping around: a changed symbol,
+ * or a stylesheet's first rule (V105: j/k step over a stylesheet as one).
+ */
 export function stepChange(
   list: FileChanges[],
   current: string | null,
   direction: 1 | -1,
 ): string | null {
-  const ids = list.flatMap((f) => f.symbols.map((s) => s.id));
-  if (ids.length === 0) return null;
-  const index = current === null ? -1 : ids.indexOf(current);
-  if (index === -1) return direction === 1 ? (ids[0] ?? null) : (ids[ids.length - 1] ?? null);
-  return ids[(index + direction + ids.length) % ids.length] ?? null;
+  const items = reviewItems(list);
+  if (items.length === 0) return null;
+  const index = current === null ? -1 : items.findIndex((item) => item.includes(current));
+  const next =
+    index === -1
+      ? direction === 1
+        ? items[0]
+        : items[items.length - 1]
+      : items[(index + direction + items.length) % items.length];
+  return next?.[0] ?? null;
 }
 
 /** A symbol and everything within `hops` edges of it, in either direction. */
@@ -223,7 +258,19 @@ export interface ViewChoice {
 export function layoutView(graph: Graph, list: FileChanges[], choice: ViewChoice): LayoutOptions {
   const { typeReferences, context, expanded, focusOn, project } = choice;
   if (focusOn !== null) {
-    return { typeReferences: true, context, expanded, focus: neighbourhood(graph, focusOn) };
+    // Focus on a stylesheet's symbol opens its card (V105): Focus shows the pick itself.
+    const node = graph.nodes.find((n) => n.id === focusOn);
+    const file = node ? groupOf(node).file : undefined;
+    const open =
+      file !== undefined && stylesheetFiles(graph.nodes).has(file)
+        ? new Set([...expanded, stylesheetId(file)])
+        : expanded;
+    return {
+      typeReferences: true,
+      context,
+      expanded: open,
+      focus: neighbourhood(graph, focusOn),
+    };
   }
   const focus = project === null ? undefined : projectNeighbourhood(graph, list, project);
   return { typeReferences, context, expanded, ...(focus ? { focus } : {}) };
@@ -275,6 +322,21 @@ export function reviewKey(graph: Graph, kind: 'review' | 'drafts' = 'review'): s
   return `symbiote:${kind}:${base.sha ?? base.ref}..${head.sha ?? head.ref}`;
 }
 
+/**
+ * How far the review of `list` is, in items (V105, decision 980): a stylesheet counts once,
+ * reviewed when every rule of it is.
+ */
+export function reviewProgress(
+  list: readonly FileChanges[],
+  reviewed: ReadonlySet<string>,
+): { done: number; total: number } {
+  const items = reviewItems(list);
+  return {
+    done: items.filter((item) => item.every((id) => reviewed.has(id))).length,
+    total: items.length,
+  };
+}
+
 export interface ReviewStatus {
   reviewed: Set<string>;
   /** Marked reviewed, but the symbol changed since. */
@@ -293,19 +355,31 @@ export function reviewStatus(graph: Graph, marks: Marks): ReviewStatus {
 
 /**
  * Marks or unmarks a symbol; marks of symbols no longer in the change are dropped, files' viewed
- * marks kept (the Files page keeps them).
+ * marks kept (the Files page keeps them). A stylesheet of changed rules is marked as one (V105,
+ * decision 980), by its card's id or any of its rules: all of them, or none once all are.
  */
 export function toggleMark(graph: Graph, marks: Marks, id: string): Marks {
   const changed = new Map(
     graph.nodes.filter((n) => n.status !== 'unchanged').map((n) => [n.id, n]),
   );
+  const sheets = stylesheetFiles(graph.nodes);
   const node = changed.get(id);
-  if (!node) return marks;
+  const file = node ? groupOf(node).file : [...sheets].find((f) => stylesheetId(f) === id);
+  const nodes =
+    file !== undefined && sheets.has(file)
+      ? [...changed.values()].filter((n) => groupOf(n).file === file)
+      : node
+        ? [node]
+        : [];
+  if (nodes.length === 0) return marks;
   const next: Record<string, string> = {};
   for (const [key, mark] of Object.entries(marks)) {
     if (changed.has(key) || key.startsWith(FILE_MARK)) next[key] = mark;
   }
-  if (marks[id] === fingerprint(node)) delete next[id];
-  else next[id] = fingerprint(node);
+  const all = nodes.every((n) => marks[n.id] === fingerprint(n));
+  for (const n of nodes) {
+    if (all) delete next[n.id];
+    else next[n.id] = fingerprint(n);
+  }
   return next;
 }

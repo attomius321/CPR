@@ -467,3 +467,4 @@ merge commit.
 - 2026-11-11 [V102 — files in order of risk](journal/v102-files-by-risk.md)
 - 2026-11-11 [V101 — the links a finding is about](journal/v101-links-a-finding-is-about.md)
 - 2026-11-11 [V104 — `g` follows the pick, both ways](journal/v104-graph-files-follow.md)
+- 2026-11-11 [V105 — a stylesheet as one card, one row and one item](journal/v105-stylesheet-cards.md)

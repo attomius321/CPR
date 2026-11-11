@@ -1,0 +1,7252 @@
+{
+ "callers, default": {
+  "nodes": [
+   {
+    "id": "group:file:src/math.ts",
+    "type": "file",
+    "position": {
+     "x": 334,
+     "y": 20
+    },
+    "width": 454,
+    "height": 170,
+    "selectable": false,
+    "data": {
+     "label": "src/math.ts",
+     "changed": true,
+     "severity": "error",
+     "counts": [
+      {
+       "symbol": "src/math.ts#legacy",
+       "x": 221,
+       "y": 100,
+       "count": 1,
+       "severity": "error"
+      },
+      {
+       "symbol": "src/math.ts#triple",
+       "x": 221,
+       "y": 30,
+       "count": 1,
+       "severity": "warning"
+      }
+     ]
+    }
+   },
+   {
+    "id": "group:file:src/app.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 20
+    },
+    "width": 224,
+    "height": 170,
+    "selectable": false,
+    "data": {
+     "label": "src/app.ts",
+     "changed": false
+    }
+   },
+   {
+    "id": "src/math.ts#add",
+    "type": "symbol",
+    "parentId": "group:file:src/math.ts",
+    "extent": "parent",
+    "position": {
+     "x": 261,
+     "y": 65
+    },
+    "width": 181,
+    "height": 58,
+    "data": {
+     "node": "src/math.ts#add",
+     "tone": "modified",
+     "label": "add",
+     "file": "add(a: number, b: number, c = 0): number",
+     "tags": [
+      "signature",
+      "body"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 1
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/math.ts#legacy",
+    "type": "symbol",
+    "parentId": "group:file:src/math.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 100
+    },
+    "width": 209,
+    "height": 58,
+    "data": {
+     "node": "src/math.ts#legacy",
+     "tone": "removed",
+     "label": "legacy",
+     "file": "legacy(): number",
+     "tags": [],
+     "findings": {
+      "error": 1,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/math.ts#triple",
+    "type": "symbol",
+    "parentId": "group:file:src/math.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 209,
+    "height": 58,
+    "data": {
+     "node": "src/math.ts#triple",
+     "tone": "added",
+     "label": "triple",
+     "file": "triple(a: number): number",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 1,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/app.ts#old",
+    "type": "symbol",
+    "parentId": "group:file:src/app.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 181,
+    "height": 58,
+    "data": {
+     "node": "src/app.ts#old",
+     "tone": "context",
+     "label": "old",
+     "file": "old(): number",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/app.ts#total",
+    "type": "symbol",
+    "parentId": "group:file:src/app.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 100
+    },
+    "width": 200,
+    "height": 58,
+    "data": {
+     "node": "src/app.ts#total",
+     "tone": "context",
+     "label": "total",
+     "file": "total(values: number[]): number",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   }
+  ],
+  "edges": [
+   {
+    "id": "e1",
+    "source": "src/app.ts#old",
+    "target": "src/math.ts#legacy",
+    "className": "edge-base edge-call",
+    "data": {
+     "edge": "e1"
+    }
+   },
+   {
+    "id": "e2",
+    "source": "src/app.ts#total",
+    "target": "src/math.ts#add",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e2"
+    }
+   },
+   {
+    "id": "e3",
+    "source": "src/math.ts#legacy",
+    "target": "src/math.ts#add",
+    "className": "edge-base edge-call",
+    "data": {
+     "edge": "e3"
+    }
+   },
+   {
+    "id": "e4",
+    "source": "src/math.ts#triple",
+    "target": "src/math.ts#add",
+    "className": "edge-head edge-call",
+    "data": {
+     "edge": "e4"
+    }
+   }
+  ],
+  "fileEdges": [
+   {
+    "id": "files:group:file:src/app.ts → group:file:src/math.ts",
+    "source": "group:file:src/app.ts",
+    "target": "group:file:src/math.ts",
+    "className": "edge-files edge-files-2 edge-both",
+    "data": {
+     "edge": null,
+     "count": 2
+    }
+   }
+  ],
+  "hiddenEdges": [],
+  "hidden": [],
+  "members": []
+ },
+ "callers, no context": {
+  "nodes": [
+   {
+    "id": "group:file:src/math.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 20
+    },
+    "width": 454,
+    "height": 170,
+    "selectable": false,
+    "data": {
+     "label": "src/math.ts",
+     "changed": true,
+     "severity": "error",
+     "counts": [
+      {
+       "symbol": "src/math.ts#legacy",
+       "x": 221,
+       "y": 100,
+       "count": 1,
+       "severity": "error"
+      },
+      {
+       "symbol": "src/math.ts#triple",
+       "x": 221,
+       "y": 30,
+       "count": 1,
+       "severity": "warning"
+      }
+     ]
+    }
+   },
+   {
+    "id": "src/math.ts#add",
+    "type": "symbol",
+    "parentId": "group:file:src/math.ts",
+    "extent": "parent",
+    "position": {
+     "x": 261,
+     "y": 65
+    },
+    "width": 181,
+    "height": 58,
+    "data": {
+     "node": "src/math.ts#add",
+     "tone": "modified",
+     "label": "add",
+     "file": "add(a: number, b: number, c = 0): number",
+     "tags": [
+      "signature",
+      "body"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 1
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/math.ts#legacy",
+    "type": "symbol",
+    "parentId": "group:file:src/math.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 100
+    },
+    "width": 209,
+    "height": 58,
+    "data": {
+     "node": "src/math.ts#legacy",
+     "tone": "removed",
+     "label": "legacy",
+     "file": "legacy(): number",
+     "tags": [],
+     "findings": {
+      "error": 1,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/math.ts#triple",
+    "type": "symbol",
+    "parentId": "group:file:src/math.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 209,
+    "height": 58,
+    "data": {
+     "node": "src/math.ts#triple",
+     "tone": "added",
+     "label": "triple",
+     "file": "triple(a: number): number",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 1,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   }
+  ],
+  "edges": [
+   {
+    "id": "e3",
+    "source": "src/math.ts#legacy",
+    "target": "src/math.ts#add",
+    "className": "edge-base edge-call",
+    "data": {
+     "edge": "e3"
+    }
+   },
+   {
+    "id": "e4",
+    "source": "src/math.ts#triple",
+    "target": "src/math.ts#add",
+    "className": "edge-head edge-call",
+    "data": {
+     "edge": "e4"
+    }
+   }
+  ],
+  "fileEdges": [],
+  "hiddenEdges": [],
+  "hidden": [],
+  "members": []
+ },
+ "callers, type references": {
+  "nodes": [
+   {
+    "id": "group:file:src/math.ts",
+    "type": "file",
+    "position": {
+     "x": 334,
+     "y": 20
+    },
+    "width": 454,
+    "height": 170,
+    "selectable": false,
+    "data": {
+     "label": "src/math.ts",
+     "changed": true,
+     "severity": "error",
+     "counts": [
+      {
+       "symbol": "src/math.ts#legacy",
+       "x": 221,
+       "y": 100,
+       "count": 1,
+       "severity": "error"
+      },
+      {
+       "symbol": "src/math.ts#triple",
+       "x": 221,
+       "y": 30,
+       "count": 1,
+       "severity": "warning"
+      }
+     ]
+    }
+   },
+   {
+    "id": "group:file:src/app.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 20
+    },
+    "width": 224,
+    "height": 170,
+    "selectable": false,
+    "data": {
+     "label": "src/app.ts",
+     "changed": false
+    }
+   },
+   {
+    "id": "src/math.ts#add",
+    "type": "symbol",
+    "parentId": "group:file:src/math.ts",
+    "extent": "parent",
+    "position": {
+     "x": 261,
+     "y": 65
+    },
+    "width": 181,
+    "height": 58,
+    "data": {
+     "node": "src/math.ts#add",
+     "tone": "modified",
+     "label": "add",
+     "file": "add(a: number, b: number, c = 0): number",
+     "tags": [
+      "signature",
+      "body"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 1
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/math.ts#legacy",
+    "type": "symbol",
+    "parentId": "group:file:src/math.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 100
+    },
+    "width": 209,
+    "height": 58,
+    "data": {
+     "node": "src/math.ts#legacy",
+     "tone": "removed",
+     "label": "legacy",
+     "file": "legacy(): number",
+     "tags": [],
+     "findings": {
+      "error": 1,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/math.ts#triple",
+    "type": "symbol",
+    "parentId": "group:file:src/math.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 209,
+    "height": 58,
+    "data": {
+     "node": "src/math.ts#triple",
+     "tone": "added",
+     "label": "triple",
+     "file": "triple(a: number): number",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 1,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/app.ts#old",
+    "type": "symbol",
+    "parentId": "group:file:src/app.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 181,
+    "height": 58,
+    "data": {
+     "node": "src/app.ts#old",
+     "tone": "context",
+     "label": "old",
+     "file": "old(): number",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/app.ts#total",
+    "type": "symbol",
+    "parentId": "group:file:src/app.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 100
+    },
+    "width": 200,
+    "height": 58,
+    "data": {
+     "node": "src/app.ts#total",
+     "tone": "context",
+     "label": "total",
+     "file": "total(values: number[]): number",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   }
+  ],
+  "edges": [
+   {
+    "id": "e1",
+    "source": "src/app.ts#old",
+    "target": "src/math.ts#legacy",
+    "className": "edge-base edge-call",
+    "data": {
+     "edge": "e1"
+    }
+   },
+   {
+    "id": "e2",
+    "source": "src/app.ts#total",
+    "target": "src/math.ts#add",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e2"
+    }
+   },
+   {
+    "id": "e3",
+    "source": "src/math.ts#legacy",
+    "target": "src/math.ts#add",
+    "className": "edge-base edge-call",
+    "data": {
+     "edge": "e3"
+    }
+   },
+   {
+    "id": "e4",
+    "source": "src/math.ts#triple",
+    "target": "src/math.ts#add",
+    "className": "edge-head edge-call",
+    "data": {
+     "edge": "e4"
+    }
+   }
+  ],
+  "fileEdges": [
+   {
+    "id": "files:group:file:src/app.ts → group:file:src/math.ts",
+    "source": "group:file:src/app.ts",
+    "target": "group:file:src/math.ts",
+    "className": "edge-files edge-files-2 edge-both",
+    "data": {
+     "edge": null,
+     "count": 2
+    }
+   }
+  ],
+  "hiddenEdges": [],
+  "hidden": [],
+  "members": []
+ },
+ "callers, a group open": {
+  "nodes": [
+   {
+    "id": "group:file:src/math.ts",
+    "type": "file",
+    "position": {
+     "x": 334,
+     "y": 20
+    },
+    "width": 454,
+    "height": 170,
+    "selectable": false,
+    "data": {
+     "label": "src/math.ts",
+     "changed": true,
+     "severity": "error",
+     "counts": [
+      {
+       "symbol": "src/math.ts#legacy",
+       "x": 221,
+       "y": 100,
+       "count": 1,
+       "severity": "error"
+      },
+      {
+       "symbol": "src/math.ts#triple",
+       "x": 221,
+       "y": 30,
+       "count": 1,
+       "severity": "warning"
+      }
+     ]
+    }
+   },
+   {
+    "id": "group:file:src/app.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 20
+    },
+    "width": 224,
+    "height": 170,
+    "selectable": false,
+    "data": {
+     "label": "src/app.ts",
+     "changed": false
+    }
+   },
+   {
+    "id": "src/math.ts#add",
+    "type": "symbol",
+    "parentId": "group:file:src/math.ts",
+    "extent": "parent",
+    "position": {
+     "x": 261,
+     "y": 65
+    },
+    "width": 181,
+    "height": 58,
+    "data": {
+     "node": "src/math.ts#add",
+     "tone": "modified",
+     "label": "add",
+     "file": "add(a: number, b: number, c = 0): number",
+     "tags": [
+      "signature",
+      "body"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 1
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/math.ts#legacy",
+    "type": "symbol",
+    "parentId": "group:file:src/math.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 100
+    },
+    "width": 209,
+    "height": 58,
+    "data": {
+     "node": "src/math.ts#legacy",
+     "tone": "removed",
+     "label": "legacy",
+     "file": "legacy(): number",
+     "tags": [],
+     "findings": {
+      "error": 1,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/math.ts#triple",
+    "type": "symbol",
+    "parentId": "group:file:src/math.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 209,
+    "height": 58,
+    "data": {
+     "node": "src/math.ts#triple",
+     "tone": "added",
+     "label": "triple",
+     "file": "triple(a: number): number",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 1,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/app.ts#old",
+    "type": "symbol",
+    "parentId": "group:file:src/app.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 181,
+    "height": 58,
+    "data": {
+     "node": "src/app.ts#old",
+     "tone": "context",
+     "label": "old",
+     "file": "old(): number",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/app.ts#total",
+    "type": "symbol",
+    "parentId": "group:file:src/app.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 100
+    },
+    "width": 200,
+    "height": 58,
+    "data": {
+     "node": "src/app.ts#total",
+     "tone": "context",
+     "label": "total",
+     "file": "total(values: number[]): number",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   }
+  ],
+  "edges": [
+   {
+    "id": "e1",
+    "source": "src/app.ts#old",
+    "target": "src/math.ts#legacy",
+    "className": "edge-base edge-call",
+    "data": {
+     "edge": "e1"
+    }
+   },
+   {
+    "id": "e2",
+    "source": "src/app.ts#total",
+    "target": "src/math.ts#add",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e2"
+    }
+   },
+   {
+    "id": "e3",
+    "source": "src/math.ts#legacy",
+    "target": "src/math.ts#add",
+    "className": "edge-base edge-call",
+    "data": {
+     "edge": "e3"
+    }
+   },
+   {
+    "id": "e4",
+    "source": "src/math.ts#triple",
+    "target": "src/math.ts#add",
+    "className": "edge-head edge-call",
+    "data": {
+     "edge": "e4"
+    }
+   }
+  ],
+  "fileEdges": [
+   {
+    "id": "files:group:file:src/app.ts → group:file:src/math.ts",
+    "source": "group:file:src/app.ts",
+    "target": "group:file:src/math.ts",
+    "className": "edge-files edge-files-2 edge-both",
+    "data": {
+     "edge": null,
+     "count": 2
+    }
+   }
+  ],
+  "hiddenEdges": [],
+  "hidden": [],
+  "members": []
+ },
+ "detectors, default": {
+  "nodes": [
+   {
+    "id": "group:file:src/shapes.ts",
+    "type": "file",
+    "position": {
+     "x": 343,
+     "y": 20
+    },
+    "width": 976,
+    "height": 380,
+    "selectable": false,
+    "data": {
+     "label": "src/shapes.ts",
+     "changed": true,
+     "severity": "error",
+     "counts": [
+      {
+       "symbol": "src/shapes.ts#perimeter",
+       "x": 953,
+       "y": 100,
+       "count": 1,
+       "severity": "warning"
+      },
+      {
+       "symbol": "src/shapes.ts#volume",
+       "x": 925,
+       "y": 170,
+       "count": 1,
+       "severity": "info"
+      },
+      {
+       "symbol": "src/shapes.ts#Canvas.clear",
+       "x": 964,
+       "y": 240,
+       "count": 1,
+       "severity": "error"
+      },
+      {
+       "symbol": "src/shapes.ts#tools",
+       "x": 212.5,
+       "y": 30,
+       "count": 1,
+       "severity": "warning"
+      }
+     ]
+    }
+   },
+   {
+    "id": "group:file:src/app.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 160
+    },
+    "width": 233,
+    "height": 100,
+    "selectable": false,
+    "data": {
+     "label": "src/app.ts",
+     "changed": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#Shape",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 716,
+     "y": 30
+    },
+    "width": 208,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#Shape",
+     "tone": "modified",
+     "label": "Shape",
+     "file": "interface Shape",
+     "tags": [
+      "signature"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 1
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#perimeter",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 716,
+     "y": 100
+    },
+    "width": 237,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#perimeter",
+     "tone": "added",
+     "label": "perimeter",
+     "file": "perimeter(shape: Shape): number",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 1,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#volume",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 716,
+     "y": 170
+    },
+    "width": 209,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#volume",
+     "tone": "added",
+     "label": "volume",
+     "file": "volume(shape: Shape): number",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 1
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#Canvas.clear",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 716,
+     "y": 240
+    },
+    "width": 248,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#Canvas.clear",
+     "tone": "removed",
+     "label": "Canvas.clear",
+     "file": "clear(): void",
+     "tags": [],
+     "findings": {
+      "error": 1,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#Canvas",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 716,
+     "y": 310
+    },
+    "width": 183,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#Canvas",
+     "tone": "modified",
+     "label": "Canvas",
+     "file": "class Canvas",
+     "tags": [
+      "body"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#Pen",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 268.5,
+     "y": 30
+    },
+    "width": 180,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#Pen",
+     "tone": "added",
+     "label": "Pen",
+     "file": "class Pen extends Tool",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#Pen.use",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 100
+    },
+    "width": 201,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#Pen.use",
+     "tone": "added",
+     "label": "Pen.use",
+     "file": "use(): string",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#tools",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12.5,
+     "y": 30
+    },
+    "width": 200,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#tools",
+     "tone": "added",
+     "label": "tools",
+     "file": "const tools: Pen[]",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 1,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/app.ts#render",
+    "type": "symbol",
+    "parentId": "group:file:src/app.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 209,
+    "height": 58,
+    "data": {
+     "node": "src/app.ts#render",
+     "tone": "context",
+     "label": "render",
+     "file": "render(): string",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#Tool",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 504,
+     "y": 30
+    },
+    "width": 180,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#Tool",
+     "tone": "context",
+     "label": "Tool",
+     "file": "abstract class Tool",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#Tool.use",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 253,
+     "y": 100
+    },
+    "width": 211,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#Tool.use",
+     "tone": "context",
+     "label": "Tool.use",
+     "file": "abstract use(): string",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   }
+  ],
+  "edges": [
+   {
+    "id": "e1",
+    "source": "src/app.ts#render",
+    "target": "src/shapes.ts#Canvas",
+    "className": "edge-both edge-new",
+    "data": {
+     "edge": "e1"
+    }
+   },
+   {
+    "id": "e2",
+    "source": "src/app.ts#render",
+    "target": "src/shapes.ts#Canvas.clear",
+    "className": "edge-base edge-call",
+    "data": {
+     "edge": "e2"
+    }
+   },
+   {
+    "id": "e5",
+    "source": "src/shapes.ts#Pen",
+    "target": "src/shapes.ts#Tool",
+    "className": "edge-head edge-extends",
+    "data": {
+     "edge": "e5"
+    }
+   },
+   {
+    "id": "e6",
+    "source": "src/shapes.ts#Pen.use",
+    "target": "src/shapes.ts#Tool.use",
+    "className": "edge-head edge-overrides",
+    "data": {
+     "edge": "e6"
+    }
+   },
+   {
+    "id": "e8",
+    "source": "src/shapes.ts#tools",
+    "target": "src/shapes.ts#Pen",
+    "className": "edge-head edge-new",
+    "data": {
+     "edge": "e8"
+    }
+   }
+  ],
+  "fileEdges": [
+   {
+    "id": "files:group:file:src/app.ts → group:file:src/shapes.ts",
+    "source": "group:file:src/app.ts",
+    "target": "group:file:src/shapes.ts",
+    "className": "edge-files edge-files-2 edge-both",
+    "data": {
+     "edge": null,
+     "count": 2
+    }
+   }
+  ],
+  "hiddenEdges": [
+   {
+    "id": "e7",
+    "source": "src/shapes.ts#perimeter",
+    "target": "src/shapes.ts#Shape",
+    "className": "edge-head edge-type-reference",
+    "data": {
+     "edge": "e7"
+    }
+   },
+   {
+    "id": "e9",
+    "source": "src/shapes.ts#volume",
+    "target": "src/shapes.ts#Shape",
+    "className": "edge-head edge-type-reference",
+    "data": {
+     "edge": "e9"
+    }
+   }
+  ],
+  "hidden": [],
+  "members": []
+ },
+ "detectors, no context": {
+  "nodes": [
+   {
+    "id": "group:file:src/shapes.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 20
+    },
+    "width": 724,
+    "height": 450,
+    "selectable": false,
+    "data": {
+     "label": "src/shapes.ts",
+     "changed": true,
+     "severity": "error",
+     "counts": [
+      {
+       "symbol": "src/shapes.ts#perimeter",
+       "x": 701,
+       "y": 100,
+       "count": 1,
+       "severity": "warning"
+      },
+      {
+       "symbol": "src/shapes.ts#volume",
+       "x": 673,
+       "y": 170,
+       "count": 1,
+       "severity": "info"
+      },
+      {
+       "symbol": "src/shapes.ts#Canvas.clear",
+       "x": 712,
+       "y": 240,
+       "count": 1,
+       "severity": "error"
+      },
+      {
+       "symbol": "src/shapes.ts#tools",
+       "x": 212,
+       "y": 30,
+       "count": 1,
+       "severity": "warning"
+      }
+     ]
+    }
+   },
+   {
+    "id": "src/shapes.ts#Shape",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 464,
+     "y": 30
+    },
+    "width": 208,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#Shape",
+     "tone": "modified",
+     "label": "Shape",
+     "file": "interface Shape",
+     "tags": [
+      "signature"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 1
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#perimeter",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 464,
+     "y": 100
+    },
+    "width": 237,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#perimeter",
+     "tone": "added",
+     "label": "perimeter",
+     "file": "perimeter(shape: Shape): number",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 1,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#volume",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 464,
+     "y": 170
+    },
+    "width": 209,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#volume",
+     "tone": "added",
+     "label": "volume",
+     "file": "volume(shape: Shape): number",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 1
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#Canvas.clear",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 464,
+     "y": 240
+    },
+    "width": 248,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#Canvas.clear",
+     "tone": "removed",
+     "label": "Canvas.clear",
+     "file": "clear(): void",
+     "tags": [],
+     "findings": {
+      "error": 1,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#Canvas",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 464,
+     "y": 310
+    },
+    "width": 183,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#Canvas",
+     "tone": "modified",
+     "label": "Canvas",
+     "file": "class Canvas",
+     "tags": [
+      "body"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#Pen",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 252,
+     "y": 30
+    },
+    "width": 180,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#Pen",
+     "tone": "added",
+     "label": "Pen",
+     "file": "class Pen extends Tool",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#Pen.use",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 464,
+     "y": 380
+    },
+    "width": 201,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#Pen.use",
+     "tone": "added",
+     "label": "Pen.use",
+     "file": "use(): string",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#tools",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 200,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#tools",
+     "tone": "added",
+     "label": "tools",
+     "file": "const tools: Pen[]",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 1,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   }
+  ],
+  "edges": [
+   {
+    "id": "e8",
+    "source": "src/shapes.ts#tools",
+    "target": "src/shapes.ts#Pen",
+    "className": "edge-head edge-new",
+    "data": {
+     "edge": "e8"
+    }
+   }
+  ],
+  "fileEdges": [],
+  "hiddenEdges": [
+   {
+    "id": "e7",
+    "source": "src/shapes.ts#perimeter",
+    "target": "src/shapes.ts#Shape",
+    "className": "edge-head edge-type-reference",
+    "data": {
+     "edge": "e7"
+    }
+   },
+   {
+    "id": "e9",
+    "source": "src/shapes.ts#volume",
+    "target": "src/shapes.ts#Shape",
+    "className": "edge-head edge-type-reference",
+    "data": {
+     "edge": "e9"
+    }
+   }
+  ],
+  "hidden": [],
+  "members": []
+ },
+ "detectors, type references": {
+  "nodes": [
+   {
+    "id": "group:file:src/shapes.ts",
+    "type": "file",
+    "position": {
+     "x": 343,
+     "y": 20
+    },
+    "width": 1014,
+    "height": 450,
+    "selectable": false,
+    "data": {
+     "label": "src/shapes.ts",
+     "changed": true,
+     "severity": "error",
+     "counts": [
+      {
+       "symbol": "src/shapes.ts#perimeter",
+       "x": 250,
+       "y": 100,
+       "count": 1,
+       "severity": "warning"
+      },
+      {
+       "symbol": "src/shapes.ts#volume",
+       "x": 236,
+       "y": 30,
+       "count": 1,
+       "severity": "info"
+      },
+      {
+       "symbol": "src/shapes.ts#Canvas.clear",
+       "x": 1002,
+       "y": 30,
+       "count": 1,
+       "severity": "error"
+      },
+      {
+       "symbol": "src/shapes.ts#tools",
+       "x": 231.5,
+       "y": 310,
+       "count": 1,
+       "severity": "warning"
+      }
+     ]
+    }
+   },
+   {
+    "id": "group:file:src/app.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 195
+    },
+    "width": 233,
+    "height": 100,
+    "selectable": false,
+    "data": {
+     "label": "src/app.ts",
+     "changed": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#Shape",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 292.5,
+     "y": 135
+    },
+    "width": 208,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#Shape",
+     "tone": "modified",
+     "label": "Shape",
+     "file": "interface Shape",
+     "tags": [
+      "signature"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 1
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#perimeter",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 13,
+     "y": 100
+    },
+    "width": 237,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#perimeter",
+     "tone": "added",
+     "label": "perimeter",
+     "file": "perimeter(shape: Shape): number",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 1,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#volume",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 27,
+     "y": 30
+    },
+    "width": 209,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#volume",
+     "tone": "added",
+     "label": "volume",
+     "file": "volume(shape: Shape): number",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 1
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#Canvas.clear",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 754,
+     "y": 30
+    },
+    "width": 248,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#Canvas.clear",
+     "tone": "removed",
+     "label": "Canvas.clear",
+     "file": "clear(): void",
+     "tags": [],
+     "findings": {
+      "error": 1,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#Canvas",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 754,
+     "y": 100
+    },
+    "width": 183,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#Canvas",
+     "tone": "modified",
+     "label": "Canvas",
+     "file": "class Canvas",
+     "tags": [
+      "body"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#Pen",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 306.5,
+     "y": 310
+    },
+    "width": 180,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#Pen",
+     "tone": "added",
+     "label": "Pen",
+     "file": "class Pen extends Tool",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#Pen.use",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 31,
+     "y": 380
+    },
+    "width": 201,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#Pen.use",
+     "tone": "added",
+     "label": "Pen.use",
+     "file": "use(): string",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#tools",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 31.5,
+     "y": 310
+    },
+    "width": 200,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#tools",
+     "tone": "added",
+     "label": "tools",
+     "file": "const tools: Pen[]",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 1,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/app.ts#render",
+    "type": "symbol",
+    "parentId": "group:file:src/app.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 209,
+    "height": 58,
+    "data": {
+     "node": "src/app.ts#render",
+     "tone": "context",
+     "label": "render",
+     "file": "render(): string",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#area",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 36.5,
+     "y": 240
+    },
+    "width": 190,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#area",
+     "tone": "context",
+     "label": "area",
+     "file": "area(shape: Shape): number",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#Canvas.draw",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 170
+    },
+    "width": 239,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#Canvas.draw",
+     "tone": "context",
+     "label": "Canvas.draw",
+     "file": "draw(shape: Shape): string",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#Tool",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 542,
+     "y": 310
+    },
+    "width": 180,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#Tool",
+     "tone": "context",
+     "label": "Tool",
+     "file": "abstract class Tool",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#Tool.use",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 291,
+     "y": 380
+    },
+    "width": 211,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#Tool.use",
+     "tone": "context",
+     "label": "Tool.use",
+     "file": "abstract use(): string",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   }
+  ],
+  "edges": [
+   {
+    "id": "e1",
+    "source": "src/app.ts#render",
+    "target": "src/shapes.ts#Canvas",
+    "className": "edge-both edge-new",
+    "data": {
+     "edge": "e1"
+    }
+   },
+   {
+    "id": "e2",
+    "source": "src/app.ts#render",
+    "target": "src/shapes.ts#Canvas.clear",
+    "className": "edge-base edge-call",
+    "data": {
+     "edge": "e2"
+    }
+   },
+   {
+    "id": "e3",
+    "source": "src/shapes.ts#area",
+    "target": "src/shapes.ts#Shape",
+    "className": "edge-both edge-type-reference",
+    "data": {
+     "edge": "e3"
+    }
+   },
+   {
+    "id": "e4",
+    "source": "src/shapes.ts#Canvas.draw",
+    "target": "src/shapes.ts#Shape",
+    "className": "edge-both edge-type-reference",
+    "data": {
+     "edge": "e4"
+    }
+   },
+   {
+    "id": "e5",
+    "source": "src/shapes.ts#Pen",
+    "target": "src/shapes.ts#Tool",
+    "className": "edge-head edge-extends",
+    "data": {
+     "edge": "e5"
+    }
+   },
+   {
+    "id": "e6",
+    "source": "src/shapes.ts#Pen.use",
+    "target": "src/shapes.ts#Tool.use",
+    "className": "edge-head edge-overrides",
+    "data": {
+     "edge": "e6"
+    }
+   },
+   {
+    "id": "e7",
+    "source": "src/shapes.ts#perimeter",
+    "target": "src/shapes.ts#Shape",
+    "className": "edge-head edge-type-reference",
+    "data": {
+     "edge": "e7"
+    }
+   },
+   {
+    "id": "e8",
+    "source": "src/shapes.ts#tools",
+    "target": "src/shapes.ts#Pen",
+    "className": "edge-head edge-new",
+    "data": {
+     "edge": "e8"
+    }
+   },
+   {
+    "id": "e9",
+    "source": "src/shapes.ts#volume",
+    "target": "src/shapes.ts#Shape",
+    "className": "edge-head edge-type-reference",
+    "data": {
+     "edge": "e9"
+    }
+   }
+  ],
+  "fileEdges": [
+   {
+    "id": "files:group:file:src/app.ts → group:file:src/shapes.ts",
+    "source": "group:file:src/app.ts",
+    "target": "group:file:src/shapes.ts",
+    "className": "edge-files edge-files-2 edge-both",
+    "data": {
+     "edge": null,
+     "count": 2
+    }
+   }
+  ],
+  "hiddenEdges": [],
+  "hidden": [],
+  "members": []
+ },
+ "detectors, a group open": {
+  "nodes": [
+   {
+    "id": "group:file:src/shapes.ts",
+    "type": "file",
+    "position": {
+     "x": 343,
+     "y": 20
+    },
+    "width": 976,
+    "height": 380,
+    "selectable": false,
+    "data": {
+     "label": "src/shapes.ts",
+     "changed": true,
+     "severity": "error",
+     "counts": [
+      {
+       "symbol": "src/shapes.ts#perimeter",
+       "x": 953,
+       "y": 100,
+       "count": 1,
+       "severity": "warning"
+      },
+      {
+       "symbol": "src/shapes.ts#volume",
+       "x": 925,
+       "y": 170,
+       "count": 1,
+       "severity": "info"
+      },
+      {
+       "symbol": "src/shapes.ts#Canvas.clear",
+       "x": 964,
+       "y": 240,
+       "count": 1,
+       "severity": "error"
+      },
+      {
+       "symbol": "src/shapes.ts#tools",
+       "x": 212.5,
+       "y": 30,
+       "count": 1,
+       "severity": "warning"
+      }
+     ]
+    }
+   },
+   {
+    "id": "group:file:src/app.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 160
+    },
+    "width": 233,
+    "height": 100,
+    "selectable": false,
+    "data": {
+     "label": "src/app.ts",
+     "changed": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#Shape",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 716,
+     "y": 30
+    },
+    "width": 208,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#Shape",
+     "tone": "modified",
+     "label": "Shape",
+     "file": "interface Shape",
+     "tags": [
+      "signature"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 1
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#perimeter",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 716,
+     "y": 100
+    },
+    "width": 237,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#perimeter",
+     "tone": "added",
+     "label": "perimeter",
+     "file": "perimeter(shape: Shape): number",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 1,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#volume",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 716,
+     "y": 170
+    },
+    "width": 209,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#volume",
+     "tone": "added",
+     "label": "volume",
+     "file": "volume(shape: Shape): number",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 1
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#Canvas.clear",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 716,
+     "y": 240
+    },
+    "width": 248,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#Canvas.clear",
+     "tone": "removed",
+     "label": "Canvas.clear",
+     "file": "clear(): void",
+     "tags": [],
+     "findings": {
+      "error": 1,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#Canvas",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 716,
+     "y": 310
+    },
+    "width": 183,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#Canvas",
+     "tone": "modified",
+     "label": "Canvas",
+     "file": "class Canvas",
+     "tags": [
+      "body"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#Pen",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 268.5,
+     "y": 30
+    },
+    "width": 180,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#Pen",
+     "tone": "added",
+     "label": "Pen",
+     "file": "class Pen extends Tool",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#Pen.use",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 100
+    },
+    "width": 201,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#Pen.use",
+     "tone": "added",
+     "label": "Pen.use",
+     "file": "use(): string",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#tools",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12.5,
+     "y": 30
+    },
+    "width": 200,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#tools",
+     "tone": "added",
+     "label": "tools",
+     "file": "const tools: Pen[]",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 1,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/app.ts#render",
+    "type": "symbol",
+    "parentId": "group:file:src/app.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 209,
+    "height": 58,
+    "data": {
+     "node": "src/app.ts#render",
+     "tone": "context",
+     "label": "render",
+     "file": "render(): string",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#Tool",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 504,
+     "y": 30
+    },
+    "width": 180,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#Tool",
+     "tone": "context",
+     "label": "Tool",
+     "file": "abstract class Tool",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/shapes.ts#Tool.use",
+    "type": "symbol",
+    "parentId": "group:file:src/shapes.ts",
+    "extent": "parent",
+    "position": {
+     "x": 253,
+     "y": 100
+    },
+    "width": 211,
+    "height": 58,
+    "data": {
+     "node": "src/shapes.ts#Tool.use",
+     "tone": "context",
+     "label": "Tool.use",
+     "file": "abstract use(): string",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   }
+  ],
+  "edges": [
+   {
+    "id": "e1",
+    "source": "src/app.ts#render",
+    "target": "src/shapes.ts#Canvas",
+    "className": "edge-both edge-new",
+    "data": {
+     "edge": "e1"
+    }
+   },
+   {
+    "id": "e2",
+    "source": "src/app.ts#render",
+    "target": "src/shapes.ts#Canvas.clear",
+    "className": "edge-base edge-call",
+    "data": {
+     "edge": "e2"
+    }
+   },
+   {
+    "id": "e5",
+    "source": "src/shapes.ts#Pen",
+    "target": "src/shapes.ts#Tool",
+    "className": "edge-head edge-extends",
+    "data": {
+     "edge": "e5"
+    }
+   },
+   {
+    "id": "e6",
+    "source": "src/shapes.ts#Pen.use",
+    "target": "src/shapes.ts#Tool.use",
+    "className": "edge-head edge-overrides",
+    "data": {
+     "edge": "e6"
+    }
+   },
+   {
+    "id": "e8",
+    "source": "src/shapes.ts#tools",
+    "target": "src/shapes.ts#Pen",
+    "className": "edge-head edge-new",
+    "data": {
+     "edge": "e8"
+    }
+   }
+  ],
+  "fileEdges": [
+   {
+    "id": "files:group:file:src/app.ts → group:file:src/shapes.ts",
+    "source": "group:file:src/app.ts",
+    "target": "group:file:src/shapes.ts",
+    "className": "edge-files edge-files-2 edge-both",
+    "data": {
+     "edge": null,
+     "count": 2
+    }
+   }
+  ],
+  "hiddenEdges": [
+   {
+    "id": "e7",
+    "source": "src/shapes.ts#perimeter",
+    "target": "src/shapes.ts#Shape",
+    "className": "edge-head edge-type-reference",
+    "data": {
+     "edge": "e7"
+    }
+   },
+   {
+    "id": "e9",
+    "source": "src/shapes.ts#volume",
+    "target": "src/shapes.ts#Shape",
+    "className": "edge-head edge-type-reference",
+    "data": {
+     "edge": "e9"
+    }
+   }
+  ],
+  "hidden": [],
+  "members": []
+ },
+ "projects, default": {
+  "nodes": [
+   {
+    "id": "project:apps/admin",
+    "type": "project",
+    "position": {
+     "x": 20,
+     "y": 20
+    },
+    "width": 300,
+    "height": 166,
+    "selectable": false,
+    "data": {
+     "name": "@acme/admin",
+     "folder": "apps/admin",
+     "changed": 1
+    }
+   },
+   {
+    "id": "project:libs/legacy",
+    "type": "project",
+    "position": {
+     "x": 373,
+     "y": 266
+    },
+    "width": 310,
+    "height": 166,
+    "selectable": false,
+    "data": {
+     "name": "@acme/legacy",
+     "folder": "libs/legacy",
+     "changed": 1
+    }
+   },
+   {
+    "id": "project:libs/ui",
+    "type": "project",
+    "position": {
+     "x": 20,
+     "y": 266
+    },
+    "width": 273,
+    "height": 166,
+    "selectable": false,
+    "data": {
+     "name": "@acme/ui",
+     "folder": "libs/ui",
+     "changed": 1
+    }
+   },
+   {
+    "id": "project:apps/shop",
+    "type": "project",
+    "position": {
+     "x": 400,
+     "y": 20
+    },
+    "width": 270,
+    "height": 150,
+    "selectable": false,
+    "data": {
+     "name": "@acme/shop",
+     "folder": "apps/shop",
+     "changed": 0
+    }
+   },
+   {
+    "id": "group:file:apps/admin/src/page.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 46
+    },
+    "width": 214,
+    "height": 100,
+    "selectable": false,
+    "parentId": "project:apps/admin",
+    "extent": "parent",
+    "data": {
+     "label": "apps/admin/src/page.ts",
+     "local": "src/page.ts",
+     "changed": true
+    }
+   },
+   {
+    "id": "group:file:libs/legacy/src/index.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 46
+    },
+    "width": 233,
+    "height": 100,
+    "selectable": false,
+    "parentId": "project:libs/legacy",
+    "extent": "parent",
+    "data": {
+     "label": "libs/legacy/src/index.ts",
+     "local": "src/index.ts",
+     "changed": true,
+     "severity": "warning",
+     "counts": [
+      {
+       "symbol": "libs/legacy/src/index.ts#legacy",
+       "x": 221,
+       "y": 30,
+       "count": 1,
+       "severity": "warning"
+      }
+     ]
+    }
+   },
+   {
+    "id": "group:file:libs/ui/src/index.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 46
+    },
+    "width": 233,
+    "height": 100,
+    "selectable": false,
+    "parentId": "project:libs/ui",
+    "extent": "parent",
+    "data": {
+     "label": "libs/ui/src/index.ts",
+     "local": "src/index.ts",
+     "changed": true
+    }
+   },
+   {
+    "id": "group:file:apps/shop/src/cart.ts",
+    "type": "file",
+    "position": {
+     "x": 16,
+     "y": 34
+    },
+    "width": 214,
+    "height": 100,
+    "selectable": false,
+    "parentId": "project:apps/shop",
+    "extent": "parent",
+    "data": {
+     "label": "apps/shop/src/cart.ts",
+     "local": "src/cart.ts",
+     "changed": false
+    }
+   },
+   {
+    "id": "apps/admin/src/page.ts#page",
+    "type": "symbol",
+    "parentId": "group:file:apps/admin/src/page.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 190,
+    "height": 58,
+    "data": {
+     "node": "apps/admin/src/page.ts#page",
+     "tone": "modified",
+     "label": "page",
+     "file": "page(): string",
+     "tags": [
+      "body"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "libs/legacy/src/index.ts#legacy",
+    "type": "symbol",
+    "parentId": "group:file:libs/legacy/src/index.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 209,
+    "height": 58,
+    "data": {
+     "node": "libs/legacy/src/index.ts#legacy",
+     "tone": "removed",
+     "label": "legacy",
+     "file": "legacy(): number",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 1,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "libs/ui/src/index.ts#button",
+    "type": "symbol",
+    "parentId": "group:file:libs/ui/src/index.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 209,
+    "height": 58,
+    "data": {
+     "node": "libs/ui/src/index.ts#button",
+     "tone": "modified",
+     "label": "button",
+     "file": "button(label: string, size: 'small' | 'large' = 'large'): string",
+     "tags": [
+      "signature",
+      "body"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 1
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "apps/shop/src/cart.ts#cart",
+    "type": "symbol",
+    "parentId": "group:file:apps/shop/src/cart.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 190,
+    "height": 58,
+    "data": {
+     "node": "apps/shop/src/cart.ts#cart",
+     "tone": "context",
+     "label": "cart",
+     "file": "cart(): string",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   }
+  ],
+  "edges": [
+   {
+    "id": "e1",
+    "source": "apps/admin/src/page.ts#page",
+    "target": "libs/ui/src/index.ts#button",
+    "className": "edge-both edge-call edge-cross",
+    "data": {
+     "edge": "e1"
+    }
+   },
+   {
+    "id": "e2",
+    "source": "apps/shop/src/cart.ts#cart",
+    "target": "libs/ui/src/index.ts#button",
+    "className": "edge-both edge-call edge-cross",
+    "data": {
+     "edge": "e2"
+    }
+   }
+  ],
+  "fileEdges": [
+   {
+    "id": "files:group:file:apps/admin/src/page.ts → group:file:libs/ui/src/index.ts",
+    "source": "group:file:apps/admin/src/page.ts",
+    "target": "group:file:libs/ui/src/index.ts",
+    "className": "edge-files edge-files-1 edge-both edge-cross",
+    "data": {
+     "edge": null,
+     "count": 1
+    }
+   },
+   {
+    "id": "files:group:file:apps/shop/src/cart.ts → group:file:libs/ui/src/index.ts",
+    "source": "group:file:apps/shop/src/cart.ts",
+    "target": "group:file:libs/ui/src/index.ts",
+    "className": "edge-files edge-files-1 edge-both edge-cross",
+    "data": {
+     "edge": null,
+     "count": 1
+    }
+   }
+  ],
+  "hiddenEdges": [],
+  "hidden": [],
+  "members": []
+ },
+ "projects, no context": {
+  "nodes": [
+   {
+    "id": "project:apps/admin",
+    "type": "project",
+    "position": {
+     "x": 20,
+     "y": 20
+    },
+    "width": 300,
+    "height": 166,
+    "selectable": false,
+    "data": {
+     "name": "@acme/admin",
+     "folder": "apps/admin",
+     "changed": 1
+    }
+   },
+   {
+    "id": "project:libs/legacy",
+    "type": "project",
+    "position": {
+     "x": 20,
+     "y": 266
+    },
+    "width": 310,
+    "height": 166,
+    "selectable": false,
+    "data": {
+     "name": "@acme/legacy",
+     "folder": "libs/legacy",
+     "changed": 1
+    }
+   },
+   {
+    "id": "project:libs/ui",
+    "type": "project",
+    "position": {
+     "x": 400,
+     "y": 20
+    },
+    "width": 273,
+    "height": 166,
+    "selectable": false,
+    "data": {
+     "name": "@acme/ui",
+     "folder": "libs/ui",
+     "changed": 1
+    }
+   },
+   {
+    "id": "group:file:apps/admin/src/page.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 46
+    },
+    "width": 214,
+    "height": 100,
+    "selectable": false,
+    "parentId": "project:apps/admin",
+    "extent": "parent",
+    "data": {
+     "label": "apps/admin/src/page.ts",
+     "local": "src/page.ts",
+     "changed": true
+    }
+   },
+   {
+    "id": "group:file:libs/legacy/src/index.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 46
+    },
+    "width": 233,
+    "height": 100,
+    "selectable": false,
+    "parentId": "project:libs/legacy",
+    "extent": "parent",
+    "data": {
+     "label": "libs/legacy/src/index.ts",
+     "local": "src/index.ts",
+     "changed": true,
+     "severity": "warning",
+     "counts": [
+      {
+       "symbol": "libs/legacy/src/index.ts#legacy",
+       "x": 221,
+       "y": 30,
+       "count": 1,
+       "severity": "warning"
+      }
+     ]
+    }
+   },
+   {
+    "id": "group:file:libs/ui/src/index.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 46
+    },
+    "width": 233,
+    "height": 100,
+    "selectable": false,
+    "parentId": "project:libs/ui",
+    "extent": "parent",
+    "data": {
+     "label": "libs/ui/src/index.ts",
+     "local": "src/index.ts",
+     "changed": true
+    }
+   },
+   {
+    "id": "apps/admin/src/page.ts#page",
+    "type": "symbol",
+    "parentId": "group:file:apps/admin/src/page.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 190,
+    "height": 58,
+    "data": {
+     "node": "apps/admin/src/page.ts#page",
+     "tone": "modified",
+     "label": "page",
+     "file": "page(): string",
+     "tags": [
+      "body"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "libs/legacy/src/index.ts#legacy",
+    "type": "symbol",
+    "parentId": "group:file:libs/legacy/src/index.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 209,
+    "height": 58,
+    "data": {
+     "node": "libs/legacy/src/index.ts#legacy",
+     "tone": "removed",
+     "label": "legacy",
+     "file": "legacy(): number",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 1,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "libs/ui/src/index.ts#button",
+    "type": "symbol",
+    "parentId": "group:file:libs/ui/src/index.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 209,
+    "height": 58,
+    "data": {
+     "node": "libs/ui/src/index.ts#button",
+     "tone": "modified",
+     "label": "button",
+     "file": "button(label: string, size: 'small' | 'large' = 'large'): string",
+     "tags": [
+      "signature",
+      "body"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 1
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   }
+  ],
+  "edges": [
+   {
+    "id": "e1",
+    "source": "apps/admin/src/page.ts#page",
+    "target": "libs/ui/src/index.ts#button",
+    "className": "edge-both edge-call edge-cross",
+    "data": {
+     "edge": "e1"
+    }
+   }
+  ],
+  "fileEdges": [
+   {
+    "id": "files:group:file:apps/admin/src/page.ts → group:file:libs/ui/src/index.ts",
+    "source": "group:file:apps/admin/src/page.ts",
+    "target": "group:file:libs/ui/src/index.ts",
+    "className": "edge-files edge-files-1 edge-both edge-cross",
+    "data": {
+     "edge": null,
+     "count": 1
+    }
+   }
+  ],
+  "hiddenEdges": [],
+  "hidden": [],
+  "members": []
+ },
+ "projects, type references": {
+  "nodes": [
+   {
+    "id": "project:apps/admin",
+    "type": "project",
+    "position": {
+     "x": 20,
+     "y": 20
+    },
+    "width": 300,
+    "height": 166,
+    "selectable": false,
+    "data": {
+     "name": "@acme/admin",
+     "folder": "apps/admin",
+     "changed": 1
+    }
+   },
+   {
+    "id": "project:libs/legacy",
+    "type": "project",
+    "position": {
+     "x": 373,
+     "y": 266
+    },
+    "width": 310,
+    "height": 166,
+    "selectable": false,
+    "data": {
+     "name": "@acme/legacy",
+     "folder": "libs/legacy",
+     "changed": 1
+    }
+   },
+   {
+    "id": "project:libs/ui",
+    "type": "project",
+    "position": {
+     "x": 20,
+     "y": 266
+    },
+    "width": 273,
+    "height": 166,
+    "selectable": false,
+    "data": {
+     "name": "@acme/ui",
+     "folder": "libs/ui",
+     "changed": 1
+    }
+   },
+   {
+    "id": "project:apps/shop",
+    "type": "project",
+    "position": {
+     "x": 400,
+     "y": 20
+    },
+    "width": 270,
+    "height": 150,
+    "selectable": false,
+    "data": {
+     "name": "@acme/shop",
+     "folder": "apps/shop",
+     "changed": 0
+    }
+   },
+   {
+    "id": "group:file:apps/admin/src/page.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 46
+    },
+    "width": 214,
+    "height": 100,
+    "selectable": false,
+    "parentId": "project:apps/admin",
+    "extent": "parent",
+    "data": {
+     "label": "apps/admin/src/page.ts",
+     "local": "src/page.ts",
+     "changed": true
+    }
+   },
+   {
+    "id": "group:file:libs/legacy/src/index.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 46
+    },
+    "width": 233,
+    "height": 100,
+    "selectable": false,
+    "parentId": "project:libs/legacy",
+    "extent": "parent",
+    "data": {
+     "label": "libs/legacy/src/index.ts",
+     "local": "src/index.ts",
+     "changed": true,
+     "severity": "warning",
+     "counts": [
+      {
+       "symbol": "libs/legacy/src/index.ts#legacy",
+       "x": 221,
+       "y": 30,
+       "count": 1,
+       "severity": "warning"
+      }
+     ]
+    }
+   },
+   {
+    "id": "group:file:libs/ui/src/index.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 46
+    },
+    "width": 233,
+    "height": 100,
+    "selectable": false,
+    "parentId": "project:libs/ui",
+    "extent": "parent",
+    "data": {
+     "label": "libs/ui/src/index.ts",
+     "local": "src/index.ts",
+     "changed": true
+    }
+   },
+   {
+    "id": "group:file:apps/shop/src/cart.ts",
+    "type": "file",
+    "position": {
+     "x": 16,
+     "y": 34
+    },
+    "width": 214,
+    "height": 100,
+    "selectable": false,
+    "parentId": "project:apps/shop",
+    "extent": "parent",
+    "data": {
+     "label": "apps/shop/src/cart.ts",
+     "local": "src/cart.ts",
+     "changed": false
+    }
+   },
+   {
+    "id": "apps/admin/src/page.ts#page",
+    "type": "symbol",
+    "parentId": "group:file:apps/admin/src/page.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 190,
+    "height": 58,
+    "data": {
+     "node": "apps/admin/src/page.ts#page",
+     "tone": "modified",
+     "label": "page",
+     "file": "page(): string",
+     "tags": [
+      "body"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "libs/legacy/src/index.ts#legacy",
+    "type": "symbol",
+    "parentId": "group:file:libs/legacy/src/index.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 209,
+    "height": 58,
+    "data": {
+     "node": "libs/legacy/src/index.ts#legacy",
+     "tone": "removed",
+     "label": "legacy",
+     "file": "legacy(): number",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 1,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "libs/ui/src/index.ts#button",
+    "type": "symbol",
+    "parentId": "group:file:libs/ui/src/index.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 209,
+    "height": 58,
+    "data": {
+     "node": "libs/ui/src/index.ts#button",
+     "tone": "modified",
+     "label": "button",
+     "file": "button(label: string, size: 'small' | 'large' = 'large'): string",
+     "tags": [
+      "signature",
+      "body"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 1
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "apps/shop/src/cart.ts#cart",
+    "type": "symbol",
+    "parentId": "group:file:apps/shop/src/cart.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 190,
+    "height": 58,
+    "data": {
+     "node": "apps/shop/src/cart.ts#cart",
+     "tone": "context",
+     "label": "cart",
+     "file": "cart(): string",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   }
+  ],
+  "edges": [
+   {
+    "id": "e1",
+    "source": "apps/admin/src/page.ts#page",
+    "target": "libs/ui/src/index.ts#button",
+    "className": "edge-both edge-call edge-cross",
+    "data": {
+     "edge": "e1"
+    }
+   },
+   {
+    "id": "e2",
+    "source": "apps/shop/src/cart.ts#cart",
+    "target": "libs/ui/src/index.ts#button",
+    "className": "edge-both edge-call edge-cross",
+    "data": {
+     "edge": "e2"
+    }
+   }
+  ],
+  "fileEdges": [
+   {
+    "id": "files:group:file:apps/admin/src/page.ts → group:file:libs/ui/src/index.ts",
+    "source": "group:file:apps/admin/src/page.ts",
+    "target": "group:file:libs/ui/src/index.ts",
+    "className": "edge-files edge-files-1 edge-both edge-cross",
+    "data": {
+     "edge": null,
+     "count": 1
+    }
+   },
+   {
+    "id": "files:group:file:apps/shop/src/cart.ts → group:file:libs/ui/src/index.ts",
+    "source": "group:file:apps/shop/src/cart.ts",
+    "target": "group:file:libs/ui/src/index.ts",
+    "className": "edge-files edge-files-1 edge-both edge-cross",
+    "data": {
+     "edge": null,
+     "count": 1
+    }
+   }
+  ],
+  "hiddenEdges": [],
+  "hidden": [],
+  "members": []
+ },
+ "projects, a group open": {
+  "nodes": [
+   {
+    "id": "project:apps/admin",
+    "type": "project",
+    "position": {
+     "x": 20,
+     "y": 20
+    },
+    "width": 300,
+    "height": 166,
+    "selectable": false,
+    "data": {
+     "name": "@acme/admin",
+     "folder": "apps/admin",
+     "changed": 1
+    }
+   },
+   {
+    "id": "project:libs/legacy",
+    "type": "project",
+    "position": {
+     "x": 373,
+     "y": 266
+    },
+    "width": 310,
+    "height": 166,
+    "selectable": false,
+    "data": {
+     "name": "@acme/legacy",
+     "folder": "libs/legacy",
+     "changed": 1
+    }
+   },
+   {
+    "id": "project:libs/ui",
+    "type": "project",
+    "position": {
+     "x": 20,
+     "y": 266
+    },
+    "width": 273,
+    "height": 166,
+    "selectable": false,
+    "data": {
+     "name": "@acme/ui",
+     "folder": "libs/ui",
+     "changed": 1
+    }
+   },
+   {
+    "id": "project:apps/shop",
+    "type": "project",
+    "position": {
+     "x": 400,
+     "y": 20
+    },
+    "width": 270,
+    "height": 150,
+    "selectable": false,
+    "data": {
+     "name": "@acme/shop",
+     "folder": "apps/shop",
+     "changed": 0
+    }
+   },
+   {
+    "id": "group:file:apps/admin/src/page.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 46
+    },
+    "width": 214,
+    "height": 100,
+    "selectable": false,
+    "parentId": "project:apps/admin",
+    "extent": "parent",
+    "data": {
+     "label": "apps/admin/src/page.ts",
+     "local": "src/page.ts",
+     "changed": true
+    }
+   },
+   {
+    "id": "group:file:libs/legacy/src/index.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 46
+    },
+    "width": 233,
+    "height": 100,
+    "selectable": false,
+    "parentId": "project:libs/legacy",
+    "extent": "parent",
+    "data": {
+     "label": "libs/legacy/src/index.ts",
+     "local": "src/index.ts",
+     "changed": true,
+     "severity": "warning",
+     "counts": [
+      {
+       "symbol": "libs/legacy/src/index.ts#legacy",
+       "x": 221,
+       "y": 30,
+       "count": 1,
+       "severity": "warning"
+      }
+     ]
+    }
+   },
+   {
+    "id": "group:file:libs/ui/src/index.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 46
+    },
+    "width": 233,
+    "height": 100,
+    "selectable": false,
+    "parentId": "project:libs/ui",
+    "extent": "parent",
+    "data": {
+     "label": "libs/ui/src/index.ts",
+     "local": "src/index.ts",
+     "changed": true
+    }
+   },
+   {
+    "id": "group:file:apps/shop/src/cart.ts",
+    "type": "file",
+    "position": {
+     "x": 16,
+     "y": 34
+    },
+    "width": 214,
+    "height": 100,
+    "selectable": false,
+    "parentId": "project:apps/shop",
+    "extent": "parent",
+    "data": {
+     "label": "apps/shop/src/cart.ts",
+     "local": "src/cart.ts",
+     "changed": false
+    }
+   },
+   {
+    "id": "apps/admin/src/page.ts#page",
+    "type": "symbol",
+    "parentId": "group:file:apps/admin/src/page.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 190,
+    "height": 58,
+    "data": {
+     "node": "apps/admin/src/page.ts#page",
+     "tone": "modified",
+     "label": "page",
+     "file": "page(): string",
+     "tags": [
+      "body"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "libs/legacy/src/index.ts#legacy",
+    "type": "symbol",
+    "parentId": "group:file:libs/legacy/src/index.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 209,
+    "height": 58,
+    "data": {
+     "node": "libs/legacy/src/index.ts#legacy",
+     "tone": "removed",
+     "label": "legacy",
+     "file": "legacy(): number",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 1,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "libs/ui/src/index.ts#button",
+    "type": "symbol",
+    "parentId": "group:file:libs/ui/src/index.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 209,
+    "height": 58,
+    "data": {
+     "node": "libs/ui/src/index.ts#button",
+     "tone": "modified",
+     "label": "button",
+     "file": "button(label: string, size: 'small' | 'large' = 'large'): string",
+     "tags": [
+      "signature",
+      "body"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 1
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "apps/shop/src/cart.ts#cart",
+    "type": "symbol",
+    "parentId": "group:file:apps/shop/src/cart.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 190,
+    "height": 58,
+    "data": {
+     "node": "apps/shop/src/cart.ts#cart",
+     "tone": "context",
+     "label": "cart",
+     "file": "cart(): string",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   }
+  ],
+  "edges": [
+   {
+    "id": "e1",
+    "source": "apps/admin/src/page.ts#page",
+    "target": "libs/ui/src/index.ts#button",
+    "className": "edge-both edge-call edge-cross",
+    "data": {
+     "edge": "e1"
+    }
+   },
+   {
+    "id": "e2",
+    "source": "apps/shop/src/cart.ts#cart",
+    "target": "libs/ui/src/index.ts#button",
+    "className": "edge-both edge-call edge-cross",
+    "data": {
+     "edge": "e2"
+    }
+   }
+  ],
+  "fileEdges": [
+   {
+    "id": "files:group:file:apps/admin/src/page.ts → group:file:libs/ui/src/index.ts",
+    "source": "group:file:apps/admin/src/page.ts",
+    "target": "group:file:libs/ui/src/index.ts",
+    "className": "edge-files edge-files-1 edge-both edge-cross",
+    "data": {
+     "edge": null,
+     "count": 1
+    }
+   },
+   {
+    "id": "files:group:file:apps/shop/src/cart.ts → group:file:libs/ui/src/index.ts",
+    "source": "group:file:apps/shop/src/cart.ts",
+    "target": "group:file:libs/ui/src/index.ts",
+    "className": "edge-files edge-files-1 edge-both edge-cross",
+    "data": {
+     "edge": null,
+     "count": 1
+    }
+   }
+  ],
+  "hiddenEdges": [],
+  "hidden": [],
+  "members": []
+ },
+ "service, default": {
+  "nodes": [
+   {
+    "id": "group:file:src/text/slug.ts",
+    "type": "file",
+    "position": {
+     "x": 380,
+     "y": 20
+    },
+    "width": 261,
+    "height": 170,
+    "selectable": false,
+    "data": {
+     "label": "src/text/slug.ts",
+     "changed": true,
+     "severity": "warning",
+     "counts": [
+      {
+       "symbol": "src/text/slug.ts#titleCase",
+       "x": 249,
+       "y": 100,
+       "count": 1,
+       "severity": "warning"
+      }
+     ]
+    }
+   },
+   {
+    "id": "group:file:src/user.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 20
+    },
+    "width": 280,
+    "height": 380,
+    "selectable": false,
+    "data": {
+     "label": "src/user.ts",
+     "changed": true,
+     "severity": "warning",
+     "counts": [
+      {
+       "symbol": "src/user.ts#greet",
+       "x": 212,
+       "y": 310,
+       "count": 1,
+       "severity": "warning"
+      }
+     ]
+    }
+   },
+   {
+    "id": "src/text/slug.ts#slugify",
+    "type": "symbol",
+    "parentId": "group:file:src/text/slug.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 219,
+    "height": 58,
+    "data": {
+     "node": "src/text/slug.ts#slugify",
+     "tone": "moved",
+     "label": "slugify",
+     "file": "slugify(text: string): string",
+     "tags": [
+      "moved"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/text/slug.ts#titleCase",
+    "type": "symbol",
+    "parentId": "group:file:src/text/slug.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 100
+    },
+    "width": 237,
+    "height": 58,
+    "data": {
+     "node": "src/text/slug.ts#titleCase",
+     "tone": "added",
+     "label": "titleCase",
+     "file": "titleCase(text: string): string",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 1,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user.ts#User",
+    "type": "symbol",
+    "parentId": "group:file:src/user.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 199,
+    "height": 58,
+    "data": {
+     "node": "src/user.ts#User",
+     "tone": "modified",
+     "label": "User",
+     "file": "interface User",
+     "tags": [
+      "signature"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 1
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user.ts#findUser",
+    "type": "symbol",
+    "parentId": "group:file:src/user.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 100
+    },
+    "width": 228,
+    "height": 58,
+    "data": {
+     "node": "src/user.ts#findUser",
+     "tone": "modified",
+     "label": "findUser",
+     "file": "findUser(users: User[], id: string): User | null",
+     "tags": [
+      "signature",
+      "body"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user.ts#formatUser",
+    "type": "symbol",
+    "parentId": "group:file:src/user.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 170
+    },
+    "width": 247,
+    "height": 58,
+    "data": {
+     "node": "src/user.ts#formatUser",
+     "tone": "modified",
+     "label": "formatUser",
+     "file": "formatUser(user: User): string",
+     "tags": [
+      "body"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user.ts#normalizeId",
+    "type": "symbol",
+    "parentId": "group:file:src/user.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 240
+    },
+    "width": 256,
+    "height": 58,
+    "data": {
+     "node": "src/user.ts#normalizeId",
+     "tone": "modified",
+     "label": "normalizeId",
+     "file": "normalizeId(id: string): string",
+     "tags": [
+      "signature",
+      "moved"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user.ts#greet",
+    "type": "symbol",
+    "parentId": "group:file:src/user.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 310
+    },
+    "width": 200,
+    "height": 58,
+    "data": {
+     "node": "src/user.ts#greet",
+     "tone": "added",
+     "label": "greet",
+     "file": "greet(user: User): string",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 1,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   }
+  ],
+  "edges": [],
+  "fileEdges": [],
+  "hiddenEdges": [
+   {
+    "id": "e1",
+    "source": "src/user.ts#findUser",
+    "target": "src/user.ts#User",
+    "className": "edge-both edge-type-reference",
+    "data": {
+     "edge": "e1"
+    }
+   },
+   {
+    "id": "e2",
+    "source": "src/user.ts#formatUser",
+    "target": "src/user.ts#User",
+    "className": "edge-both edge-type-reference",
+    "data": {
+     "edge": "e2"
+    }
+   },
+   {
+    "id": "e3",
+    "source": "src/user.ts#greet",
+    "target": "src/user.ts#User",
+    "className": "edge-head edge-type-reference",
+    "data": {
+     "edge": "e3"
+    }
+   }
+  ],
+  "hidden": [],
+  "members": []
+ },
+ "service, no context": {
+  "nodes": [
+   {
+    "id": "group:file:src/text/slug.ts",
+    "type": "file",
+    "position": {
+     "x": 380,
+     "y": 20
+    },
+    "width": 261,
+    "height": 170,
+    "selectable": false,
+    "data": {
+     "label": "src/text/slug.ts",
+     "changed": true,
+     "severity": "warning",
+     "counts": [
+      {
+       "symbol": "src/text/slug.ts#titleCase",
+       "x": 249,
+       "y": 100,
+       "count": 1,
+       "severity": "warning"
+      }
+     ]
+    }
+   },
+   {
+    "id": "group:file:src/user.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 20
+    },
+    "width": 280,
+    "height": 380,
+    "selectable": false,
+    "data": {
+     "label": "src/user.ts",
+     "changed": true,
+     "severity": "warning",
+     "counts": [
+      {
+       "symbol": "src/user.ts#greet",
+       "x": 212,
+       "y": 310,
+       "count": 1,
+       "severity": "warning"
+      }
+     ]
+    }
+   },
+   {
+    "id": "src/text/slug.ts#slugify",
+    "type": "symbol",
+    "parentId": "group:file:src/text/slug.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 219,
+    "height": 58,
+    "data": {
+     "node": "src/text/slug.ts#slugify",
+     "tone": "moved",
+     "label": "slugify",
+     "file": "slugify(text: string): string",
+     "tags": [
+      "moved"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/text/slug.ts#titleCase",
+    "type": "symbol",
+    "parentId": "group:file:src/text/slug.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 100
+    },
+    "width": 237,
+    "height": 58,
+    "data": {
+     "node": "src/text/slug.ts#titleCase",
+     "tone": "added",
+     "label": "titleCase",
+     "file": "titleCase(text: string): string",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 1,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user.ts#User",
+    "type": "symbol",
+    "parentId": "group:file:src/user.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 199,
+    "height": 58,
+    "data": {
+     "node": "src/user.ts#User",
+     "tone": "modified",
+     "label": "User",
+     "file": "interface User",
+     "tags": [
+      "signature"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 1
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user.ts#findUser",
+    "type": "symbol",
+    "parentId": "group:file:src/user.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 100
+    },
+    "width": 228,
+    "height": 58,
+    "data": {
+     "node": "src/user.ts#findUser",
+     "tone": "modified",
+     "label": "findUser",
+     "file": "findUser(users: User[], id: string): User | null",
+     "tags": [
+      "signature",
+      "body"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user.ts#formatUser",
+    "type": "symbol",
+    "parentId": "group:file:src/user.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 170
+    },
+    "width": 247,
+    "height": 58,
+    "data": {
+     "node": "src/user.ts#formatUser",
+     "tone": "modified",
+     "label": "formatUser",
+     "file": "formatUser(user: User): string",
+     "tags": [
+      "body"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user.ts#normalizeId",
+    "type": "symbol",
+    "parentId": "group:file:src/user.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 240
+    },
+    "width": 256,
+    "height": 58,
+    "data": {
+     "node": "src/user.ts#normalizeId",
+     "tone": "modified",
+     "label": "normalizeId",
+     "file": "normalizeId(id: string): string",
+     "tags": [
+      "signature",
+      "moved"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user.ts#greet",
+    "type": "symbol",
+    "parentId": "group:file:src/user.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 310
+    },
+    "width": 200,
+    "height": 58,
+    "data": {
+     "node": "src/user.ts#greet",
+     "tone": "added",
+     "label": "greet",
+     "file": "greet(user: User): string",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 1,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   }
+  ],
+  "edges": [],
+  "fileEdges": [],
+  "hiddenEdges": [
+   {
+    "id": "e1",
+    "source": "src/user.ts#findUser",
+    "target": "src/user.ts#User",
+    "className": "edge-both edge-type-reference",
+    "data": {
+     "edge": "e1"
+    }
+   },
+   {
+    "id": "e2",
+    "source": "src/user.ts#formatUser",
+    "target": "src/user.ts#User",
+    "className": "edge-both edge-type-reference",
+    "data": {
+     "edge": "e2"
+    }
+   },
+   {
+    "id": "e3",
+    "source": "src/user.ts#greet",
+    "target": "src/user.ts#User",
+    "className": "edge-head edge-type-reference",
+    "data": {
+     "edge": "e3"
+    }
+   }
+  ],
+  "hidden": [],
+  "members": []
+ },
+ "service, type references": {
+  "nodes": [
+   {
+    "id": "group:file:src/text/slug.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 340
+    },
+    "width": 261,
+    "height": 170,
+    "selectable": false,
+    "data": {
+     "label": "src/text/slug.ts",
+     "changed": true,
+     "severity": "warning",
+     "counts": [
+      {
+       "symbol": "src/text/slug.ts#titleCase",
+       "x": 249,
+       "y": 100,
+       "count": 1,
+       "severity": "warning"
+      }
+     ]
+    }
+   },
+   {
+    "id": "group:file:src/user.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 20
+    },
+    "width": 798,
+    "height": 240,
+    "selectable": false,
+    "data": {
+     "label": "src/user.ts",
+     "changed": true,
+     "severity": "warning",
+     "counts": [
+      {
+       "symbol": "src/user.ts#greet",
+       "x": 235.5,
+       "y": 30,
+       "count": 1,
+       "severity": "warning"
+      }
+     ]
+    }
+   },
+   {
+    "id": "src/text/slug.ts#slugify",
+    "type": "symbol",
+    "parentId": "group:file:src/text/slug.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 219,
+    "height": 58,
+    "data": {
+     "node": "src/text/slug.ts#slugify",
+     "tone": "moved",
+     "label": "slugify",
+     "file": "slugify(text: string): string",
+     "tags": [
+      "moved"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/text/slug.ts#titleCase",
+    "type": "symbol",
+    "parentId": "group:file:src/text/slug.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 100
+    },
+    "width": 237,
+    "height": 58,
+    "data": {
+     "node": "src/text/slug.ts#titleCase",
+     "tone": "added",
+     "label": "titleCase",
+     "file": "titleCase(text: string): string",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 1,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user.ts#User",
+    "type": "symbol",
+    "parentId": "group:file:src/user.ts",
+    "extent": "parent",
+    "position": {
+     "x": 299,
+     "y": 100
+    },
+    "width": 199,
+    "height": 58,
+    "data": {
+     "node": "src/user.ts#User",
+     "tone": "modified",
+     "label": "User",
+     "file": "interface User",
+     "tags": [
+      "signature"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 1
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user.ts#findUser",
+    "type": "symbol",
+    "parentId": "group:file:src/user.ts",
+    "extent": "parent",
+    "position": {
+     "x": 21.5,
+     "y": 170
+    },
+    "width": 228,
+    "height": 58,
+    "data": {
+     "node": "src/user.ts#findUser",
+     "tone": "modified",
+     "label": "findUser",
+     "file": "findUser(users: User[], id: string): User | null",
+     "tags": [
+      "signature",
+      "body"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user.ts#formatUser",
+    "type": "symbol",
+    "parentId": "group:file:src/user.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 100
+    },
+    "width": 247,
+    "height": 58,
+    "data": {
+     "node": "src/user.ts#formatUser",
+     "tone": "modified",
+     "label": "formatUser",
+     "file": "formatUser(user: User): string",
+     "tags": [
+      "body"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user.ts#normalizeId",
+    "type": "symbol",
+    "parentId": "group:file:src/user.ts",
+    "extent": "parent",
+    "position": {
+     "x": 530,
+     "y": 30
+    },
+    "width": 256,
+    "height": 58,
+    "data": {
+     "node": "src/user.ts#normalizeId",
+     "tone": "modified",
+     "label": "normalizeId",
+     "file": "normalizeId(id: string): string",
+     "tags": [
+      "signature",
+      "moved"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user.ts#greet",
+    "type": "symbol",
+    "parentId": "group:file:src/user.ts",
+    "extent": "parent",
+    "position": {
+     "x": 35.5,
+     "y": 30
+    },
+    "width": 200,
+    "height": 58,
+    "data": {
+     "node": "src/user.ts#greet",
+     "tone": "added",
+     "label": "greet",
+     "file": "greet(user: User): string",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 1,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   }
+  ],
+  "edges": [
+   {
+    "id": "e1",
+    "source": "src/user.ts#findUser",
+    "target": "src/user.ts#User",
+    "className": "edge-both edge-type-reference",
+    "data": {
+     "edge": "e1"
+    }
+   },
+   {
+    "id": "e2",
+    "source": "src/user.ts#formatUser",
+    "target": "src/user.ts#User",
+    "className": "edge-both edge-type-reference",
+    "data": {
+     "edge": "e2"
+    }
+   },
+   {
+    "id": "e3",
+    "source": "src/user.ts#greet",
+    "target": "src/user.ts#User",
+    "className": "edge-head edge-type-reference",
+    "data": {
+     "edge": "e3"
+    }
+   }
+  ],
+  "fileEdges": [],
+  "hiddenEdges": [],
+  "hidden": [],
+  "members": []
+ },
+ "service, a group open": {
+  "nodes": [
+   {
+    "id": "group:file:src/text/slug.ts",
+    "type": "file",
+    "position": {
+     "x": 380,
+     "y": 20
+    },
+    "width": 261,
+    "height": 170,
+    "selectable": false,
+    "data": {
+     "label": "src/text/slug.ts",
+     "changed": true,
+     "severity": "warning",
+     "counts": [
+      {
+       "symbol": "src/text/slug.ts#titleCase",
+       "x": 249,
+       "y": 100,
+       "count": 1,
+       "severity": "warning"
+      }
+     ]
+    }
+   },
+   {
+    "id": "group:file:src/user.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 20
+    },
+    "width": 280,
+    "height": 380,
+    "selectable": false,
+    "data": {
+     "label": "src/user.ts",
+     "changed": true,
+     "severity": "warning",
+     "counts": [
+      {
+       "symbol": "src/user.ts#greet",
+       "x": 212,
+       "y": 310,
+       "count": 1,
+       "severity": "warning"
+      }
+     ]
+    }
+   },
+   {
+    "id": "src/text/slug.ts#slugify",
+    "type": "symbol",
+    "parentId": "group:file:src/text/slug.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 219,
+    "height": 58,
+    "data": {
+     "node": "src/text/slug.ts#slugify",
+     "tone": "moved",
+     "label": "slugify",
+     "file": "slugify(text: string): string",
+     "tags": [
+      "moved"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/text/slug.ts#titleCase",
+    "type": "symbol",
+    "parentId": "group:file:src/text/slug.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 100
+    },
+    "width": 237,
+    "height": 58,
+    "data": {
+     "node": "src/text/slug.ts#titleCase",
+     "tone": "added",
+     "label": "titleCase",
+     "file": "titleCase(text: string): string",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 1,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user.ts#User",
+    "type": "symbol",
+    "parentId": "group:file:src/user.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 199,
+    "height": 58,
+    "data": {
+     "node": "src/user.ts#User",
+     "tone": "modified",
+     "label": "User",
+     "file": "interface User",
+     "tags": [
+      "signature"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 1
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user.ts#findUser",
+    "type": "symbol",
+    "parentId": "group:file:src/user.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 100
+    },
+    "width": 228,
+    "height": 58,
+    "data": {
+     "node": "src/user.ts#findUser",
+     "tone": "modified",
+     "label": "findUser",
+     "file": "findUser(users: User[], id: string): User | null",
+     "tags": [
+      "signature",
+      "body"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user.ts#formatUser",
+    "type": "symbol",
+    "parentId": "group:file:src/user.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 170
+    },
+    "width": 247,
+    "height": 58,
+    "data": {
+     "node": "src/user.ts#formatUser",
+     "tone": "modified",
+     "label": "formatUser",
+     "file": "formatUser(user: User): string",
+     "tags": [
+      "body"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user.ts#normalizeId",
+    "type": "symbol",
+    "parentId": "group:file:src/user.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 240
+    },
+    "width": 256,
+    "height": 58,
+    "data": {
+     "node": "src/user.ts#normalizeId",
+     "tone": "modified",
+     "label": "normalizeId",
+     "file": "normalizeId(id: string): string",
+     "tags": [
+      "signature",
+      "moved"
+     ],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user.ts#greet",
+    "type": "symbol",
+    "parentId": "group:file:src/user.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 310
+    },
+    "width": 200,
+    "height": 58,
+    "data": {
+     "node": "src/user.ts#greet",
+     "tone": "added",
+     "label": "greet",
+     "file": "greet(user: User): string",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 1,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   }
+  ],
+  "edges": [],
+  "fileEdges": [],
+  "hiddenEdges": [
+   {
+    "id": "e1",
+    "source": "src/user.ts#findUser",
+    "target": "src/user.ts#User",
+    "className": "edge-both edge-type-reference",
+    "data": {
+     "edge": "e1"
+    }
+   },
+   {
+    "id": "e2",
+    "source": "src/user.ts#formatUser",
+    "target": "src/user.ts#User",
+    "className": "edge-both edge-type-reference",
+    "data": {
+     "edge": "e2"
+    }
+   },
+   {
+    "id": "e3",
+    "source": "src/user.ts#greet",
+    "target": "src/user.ts#User",
+    "className": "edge-head edge-type-reference",
+    "data": {
+     "edge": "e3"
+    }
+   }
+  ],
+  "hidden": [],
+  "members": []
+ },
+ "hub, default": {
+  "nodes": [
+   {
+    "id": "group:file:src/hub.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 330
+    },
+    "width": 435,
+    "height": 100,
+    "selectable": false,
+    "data": {
+     "label": "src/hub.ts",
+     "changed": true
+    }
+   },
+   {
+    "id": "group:file:src/small.ts",
+    "type": "file",
+    "position": {
+     "x": 314,
+     "y": 85
+    },
+    "width": 224,
+    "height": 100,
+    "selectable": false,
+    "data": {
+     "label": "src/small.ts",
+     "changed": true
+    }
+   },
+   {
+    "id": "group:file:src/a.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 150
+    },
+    "width": 204,
+    "height": 100,
+    "selectable": false,
+    "data": {
+     "label": "src/a.ts",
+     "changed": false
+    }
+   },
+   {
+    "id": "group:file:src/b.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 20
+    },
+    "width": 204,
+    "height": 100,
+    "selectable": false,
+    "data": {
+     "label": "src/b.ts",
+     "changed": false
+    }
+   },
+   {
+    "id": "src/hub.ts#hub",
+    "type": "symbol",
+    "parentId": "group:file:src/hub.ts",
+    "extent": "parent",
+    "position": {
+     "x": 242,
+     "y": 30
+    },
+    "width": 181,
+    "height": 58,
+    "data": {
+     "node": "src/hub.ts#hub",
+     "tone": "modified",
+     "label": "hub",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/small.ts#small",
+    "type": "symbol",
+    "parentId": "group:file:src/small.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 200,
+    "height": 58,
+    "data": {
+     "node": "src/small.ts#small",
+     "tone": "modified",
+     "label": "small",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/a.ts#a",
+    "type": "symbol",
+    "parentId": "group:file:src/a.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 180,
+    "height": 58,
+    "data": {
+     "node": "src/a.ts#a",
+     "tone": "context",
+     "label": "a",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/b.ts#b",
+    "type": "symbol",
+    "parentId": "group:file:src/b.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 180,
+    "height": 58,
+    "data": {
+     "node": "src/b.ts#b",
+     "tone": "context",
+     "label": "b",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "summary:users:src/hub.ts#hub",
+    "type": "summary",
+    "parentId": "group:file:src/hub.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 190,
+    "height": 58,
+    "data": {
+     "of": "src/hub.ts#hub",
+     "side": "users",
+     "count": 30,
+     "files": 10,
+     "expanded": false
+    }
+   }
+  ],
+  "edges": [
+   {
+    "id": "e30",
+    "source": "src/a.ts#a",
+    "target": "src/small.ts#small",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e30"
+    }
+   },
+   {
+    "id": "e31",
+    "source": "src/b.ts#b",
+    "target": "src/small.ts#small",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e31"
+    }
+   },
+   {
+    "id": "summary-edge:summary:users:src/hub.ts#hub",
+    "source": "summary:users:src/hub.ts#hub",
+    "target": "src/hub.ts#hub",
+    "className": "edge-summary",
+    "data": {
+     "edge": null
+    }
+   }
+  ],
+  "fileEdges": [
+   {
+    "id": "files:group:file:src/a.ts → group:file:src/small.ts",
+    "source": "group:file:src/a.ts",
+    "target": "group:file:src/small.ts",
+    "className": "edge-files edge-files-1 edge-both",
+    "data": {
+     "edge": null,
+     "count": 1
+    }
+   },
+   {
+    "id": "files:group:file:src/b.ts → group:file:src/small.ts",
+    "source": "group:file:src/b.ts",
+    "target": "group:file:src/small.ts",
+    "className": "edge-files edge-files-1 edge-both",
+    "data": {
+     "edge": null,
+     "count": 1
+    }
+   }
+  ],
+  "hiddenEdges": [],
+  "hidden": [
+   [
+    "src/user0.ts#caller0",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user1.ts#caller1",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user2.ts#caller2",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user3.ts#caller3",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user4.ts#caller4",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user5.ts#caller5",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user6.ts#caller6",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user7.ts#caller7",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user8.ts#caller8",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user9.ts#caller9",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user0.ts#caller10",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user1.ts#caller11",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user2.ts#caller12",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user3.ts#caller13",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user4.ts#caller14",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user5.ts#caller15",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user6.ts#caller16",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user7.ts#caller17",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user8.ts#caller18",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user9.ts#caller19",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user0.ts#caller20",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user1.ts#caller21",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user2.ts#caller22",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user3.ts#caller23",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user4.ts#caller24",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user5.ts#caller25",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user6.ts#caller26",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user7.ts#caller27",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user8.ts#caller28",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user9.ts#caller29",
+    "summary:users:src/hub.ts#hub"
+   ]
+  ],
+  "members": [
+   [
+    "summary:users:src/hub.ts#hub",
+    [
+     "src/user0.ts#caller0",
+     "src/user1.ts#caller1",
+     "src/user2.ts#caller2",
+     "src/user3.ts#caller3",
+     "src/user4.ts#caller4",
+     "src/user5.ts#caller5",
+     "src/user6.ts#caller6",
+     "src/user7.ts#caller7",
+     "src/user8.ts#caller8",
+     "src/user9.ts#caller9",
+     "src/user0.ts#caller10",
+     "src/user1.ts#caller11",
+     "src/user2.ts#caller12",
+     "src/user3.ts#caller13",
+     "src/user4.ts#caller14",
+     "src/user5.ts#caller15",
+     "src/user6.ts#caller16",
+     "src/user7.ts#caller17",
+     "src/user8.ts#caller18",
+     "src/user9.ts#caller19",
+     "src/user0.ts#caller20",
+     "src/user1.ts#caller21",
+     "src/user2.ts#caller22",
+     "src/user3.ts#caller23",
+     "src/user4.ts#caller24",
+     "src/user5.ts#caller25",
+     "src/user6.ts#caller26",
+     "src/user7.ts#caller27",
+     "src/user8.ts#caller28",
+     "src/user9.ts#caller29"
+    ]
+   ]
+  ]
+ },
+ "hub, no context": {
+  "nodes": [
+   {
+    "id": "group:file:src/hub.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 200
+    },
+    "width": 205,
+    "height": 100,
+    "selectable": false,
+    "data": {
+     "label": "src/hub.ts",
+     "changed": true
+    }
+   },
+   {
+    "id": "group:file:src/small.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 20
+    },
+    "width": 224,
+    "height": 100,
+    "selectable": false,
+    "data": {
+     "label": "src/small.ts",
+     "changed": true
+    }
+   },
+   {
+    "id": "src/hub.ts#hub",
+    "type": "symbol",
+    "parentId": "group:file:src/hub.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 181,
+    "height": 58,
+    "data": {
+     "node": "src/hub.ts#hub",
+     "tone": "modified",
+     "label": "hub",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/small.ts#small",
+    "type": "symbol",
+    "parentId": "group:file:src/small.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 200,
+    "height": 58,
+    "data": {
+     "node": "src/small.ts#small",
+     "tone": "modified",
+     "label": "small",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   }
+  ],
+  "edges": [],
+  "fileEdges": [],
+  "hiddenEdges": [],
+  "hidden": [],
+  "members": []
+ },
+ "hub, type references": {
+  "nodes": [
+   {
+    "id": "group:file:src/hub.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 330
+    },
+    "width": 435,
+    "height": 100,
+    "selectable": false,
+    "data": {
+     "label": "src/hub.ts",
+     "changed": true
+    }
+   },
+   {
+    "id": "group:file:src/small.ts",
+    "type": "file",
+    "position": {
+     "x": 314,
+     "y": 85
+    },
+    "width": 224,
+    "height": 100,
+    "selectable": false,
+    "data": {
+     "label": "src/small.ts",
+     "changed": true
+    }
+   },
+   {
+    "id": "group:file:src/a.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 150
+    },
+    "width": 204,
+    "height": 100,
+    "selectable": false,
+    "data": {
+     "label": "src/a.ts",
+     "changed": false
+    }
+   },
+   {
+    "id": "group:file:src/b.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 20
+    },
+    "width": 204,
+    "height": 100,
+    "selectable": false,
+    "data": {
+     "label": "src/b.ts",
+     "changed": false
+    }
+   },
+   {
+    "id": "src/hub.ts#hub",
+    "type": "symbol",
+    "parentId": "group:file:src/hub.ts",
+    "extent": "parent",
+    "position": {
+     "x": 242,
+     "y": 30
+    },
+    "width": 181,
+    "height": 58,
+    "data": {
+     "node": "src/hub.ts#hub",
+     "tone": "modified",
+     "label": "hub",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/small.ts#small",
+    "type": "symbol",
+    "parentId": "group:file:src/small.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 200,
+    "height": 58,
+    "data": {
+     "node": "src/small.ts#small",
+     "tone": "modified",
+     "label": "small",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/a.ts#a",
+    "type": "symbol",
+    "parentId": "group:file:src/a.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 180,
+    "height": 58,
+    "data": {
+     "node": "src/a.ts#a",
+     "tone": "context",
+     "label": "a",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/b.ts#b",
+    "type": "symbol",
+    "parentId": "group:file:src/b.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 180,
+    "height": 58,
+    "data": {
+     "node": "src/b.ts#b",
+     "tone": "context",
+     "label": "b",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "summary:users:src/hub.ts#hub",
+    "type": "summary",
+    "parentId": "group:file:src/hub.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 190,
+    "height": 58,
+    "data": {
+     "of": "src/hub.ts#hub",
+     "side": "users",
+     "count": 30,
+     "files": 10,
+     "expanded": false
+    }
+   }
+  ],
+  "edges": [
+   {
+    "id": "e30",
+    "source": "src/a.ts#a",
+    "target": "src/small.ts#small",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e30"
+    }
+   },
+   {
+    "id": "e31",
+    "source": "src/b.ts#b",
+    "target": "src/small.ts#small",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e31"
+    }
+   },
+   {
+    "id": "summary-edge:summary:users:src/hub.ts#hub",
+    "source": "summary:users:src/hub.ts#hub",
+    "target": "src/hub.ts#hub",
+    "className": "edge-summary",
+    "data": {
+     "edge": null
+    }
+   }
+  ],
+  "fileEdges": [
+   {
+    "id": "files:group:file:src/a.ts → group:file:src/small.ts",
+    "source": "group:file:src/a.ts",
+    "target": "group:file:src/small.ts",
+    "className": "edge-files edge-files-1 edge-both",
+    "data": {
+     "edge": null,
+     "count": 1
+    }
+   },
+   {
+    "id": "files:group:file:src/b.ts → group:file:src/small.ts",
+    "source": "group:file:src/b.ts",
+    "target": "group:file:src/small.ts",
+    "className": "edge-files edge-files-1 edge-both",
+    "data": {
+     "edge": null,
+     "count": 1
+    }
+   }
+  ],
+  "hiddenEdges": [],
+  "hidden": [
+   [
+    "src/user0.ts#caller0",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user1.ts#caller1",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user2.ts#caller2",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user3.ts#caller3",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user4.ts#caller4",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user5.ts#caller5",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user6.ts#caller6",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user7.ts#caller7",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user8.ts#caller8",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user9.ts#caller9",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user0.ts#caller10",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user1.ts#caller11",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user2.ts#caller12",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user3.ts#caller13",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user4.ts#caller14",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user5.ts#caller15",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user6.ts#caller16",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user7.ts#caller17",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user8.ts#caller18",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user9.ts#caller19",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user0.ts#caller20",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user1.ts#caller21",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user2.ts#caller22",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user3.ts#caller23",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user4.ts#caller24",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user5.ts#caller25",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user6.ts#caller26",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user7.ts#caller27",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user8.ts#caller28",
+    "summary:users:src/hub.ts#hub"
+   ],
+   [
+    "src/user9.ts#caller29",
+    "summary:users:src/hub.ts#hub"
+   ]
+  ],
+  "members": [
+   [
+    "summary:users:src/hub.ts#hub",
+    [
+     "src/user0.ts#caller0",
+     "src/user1.ts#caller1",
+     "src/user2.ts#caller2",
+     "src/user3.ts#caller3",
+     "src/user4.ts#caller4",
+     "src/user5.ts#caller5",
+     "src/user6.ts#caller6",
+     "src/user7.ts#caller7",
+     "src/user8.ts#caller8",
+     "src/user9.ts#caller9",
+     "src/user0.ts#caller10",
+     "src/user1.ts#caller11",
+     "src/user2.ts#caller12",
+     "src/user3.ts#caller13",
+     "src/user4.ts#caller14",
+     "src/user5.ts#caller15",
+     "src/user6.ts#caller16",
+     "src/user7.ts#caller17",
+     "src/user8.ts#caller18",
+     "src/user9.ts#caller19",
+     "src/user0.ts#caller20",
+     "src/user1.ts#caller21",
+     "src/user2.ts#caller22",
+     "src/user3.ts#caller23",
+     "src/user4.ts#caller24",
+     "src/user5.ts#caller25",
+     "src/user6.ts#caller26",
+     "src/user7.ts#caller27",
+     "src/user8.ts#caller28",
+     "src/user9.ts#caller29"
+    ]
+   ]
+  ]
+ },
+ "hub, a group open": {
+  "nodes": [
+   {
+    "id": "group:file:src/hub.ts",
+    "type": "file",
+    "position": {
+     "x": 362,
+     "y": 1305
+    },
+    "width": 435,
+    "height": 100,
+    "selectable": false,
+    "data": {
+     "label": "src/hub.ts",
+     "changed": true
+    }
+   },
+   {
+    "id": "group:file:src/small.ts",
+    "type": "file",
+    "position": {
+     "x": 1171,
+     "y": 85
+    },
+    "width": 224,
+    "height": 100,
+    "selectable": false,
+    "data": {
+     "label": "src/small.ts",
+     "changed": true
+    }
+   },
+   {
+    "id": "group:file:src/user0.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 2450
+    },
+    "width": 252,
+    "height": 240,
+    "selectable": false,
+    "data": {
+     "label": "src/user0.ts",
+     "changed": false
+    }
+   },
+   {
+    "id": "group:file:src/user1.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 2180
+    },
+    "width": 252,
+    "height": 240,
+    "selectable": false,
+    "data": {
+     "label": "src/user1.ts",
+     "changed": false
+    }
+   },
+   {
+    "id": "group:file:src/user2.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 1910
+    },
+    "width": 252,
+    "height": 240,
+    "selectable": false,
+    "data": {
+     "label": "src/user2.ts",
+     "changed": false
+    }
+   },
+   {
+    "id": "group:file:src/user3.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 1640
+    },
+    "width": 252,
+    "height": 240,
+    "selectable": false,
+    "data": {
+     "label": "src/user3.ts",
+     "changed": false
+    }
+   },
+   {
+    "id": "group:file:src/user4.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 1370
+    },
+    "width": 252,
+    "height": 240,
+    "selectable": false,
+    "data": {
+     "label": "src/user4.ts",
+     "changed": false
+    }
+   },
+   {
+    "id": "group:file:src/user5.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 1100
+    },
+    "width": 252,
+    "height": 240,
+    "selectable": false,
+    "data": {
+     "label": "src/user5.ts",
+     "changed": false
+    }
+   },
+   {
+    "id": "group:file:src/user6.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 830
+    },
+    "width": 252,
+    "height": 240,
+    "selectable": false,
+    "data": {
+     "label": "src/user6.ts",
+     "changed": false
+    }
+   },
+   {
+    "id": "group:file:src/user7.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 560
+    },
+    "width": 252,
+    "height": 240,
+    "selectable": false,
+    "data": {
+     "label": "src/user7.ts",
+     "changed": false
+    }
+   },
+   {
+    "id": "group:file:src/user8.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 290
+    },
+    "width": 252,
+    "height": 240,
+    "selectable": false,
+    "data": {
+     "label": "src/user8.ts",
+     "changed": false
+    }
+   },
+   {
+    "id": "group:file:src/user9.ts",
+    "type": "file",
+    "position": {
+     "x": 20,
+     "y": 20
+    },
+    "width": 252,
+    "height": 240,
+    "selectable": false,
+    "data": {
+     "label": "src/user9.ts",
+     "changed": false
+    }
+   },
+   {
+    "id": "group:file:src/a.ts",
+    "type": "file",
+    "position": {
+     "x": 877,
+     "y": 150
+    },
+    "width": 204,
+    "height": 100,
+    "selectable": false,
+    "data": {
+     "label": "src/a.ts",
+     "changed": false
+    }
+   },
+   {
+    "id": "group:file:src/b.ts",
+    "type": "file",
+    "position": {
+     "x": 877,
+     "y": 20
+    },
+    "width": 204,
+    "height": 100,
+    "selectable": false,
+    "data": {
+     "label": "src/b.ts",
+     "changed": false
+    }
+   },
+   {
+    "id": "src/hub.ts#hub",
+    "type": "symbol",
+    "parentId": "group:file:src/hub.ts",
+    "extent": "parent",
+    "position": {
+     "x": 242,
+     "y": 30
+    },
+    "width": 181,
+    "height": 58,
+    "data": {
+     "node": "src/hub.ts#hub",
+     "tone": "modified",
+     "label": "hub",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/small.ts#small",
+    "type": "symbol",
+    "parentId": "group:file:src/small.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 200,
+    "height": 58,
+    "data": {
+     "node": "src/small.ts#small",
+     "tone": "modified",
+     "label": "small",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user0.ts#caller0",
+    "type": "symbol",
+    "parentId": "group:file:src/user0.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 219,
+    "height": 58,
+    "data": {
+     "node": "src/user0.ts#caller0",
+     "tone": "context",
+     "label": "caller0",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user1.ts#caller1",
+    "type": "symbol",
+    "parentId": "group:file:src/user1.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 219,
+    "height": 58,
+    "data": {
+     "node": "src/user1.ts#caller1",
+     "tone": "context",
+     "label": "caller1",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user2.ts#caller2",
+    "type": "symbol",
+    "parentId": "group:file:src/user2.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 219,
+    "height": 58,
+    "data": {
+     "node": "src/user2.ts#caller2",
+     "tone": "context",
+     "label": "caller2",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user3.ts#caller3",
+    "type": "symbol",
+    "parentId": "group:file:src/user3.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 219,
+    "height": 58,
+    "data": {
+     "node": "src/user3.ts#caller3",
+     "tone": "context",
+     "label": "caller3",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user4.ts#caller4",
+    "type": "symbol",
+    "parentId": "group:file:src/user4.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 219,
+    "height": 58,
+    "data": {
+     "node": "src/user4.ts#caller4",
+     "tone": "context",
+     "label": "caller4",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user5.ts#caller5",
+    "type": "symbol",
+    "parentId": "group:file:src/user5.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 219,
+    "height": 58,
+    "data": {
+     "node": "src/user5.ts#caller5",
+     "tone": "context",
+     "label": "caller5",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user6.ts#caller6",
+    "type": "symbol",
+    "parentId": "group:file:src/user6.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 219,
+    "height": 58,
+    "data": {
+     "node": "src/user6.ts#caller6",
+     "tone": "context",
+     "label": "caller6",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user7.ts#caller7",
+    "type": "symbol",
+    "parentId": "group:file:src/user7.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 219,
+    "height": 58,
+    "data": {
+     "node": "src/user7.ts#caller7",
+     "tone": "context",
+     "label": "caller7",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user8.ts#caller8",
+    "type": "symbol",
+    "parentId": "group:file:src/user8.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 219,
+    "height": 58,
+    "data": {
+     "node": "src/user8.ts#caller8",
+     "tone": "context",
+     "label": "caller8",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user9.ts#caller9",
+    "type": "symbol",
+    "parentId": "group:file:src/user9.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 219,
+    "height": 58,
+    "data": {
+     "node": "src/user9.ts#caller9",
+     "tone": "context",
+     "label": "caller9",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user0.ts#caller10",
+    "type": "symbol",
+    "parentId": "group:file:src/user0.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 100
+    },
+    "width": 228,
+    "height": 58,
+    "data": {
+     "node": "src/user0.ts#caller10",
+     "tone": "context",
+     "label": "caller10",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user1.ts#caller11",
+    "type": "symbol",
+    "parentId": "group:file:src/user1.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 100
+    },
+    "width": 228,
+    "height": 58,
+    "data": {
+     "node": "src/user1.ts#caller11",
+     "tone": "context",
+     "label": "caller11",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user2.ts#caller12",
+    "type": "symbol",
+    "parentId": "group:file:src/user2.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 100
+    },
+    "width": 228,
+    "height": 58,
+    "data": {
+     "node": "src/user2.ts#caller12",
+     "tone": "context",
+     "label": "caller12",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user3.ts#caller13",
+    "type": "symbol",
+    "parentId": "group:file:src/user3.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 100
+    },
+    "width": 228,
+    "height": 58,
+    "data": {
+     "node": "src/user3.ts#caller13",
+     "tone": "context",
+     "label": "caller13",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user4.ts#caller14",
+    "type": "symbol",
+    "parentId": "group:file:src/user4.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 100
+    },
+    "width": 228,
+    "height": 58,
+    "data": {
+     "node": "src/user4.ts#caller14",
+     "tone": "context",
+     "label": "caller14",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user5.ts#caller15",
+    "type": "symbol",
+    "parentId": "group:file:src/user5.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 100
+    },
+    "width": 228,
+    "height": 58,
+    "data": {
+     "node": "src/user5.ts#caller15",
+     "tone": "context",
+     "label": "caller15",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user6.ts#caller16",
+    "type": "symbol",
+    "parentId": "group:file:src/user6.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 100
+    },
+    "width": 228,
+    "height": 58,
+    "data": {
+     "node": "src/user6.ts#caller16",
+     "tone": "context",
+     "label": "caller16",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user7.ts#caller17",
+    "type": "symbol",
+    "parentId": "group:file:src/user7.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 100
+    },
+    "width": 228,
+    "height": 58,
+    "data": {
+     "node": "src/user7.ts#caller17",
+     "tone": "context",
+     "label": "caller17",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user8.ts#caller18",
+    "type": "symbol",
+    "parentId": "group:file:src/user8.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 100
+    },
+    "width": 228,
+    "height": 58,
+    "data": {
+     "node": "src/user8.ts#caller18",
+     "tone": "context",
+     "label": "caller18",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user9.ts#caller19",
+    "type": "symbol",
+    "parentId": "group:file:src/user9.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 100
+    },
+    "width": 228,
+    "height": 58,
+    "data": {
+     "node": "src/user9.ts#caller19",
+     "tone": "context",
+     "label": "caller19",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user0.ts#caller20",
+    "type": "symbol",
+    "parentId": "group:file:src/user0.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 170
+    },
+    "width": 228,
+    "height": 58,
+    "data": {
+     "node": "src/user0.ts#caller20",
+     "tone": "context",
+     "label": "caller20",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user1.ts#caller21",
+    "type": "symbol",
+    "parentId": "group:file:src/user1.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 170
+    },
+    "width": 228,
+    "height": 58,
+    "data": {
+     "node": "src/user1.ts#caller21",
+     "tone": "context",
+     "label": "caller21",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user2.ts#caller22",
+    "type": "symbol",
+    "parentId": "group:file:src/user2.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 170
+    },
+    "width": 228,
+    "height": 58,
+    "data": {
+     "node": "src/user2.ts#caller22",
+     "tone": "context",
+     "label": "caller22",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user3.ts#caller23",
+    "type": "symbol",
+    "parentId": "group:file:src/user3.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 170
+    },
+    "width": 228,
+    "height": 58,
+    "data": {
+     "node": "src/user3.ts#caller23",
+     "tone": "context",
+     "label": "caller23",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user4.ts#caller24",
+    "type": "symbol",
+    "parentId": "group:file:src/user4.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 170
+    },
+    "width": 228,
+    "height": 58,
+    "data": {
+     "node": "src/user4.ts#caller24",
+     "tone": "context",
+     "label": "caller24",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user5.ts#caller25",
+    "type": "symbol",
+    "parentId": "group:file:src/user5.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 170
+    },
+    "width": 228,
+    "height": 58,
+    "data": {
+     "node": "src/user5.ts#caller25",
+     "tone": "context",
+     "label": "caller25",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user6.ts#caller26",
+    "type": "symbol",
+    "parentId": "group:file:src/user6.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 170
+    },
+    "width": 228,
+    "height": 58,
+    "data": {
+     "node": "src/user6.ts#caller26",
+     "tone": "context",
+     "label": "caller26",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user7.ts#caller27",
+    "type": "symbol",
+    "parentId": "group:file:src/user7.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 170
+    },
+    "width": 228,
+    "height": 58,
+    "data": {
+     "node": "src/user7.ts#caller27",
+     "tone": "context",
+     "label": "caller27",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user8.ts#caller28",
+    "type": "symbol",
+    "parentId": "group:file:src/user8.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 170
+    },
+    "width": 228,
+    "height": 58,
+    "data": {
+     "node": "src/user8.ts#caller28",
+     "tone": "context",
+     "label": "caller28",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/user9.ts#caller29",
+    "type": "symbol",
+    "parentId": "group:file:src/user9.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 170
+    },
+    "width": 228,
+    "height": 58,
+    "data": {
+     "node": "src/user9.ts#caller29",
+     "tone": "context",
+     "label": "caller29",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/a.ts#a",
+    "type": "symbol",
+    "parentId": "group:file:src/a.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 180,
+    "height": 58,
+    "data": {
+     "node": "src/a.ts#a",
+     "tone": "context",
+     "label": "a",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "src/b.ts#b",
+    "type": "symbol",
+    "parentId": "group:file:src/b.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 180,
+    "height": 58,
+    "data": {
+     "node": "src/b.ts#b",
+     "tone": "context",
+     "label": "b",
+     "file": "",
+     "tags": [],
+     "findings": {
+      "error": 0,
+      "warning": 0,
+      "info": 0
+     },
+     "reviewed": false,
+     "settled": false
+    }
+   },
+   {
+    "id": "summary:users:src/hub.ts#hub",
+    "type": "summary",
+    "parentId": "group:file:src/hub.ts",
+    "extent": "parent",
+    "position": {
+     "x": 12,
+     "y": 30
+    },
+    "width": 190,
+    "height": 58,
+    "data": {
+     "of": "src/hub.ts#hub",
+     "side": "users",
+     "count": 30,
+     "files": 10,
+     "expanded": true
+    }
+   }
+  ],
+  "edges": [
+   {
+    "id": "e0",
+    "source": "src/user0.ts#caller0",
+    "target": "src/hub.ts#hub",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e0"
+    }
+   },
+   {
+    "id": "e1",
+    "source": "src/user1.ts#caller1",
+    "target": "src/hub.ts#hub",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e1"
+    }
+   },
+   {
+    "id": "e2",
+    "source": "src/user2.ts#caller2",
+    "target": "src/hub.ts#hub",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e2"
+    }
+   },
+   {
+    "id": "e3",
+    "source": "src/user3.ts#caller3",
+    "target": "src/hub.ts#hub",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e3"
+    }
+   },
+   {
+    "id": "e4",
+    "source": "src/user4.ts#caller4",
+    "target": "src/hub.ts#hub",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e4"
+    }
+   },
+   {
+    "id": "e5",
+    "source": "src/user5.ts#caller5",
+    "target": "src/hub.ts#hub",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e5"
+    }
+   },
+   {
+    "id": "e6",
+    "source": "src/user6.ts#caller6",
+    "target": "src/hub.ts#hub",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e6"
+    }
+   },
+   {
+    "id": "e7",
+    "source": "src/user7.ts#caller7",
+    "target": "src/hub.ts#hub",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e7"
+    }
+   },
+   {
+    "id": "e8",
+    "source": "src/user8.ts#caller8",
+    "target": "src/hub.ts#hub",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e8"
+    }
+   },
+   {
+    "id": "e9",
+    "source": "src/user9.ts#caller9",
+    "target": "src/hub.ts#hub",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e9"
+    }
+   },
+   {
+    "id": "e10",
+    "source": "src/user0.ts#caller10",
+    "target": "src/hub.ts#hub",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e10"
+    }
+   },
+   {
+    "id": "e11",
+    "source": "src/user1.ts#caller11",
+    "target": "src/hub.ts#hub",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e11"
+    }
+   },
+   {
+    "id": "e12",
+    "source": "src/user2.ts#caller12",
+    "target": "src/hub.ts#hub",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e12"
+    }
+   },
+   {
+    "id": "e13",
+    "source": "src/user3.ts#caller13",
+    "target": "src/hub.ts#hub",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e13"
+    }
+   },
+   {
+    "id": "e14",
+    "source": "src/user4.ts#caller14",
+    "target": "src/hub.ts#hub",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e14"
+    }
+   },
+   {
+    "id": "e15",
+    "source": "src/user5.ts#caller15",
+    "target": "src/hub.ts#hub",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e15"
+    }
+   },
+   {
+    "id": "e16",
+    "source": "src/user6.ts#caller16",
+    "target": "src/hub.ts#hub",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e16"
+    }
+   },
+   {
+    "id": "e17",
+    "source": "src/user7.ts#caller17",
+    "target": "src/hub.ts#hub",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e17"
+    }
+   },
+   {
+    "id": "e18",
+    "source": "src/user8.ts#caller18",
+    "target": "src/hub.ts#hub",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e18"
+    }
+   },
+   {
+    "id": "e19",
+    "source": "src/user9.ts#caller19",
+    "target": "src/hub.ts#hub",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e19"
+    }
+   },
+   {
+    "id": "e20",
+    "source": "src/user0.ts#caller20",
+    "target": "src/hub.ts#hub",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e20"
+    }
+   },
+   {
+    "id": "e21",
+    "source": "src/user1.ts#caller21",
+    "target": "src/hub.ts#hub",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e21"
+    }
+   },
+   {
+    "id": "e22",
+    "source": "src/user2.ts#caller22",
+    "target": "src/hub.ts#hub",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e22"
+    }
+   },
+   {
+    "id": "e23",
+    "source": "src/user3.ts#caller23",
+    "target": "src/hub.ts#hub",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e23"
+    }
+   },
+   {
+    "id": "e24",
+    "source": "src/user4.ts#caller24",
+    "target": "src/hub.ts#hub",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e24"
+    }
+   },
+   {
+    "id": "e25",
+    "source": "src/user5.ts#caller25",
+    "target": "src/hub.ts#hub",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e25"
+    }
+   },
+   {
+    "id": "e26",
+    "source": "src/user6.ts#caller26",
+    "target": "src/hub.ts#hub",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e26"
+    }
+   },
+   {
+    "id": "e27",
+    "source": "src/user7.ts#caller27",
+    "target": "src/hub.ts#hub",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e27"
+    }
+   },
+   {
+    "id": "e28",
+    "source": "src/user8.ts#caller28",
+    "target": "src/hub.ts#hub",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e28"
+    }
+   },
+   {
+    "id": "e29",
+    "source": "src/user9.ts#caller29",
+    "target": "src/hub.ts#hub",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e29"
+    }
+   },
+   {
+    "id": "e30",
+    "source": "src/a.ts#a",
+    "target": "src/small.ts#small",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e30"
+    }
+   },
+   {
+    "id": "e31",
+    "source": "src/b.ts#b",
+    "target": "src/small.ts#small",
+    "className": "edge-both edge-call",
+    "data": {
+     "edge": "e31"
+    }
+   },
+   {
+    "id": "summary-edge:summary:users:src/hub.ts#hub",
+    "source": "summary:users:src/hub.ts#hub",
+    "target": "src/hub.ts#hub",
+    "className": "edge-summary",
+    "data": {
+     "edge": null
+    }
+   }
+  ],
+  "fileEdges": [
+   {
+    "id": "files:group:file:src/user0.ts → group:file:src/hub.ts",
+    "source": "group:file:src/user0.ts",
+    "target": "group:file:src/hub.ts",
+    "className": "edge-files edge-files-2 edge-both",
+    "data": {
+     "edge": null,
+     "count": 3
+    }
+   },
+   {
+    "id": "files:group:file:src/user1.ts → group:file:src/hub.ts",
+    "source": "group:file:src/user1.ts",
+    "target": "group:file:src/hub.ts",
+    "className": "edge-files edge-files-2 edge-both",
+    "data": {
+     "edge": null,
+     "count": 3
+    }
+   },
+   {
+    "id": "files:group:file:src/user2.ts → group:file:src/hub.ts",
+    "source": "group:file:src/user2.ts",
+    "target": "group:file:src/hub.ts",
+    "className": "edge-files edge-files-2 edge-both",
+    "data": {
+     "edge": null,
+     "count": 3
+    }
+   },
+   {
+    "id": "files:group:file:src/user3.ts → group:file:src/hub.ts",
+    "source": "group:file:src/user3.ts",
+    "target": "group:file:src/hub.ts",
+    "className": "edge-files edge-files-2 edge-both",
+    "data": {
+     "edge": null,
+     "count": 3
+    }
+   },
+   {
+    "id": "files:group:file:src/user4.ts → group:file:src/hub.ts",
+    "source": "group:file:src/user4.ts",
+    "target": "group:file:src/hub.ts",
+    "className": "edge-files edge-files-2 edge-both",
+    "data": {
+     "edge": null,
+     "count": 3
+    }
+   },
+   {
+    "id": "files:group:file:src/user5.ts → group:file:src/hub.ts",
+    "source": "group:file:src/user5.ts",
+    "target": "group:file:src/hub.ts",
+    "className": "edge-files edge-files-2 edge-both",
+    "data": {
+     "edge": null,
+     "count": 3
+    }
+   },
+   {
+    "id": "files:group:file:src/user6.ts → group:file:src/hub.ts",
+    "source": "group:file:src/user6.ts",
+    "target": "group:file:src/hub.ts",
+    "className": "edge-files edge-files-2 edge-both",
+    "data": {
+     "edge": null,
+     "count": 3
+    }
+   },
+   {
+    "id": "files:group:file:src/user7.ts → group:file:src/hub.ts",
+    "source": "group:file:src/user7.ts",
+    "target": "group:file:src/hub.ts",
+    "className": "edge-files edge-files-2 edge-both",
+    "data": {
+     "edge": null,
+     "count": 3
+    }
+   },
+   {
+    "id": "files:group:file:src/user8.ts → group:file:src/hub.ts",
+    "source": "group:file:src/user8.ts",
+    "target": "group:file:src/hub.ts",
+    "className": "edge-files edge-files-2 edge-both",
+    "data": {
+     "edge": null,
+     "count": 3
+    }
+   },
+   {
+    "id": "files:group:file:src/user9.ts → group:file:src/hub.ts",
+    "source": "group:file:src/user9.ts",
+    "target": "group:file:src/hub.ts",
+    "className": "edge-files edge-files-2 edge-both",
+    "data": {
+     "edge": null,
+     "count": 3
+    }
+   },
+   {
+    "id": "files:group:file:src/a.ts → group:file:src/small.ts",
+    "source": "group:file:src/a.ts",
+    "target": "group:file:src/small.ts",
+    "className": "edge-files edge-files-1 edge-both",
+    "data": {
+     "edge": null,
+     "count": 1
+    }
+   },
+   {
+    "id": "files:group:file:src/b.ts → group:file:src/small.ts",
+    "source": "group:file:src/b.ts",
+    "target": "group:file:src/small.ts",
+    "className": "edge-files edge-files-1 edge-both",
+    "data": {
+     "edge": null,
+     "count": 1
+    }
+   }
+  ],
+  "hiddenEdges": [],
+  "hidden": [],
+  "members": [
+   [
+    "summary:users:src/hub.ts#hub",
+    [
+     "src/user0.ts#caller0",
+     "src/user1.ts#caller1",
+     "src/user2.ts#caller2",
+     "src/user3.ts#caller3",
+     "src/user4.ts#caller4",
+     "src/user5.ts#caller5",
+     "src/user6.ts#caller6",
+     "src/user7.ts#caller7",
+     "src/user8.ts#caller8",
+     "src/user9.ts#caller9",
+     "src/user0.ts#caller10",
+     "src/user1.ts#caller11",
+     "src/user2.ts#caller12",
+     "src/user3.ts#caller13",
+     "src/user4.ts#caller14",
+     "src/user5.ts#caller15",
+     "src/user6.ts#caller16",
+     "src/user7.ts#caller17",
+     "src/user8.ts#caller18",
+     "src/user9.ts#caller19",
+     "src/user0.ts#caller20",
+     "src/user1.ts#caller21",
+     "src/user2.ts#caller22",
+     "src/user3.ts#caller23",
+     "src/user4.ts#caller24",
+     "src/user5.ts#caller25",
+     "src/user6.ts#caller26",
+     "src/user7.ts#caller27",
+     "src/user8.ts#caller28",
+     "src/user9.ts#caller29"
+    ]
+   ]
+  ]
+ }
+}
