@@ -64,7 +64,9 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   shell's sidenav, a workspace's changes; V34): keys, limits, double-click for the default.
   Widths are kept in the browser through `src/ui/widths.ts`, each panel merged into one entry.
 - `src/diff/review.ts` (change list — by project when it spans several —, search, j/k order, one
-  project and its neighbourhood, marks), `detail.ts` (excerpts, diff rows),
+  project and its neighbourhood, marks), `detail.ts` (excerpts, diff rows; V103: a signature's
+  word diff and its fold, a wrapped line's indent; the panel's code wraps under `.symbol-code`,
+  because `.code` and `.row` are the Files page's and Git's too),
   `comments.ts` (draft comments and anchors), `store.ts` (server or browser state).
 - `src/history/commits.ts` (**pure**: picking, which end is the base, diverged picks' fork point found from
   the shape (V10c; checked against git by `scripts/viewer/compare-check.mjs`), the label, reading `api/graph`'s

@@ -2,9 +2,9 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v103-panel-code-whole.md)
 
-**Status:** planned (2026-11-10), to be built on branch `feature/v103-panel-code-whole` in its own
-workspace; written by the graph usability spike (`spike/graph-usability`). Not started. One choice
-is the person's (below): wrap the code (keeps decision 887), or a wide toggle (amends it).
+**Status:** built, ready for review (2026-11-11), on branch `feature/v103-panel-code-whole` (the
+workspace's, from `main` at 7e4a36e); planned by the graph usability spike
+(`spike/graph-usability`). The code wraps, as proposed: decision 887 kept.
 
 **Kind** feature (milestone) · **Branch** `feature/v103-panel-code-whole` · **Size** S ·
 **Depends on** none · **Rank** 5 of 12
@@ -78,5 +78,67 @@ old block is cut with "…" right before `configService`, the one parameter the 
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 975 | The panel's long lines (keeps 887) | **Wrapped at the panel's width, the continuation under the code with a hanging indent** | 69 % of the walks' panel lines were cut at 336 px |
-| 976 | A changed signature in the panel | **One signature, removed words struck and added words marked; two blocks only when more than half differs** | Bitwarden's removed parameter was cut out of the old block |
+| 975 | The panel's long lines (keeps 887) | **Wrapped at the panel's width: a wrapped line goes on under its own code, at its indent (at most 8 columns); its row keeps its colour, its gutter, and its line number beside its first line** | 69 % of the walks' panel lines were cut at 336 px |
+| 976 | A changed signature in the panel | **One signature, removed words struck and added words marked; two blocks only when more than half differs. Over 400 characters it folds to 60 around each change (an unchanged one to its first 300), with "Show the whole signature". Core cuts a signature at 2,000 characters, not 300** | Bitwarden's removed parameter was past core's 300-character cut; cut to the same 300, a changed type drew as unchanged |
+
+## As built
+
+Built with the wrap, as proposed (887 kept). Decisions 975–976; 976 grew by two parts the plan
+did not foresee, both found on the walked changes. Tests first: the unit tests, the core test and
+`e2e/panel-code.spec.ts` failed on `main`'s code for the right reasons, then passed.
+
+- **The "…" on Bitwarden was core's, not the panel's.** Core cut every signature at 300
+  characters (`MAX_DISPLAY` in `lang/typescript/extract.ts`, since M2), so the graph itself held
+  `…, private c…`: no diff in the panel could strike `configService`. The cut is 2,000 now. On
+  737ee3f, 22 of 1,561 signatures were over 300 (7 of them on symbols whose signature changed);
+  uncut, the longest is 1,693, and the graph grows by 6.5 KB (0.2 % of 3.10 MB). The same cut
+  hid a change outright: `feature/issues-page`'s `Route` type drew as one unchanged signature on
+  `main`, because its two versions cut to the same 300 characters. The field keeps its shape, so
+  no `SCHEMA_VERSION` change; `docs/graph-schema.md` says where it is cut.
+- **A long signature folds.** Uncut, `Route`'s signature is 1,150 characters, drawn whole above
+  its own code. Over 400 characters `foldSignature` keeps 60 characters of kept words around each
+  change, in whole words, and folds the rest to "…"; an unchanged one keeps its first 300, as
+  core's cut drew it. **Show the whole signature** draws it all. Bitwarden's constructor (327
+  characters) is drawn whole.
+- **A lone change slides.** jsdiff placed the added union member as `p20' } | { page: '`. A
+  lone removed or added run between kept words moves, among the places it can sit with the same
+  text drawn, to one with its brackets balanced, a space first and a word or a closing bracket
+  last: ` | { page: 'p20' }`. Spaces and punctuation that a removed and an added run share at
+  their ends are kept text, and changes split only by spaces or punctuation are one run.
+- **The panel's own class.** `.code`, `.row`, `.ln` and `.mark` are shared by the panel, the
+  Files page and Git's diff and blame, so the wrap is under `.symbol-code`. The Files page and
+  Git already wrapped (`pre-wrap`, `minmax(0, 1fr)`); the panel follows their recipe and adds the
+  hanging indent: `--hang` on the row, from `hangOf` (the line's indent in columns, a tab 2, at
+  most 8), as `padding-left` and a negative `text-indent`. `.code-rows`, as wide as the longest
+  line so a scrolled row kept its colour, is gone.
+- **A line number centred itself** in a wrapped row, 116 px under its line on the fixture: a
+  button centres its content. `.symbol-code .ln-open` is a flex box with its number at the top.
+  The Files page draws the same buttons in rows that wrap; it is out of scope and left as it is.
+- **A space at a wrap hangs past the line's end** (`pre-wrap`). It is not drawn and does not
+  scroll the box, but a measure of the text's right edge counts it: the spec and the walk script
+  measure words.
+- **Tests changed with the behaviour**: `review.spec.ts`'s "colours a changed line across its
+  full width when the code scrolls" is replaced by `panel-code.spec.ts`'s wrap test at 700 px
+  (the code no longer scrolls); `angular-v11.spec.ts`'s `getHeroes` reads one signature with
+  `limit: number` marked.
+
+## Results
+
+The five walks' symbols, served by `symbiote view` at 2560 × 1440, 1x, `main`'s `git archive`
+build against this branch's (`coverage/v103/panel.mjs`, not committed).
+
+| Measure | `main` (7e4a36e) | V103 |
+|---|---|---|
+| The walks' panel lines cut at 336 px | 48 of 70: the small fix 15 of 21, the feature 20 of 29, the refactor 2 of 2, Bitwarden 8 of 10, Qwik 3 of 8; every panel's code scrolls sideways | 0 of 70; none scrolls; 48 lines wrap |
+| Bitwarden 737ee3f, `AssignCollectionsComponent.constructor` | two blocks, the old one cut at 300 characters before `configService` | one signature, `, private configService: ConfigService` struck ([dark](../images/v103-panel-code-whole/bitwarden-after-dark.png), [light](../images/v103-panel-code-whole/bitwarden-after-light.png); before: [dark](../images/v103-panel-code-whole/bitwarden-before-dark.png), [light](../images/v103-panel-code-whole/bitwarden-before-light.png)) |
+| The small fix's `MergerOptions` | 15 of 21 lines cut | wrapped, each continuation at its line's indent ([dark](../images/v103-panel-code-whole/small-fix-after-dark.png), [light](../images/v103-panel-code-whole/small-fix-after-light.png); before: [dark](../images/v103-panel-code-whole/small-fix-before-dark.png), [light](../images/v103-panel-code-whole/small-fix-before-light.png)) |
+| The feature's `Route` signature | one, as unchanged: both versions cut to the same 300 characters ([dark](../images/v103-panel-code-whole/route-before-dark.png), [light](../images/v103-panel-code-whole/route-before-light.png)) | one, the added page marked, folded with two gaps to 400 of its 1,150 characters ([dark](../images/v103-panel-code-whole/route-after-dark.png), [light](../images/v103-panel-code-whole/route-after-light.png)) |
+| A 2,100-line symbol: pick to its first 300 rows painted; **Show all** to 2,104 rows painted (median of 7, builds alternated) | 69 ms; 246 ms | 69 ms; 229 ms |
+| Regression check against `main`'s build: r1; Bitwarden; Qwik | — | identical: 29 comparisons, 859 edges; 10, 4,912; 30, 6,360; no finding changed. Time 0.88×; 1.31× then 1.05×; 1.14× then 1.02× (`main` first under the e2e run, then this branch first) |
+
+Cost: none measurable. The rows lay out at the panel's width instead of the longest line's.
+
+Tests: `detail.test.ts` (`signatureDiff` 7, `hangOf` 2, `foldSignature` 4), `extract.test.ts`
+(1), `e2e/panel-code.spec.ts` (4, on the new `panel-code` fixture); `pnpm check` (3,480 unit
+tests); `pnpm build`; `pnpm test:e2e`: the viewer's 449 and the nexus's 32 passed on the first
+run, `page-frame.spec.ts` and `targets.spec.ts` among them.

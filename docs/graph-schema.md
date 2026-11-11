@@ -164,6 +164,7 @@ One per symbol in the graph: every changed symbol, plus unchanged **context** sy
 | `base` / `head` | object \| null | `base` is null for `added`, `head` is null for `removed`. |
 | `previousId` | string \| null | The base ID when the symbol was moved or renamed. |
 | `since` | enum \| absent | With `--since`, on changed nodes: `new` (not changed by the earlier version), `updated` (changed differently: either side's hashes differ), `same` (changed the same way). |
+| `signature` | string | The declaration as written, whitespace collapsed, for display. Cut with `…` after 2,000 characters (300 before V103); `hashes` do not depend on the cut. |
 | `hashes` | object | `signature` and `body`, 16 hex chars each. `body` is `""` when the symbol has no body (interfaces, types, enums, abstract methods). |
 
 `unchanged` nodes are context only. A context node carries the side(s) it was resolved on:
