@@ -152,14 +152,6 @@ findings as a graph card does (974): `.symbol-count`, in the worst severity's co
 comments count. Its tooltip and the row's accessible name give the severities. A workspace's
 Changes panel keeps git's order.
 
-Since V103 the detail panel's code wraps at its width (975, keeping 887's 336 px): a wrapped line
-goes on under its own code, at its indent (`hangOf`, at most 8 columns), in its row's colour, its
-line number beside its first line. Its rules are the panel's own, `.symbol-code`. A changed
-signature is one (976): `signatureDiff` strikes the removed words and marks the added ones, and
-draws the two whole when more than half differs. Past 400 characters `foldSignature` keeps 60
-around each change (an unchanged one its first 300), with **Show the whole signature**. Core cuts
-a signature at 2,000 characters (`MAX_DISPLAY`), not 300.
-
 Since V105 a stylesheet is one thing to look at and to mark (979–980). A file whose changed
 symbols are all stylesheet symbols, two or more (`stylesheetFiles` in `graph/flow.ts`), is one
 card on the canvas, `rules:<file>`: its name, its counts by kind of change, its rules' findings.
@@ -169,6 +161,14 @@ leaves it closed; Focus on it opens it. In the change list it is one row: a box 
 rules, a caret showing them (with no box of their own). The progress, the Changes tab and `j`/`k`
 count it once (`reviewItems` in `diff/review.ts`), `j` landing on its first rule, and marking any
 of its rules marks them all (`toggleMark`): the marks stay one per rule, by fingerprint.
+
+Since V103 the detail panel's code wraps at its width (975, keeping 887's 336 px): a wrapped line
+goes on under its own code, at its indent (`hangOf`, at most 8 columns), in its row's colour, its
+line number beside its first line. Its rules are the panel's own, `.symbol-code`. A changed
+signature is one (976): `signatureDiff` strikes the removed words and marks the added ones, and
+draws the two whole when more than half differs. Past 400 characters `foldSignature` keeps 60
+around each change (an unchanged one its first 300), with **Show the whole signature**. Core cuts
+a signature at 2,000 characters (`MAX_DISPLAY`), not 300.
 
 ## Opening a review
 
@@ -232,10 +232,10 @@ when a later decision or a fix changed it.
 | 900 | The reviews list keeps what git said of each review under a key of its file's commits, its refs' tips, the tips it is counted against and its verdict's target's tips: git runs only for a review whose key changed | [V94](../plan/v94-push-not-polling.md) |
 | 886–890 | A review as proof 03: the first fit whole (≤ 1×), no zoom to a pick but from the map; the detail 336 px; Open ↗ per use; syntax colours from our own tokenizer (supersedes 845); a finding's message as its title | [V93](../plan/v93-redesign-finish.md) |
 | 968–970 | The head's pills: each severity the Findings tab lists, infos as notes, a click opening the tab at it (amends 839); settled signature changes folded per project, counted in their fold only; on the map a file's name in its worst listed finding's colour, its box drawing its symbols' counts | [V100](../plan/v100-findings-where-you-look.md) |
+| 979–980 | A stylesheet with two or more changed symbols, all stylesheet symbols, is one card (its counts, its rules' findings, links merged onto it) opened like a group; a pick inside it rings it, Focus opens it. It is one row, one item of the progress, one `j`/`k` stop, and one mark for all its rules | [V105](../plan/v105-stylesheet-cards.md) |
 | 966–967 | A pick lands readable: a name under 11 px on screen comes to the reading zoom, a readable pick in view moves nothing (amends 886); the reading zoom is the body size over the graph's 12 px names, and no fit comes closer | [V99](../plan/v99-picks-land-readable.md) |
 | 973–974 | The Files page in order of risk: files with listed findings (worst severity, then the most of each), other code, tests, then every other file, git's order inside each and until the graph arrives (amends 431's first file); a file's listed findings counted on its row in the worst severity's colour | [V102](../plan/v102-files-by-risk.md) |
 | 975–976 | The panel's code wraps under its own code, at its indent (keeps 887); a changed signature is one, removed words struck and added words marked, folded past 400 characters; core cuts a signature at 2,000 | [V103](../plan/v103-panel-code-whole.md) |
-| 979–980 | A stylesheet with two or more changed symbols, all stylesheet symbols, is one card (its counts, its rules' findings, links merged onto it) opened like a group; a pick inside it rings it, Focus opens it. It is one row, one item of the progress, one `j`/`k` stop, and one mark for all its rules | [V105](../plan/v105-stylesheet-cards.md) |
 
 These no longer hold:
 
