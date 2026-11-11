@@ -518,6 +518,13 @@
 
 /* ---- open in VS Code ---------------------------------------------------------------- */
 
+/* The symbol's actions in its head (V104): its lines on Files, VS Code. */
+.panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .open-editor {
   display: inline-flex;
   align-items: center;

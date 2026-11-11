@@ -1,6 +1,6 @@
-// The Files page's diff of one file (V60): git's diff read into rows, folded, and where a comment
-// on a row goes. Pure.
-import type { ReviewFile } from '@symbiote/core';
+// The Files page's diff of one file (V60): git's diff read into rows, folded, where a comment on
+// a row goes, and where a picked symbol's lines are (V104). Pure.
+import type { GraphNode, GraphSide, ReviewFile } from '@symbiote/core';
 import type { Anchor, Draft } from './comments.js';
 import type { DiffRow } from './detail.js';
 
@@ -108,17 +108,36 @@ export function rowKey(row: DiffRow): string {
   return row.type === 'del' ? `base:${row.base ?? 0}` : `head:${row.head ?? 0}`;
 }
 
+/** Where `anchor` is among `file`'s rows ({@link rowKey}); null when it is on another file. */
+export function anchorKey(file: ReviewFile, anchor: Anchor): string | null {
+  const path = anchor.side === 'head' ? file.path : (file.previousPath ?? file.path);
+  return anchor.path === path ? `${anchor.side}:${anchor.line}` : null;
+}
+
 /** The comments on lines of `file`, by {@link rowKey}, in the order written. */
 export function draftsByLine(drafts: readonly Draft[], file: ReviewFile): Map<string, Draft[]> {
-  const before = file.previousPath ?? file.path;
   const byLine = new Map<string, Draft[]>();
   for (const draft of drafts) {
-    const anchor = draft.anchor;
-    if (!anchor || anchor.path !== (anchor.side === 'head' ? file.path : before)) continue;
-    const key = `${anchor.side}:${anchor.line}`;
-    byLine.set(key, [...(byLine.get(key) ?? []), draft]);
+    const key = draft.anchor && anchorKey(file, draft.anchor);
+    if (key) byLine.set(key, [...(byLine.get(key) ?? []), draft]);
   }
   return byLine;
+}
+
+/**
+ * The folds drawn until "Show all" (decision 436): those of the first `max` rows; every one when
+ * the row asked for (`key`, as {@link rowKey} names it) is past them (V104).
+ */
+export function foldsDrawn(
+  folds: readonly Fold[],
+  max: number,
+  key: string | null,
+): readonly Fold[] {
+  let count = 0;
+  const cut = folds.findIndex((fold) => fold.kind === 'row' && ++count > max);
+  if (cut < 0) return folds;
+  const asked = folds.findIndex((fold) => fold.kind === 'row' && rowKey(fold.row) === key);
+  return asked >= cut ? folds : folds.slice(0, cut);
 }
 
 const STATUS: Record<ReviewFile['status'], string> = {
@@ -153,4 +172,73 @@ export function stepFile(
   const at = files.findIndex((file) => file.path === path);
   if (at < 0) return files[0]?.path ?? null;
   return files[Math.min(files.length - 1, Math.max(0, at + step))]?.path ?? null;
+}
+
+/** Lines of a file, first to last: a symbol's on one side. */
+export interface LineSpan {
+  start: number;
+  end: number;
+}
+
+/** A symbol's lines in one file of the list, on the sides it has there (V104). */
+export interface SymbolLines {
+  base?: LineSpan;
+  head?: LineSpan;
+}
+
+/**
+ * What the Files page shows of a file: a row by its place ({@link rowKey}), from the review tab;
+ * or a symbol's lines, whose first changed row it shows once the file's rows are read (V104).
+ */
+export type FileFocus = { path: string; key: string } | { path: string; symbol: SymbolLines };
+
+/** A side's lines. */
+const span = (side: GraphSide): LineSpan => ({
+  start: side.range.start.line,
+  end: side.range.end.line,
+});
+
+/**
+ * Where a symbol's lines are on the Files page (V104, decision 977): the file it was deleted from
+ * for a removed symbol, and for one moved to another file (its head file when that one is not
+ * listed); any other in its head file, with its lines on both sides when both are in it. A renamed
+ * file is found by its old path on the base side. Null when no listed file holds it: a symbol of
+ * an unchanged file, a package.
+ */
+export function symbolFocus(node: GraphNode, files: readonly ReviewFile[]): FileFocus | null {
+  const head = node.head && files.find((file) => file.path === node.head?.file);
+  // A copy's old path is another file, still there.
+  const base =
+    node.base &&
+    files.find(
+      (file) =>
+        file.status !== 'added' &&
+        file.status !== 'copied' &&
+        (file.previousPath ?? file.path) === node.base?.file,
+    );
+  // Removed, or moved from this file to another: its deleted rows.
+  if (base && node.base && base !== head)
+    return { path: base.path, symbol: { base: span(node.base) } };
+  if (!head || !node.head) return null;
+  return {
+    path: head.path,
+    symbol: { ...(base && node.base ? { base: span(node.base) } : {}), head: span(node.head) },
+  };
+}
+
+/**
+ * The row to show of a symbol's lines (V104, decision 977): its first added row, the code it has
+ * now; else its first removed one (a removed symbol, or one whose change only removes lines); else
+ * its first row (its code the same, or changed in its formatting only). Null when no row holds it.
+ * As {@link rowKey} names it. Removed rows come after added ones: git may pair a modified
+ * symbol's old lines with lines far from its new ones (a block added above it).
+ */
+export function firstChangedRow(rows: readonly DiffRow[], lines: SymbolLines): string | null {
+  const within = (at: LineSpan | undefined, line: number | undefined) =>
+    at !== undefined && line !== undefined && line >= at.start && line <= at.end;
+  const row =
+    rows.find((r) => r.type === 'add' && within(lines.head, r.head)) ??
+    rows.find((r) => r.type === 'del' && within(lines.base, r.base)) ??
+    rows.find((r) => within(lines.head, r.head) || within(lines.base, r.base));
+  return row ? rowKey(row) : null;
 }

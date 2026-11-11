@@ -45,6 +45,7 @@ import {
   CloseIcon,
   ExternalIcon,
   FailedIcon,
+  FileIcon,
   HelpIcon,
 } from '../ui/icons.js';
 import { CodeText, useTokens } from '../ui/CodeText.js';
@@ -120,6 +121,8 @@ interface Props {
   canvas?: { shown: ReadonlySet<string>; focusShows: boolean } | undefined;
   /** Present when the review can be posted to the forge (`symbiote pr`). */
   comments?: Comments | undefined;
+  /** Shows its lines on the Files page, as `g` does (V104, decision 978); absent where none is. */
+  onShowLines?: (() => void) | undefined;
 }
 
 export interface Comments {
@@ -144,6 +147,7 @@ export function DetailPanel({
   onClose,
   canvas,
   comments,
+  onShowLines,
 }: Props) {
   const detail = useMemo(() => symbolDetail(graph, id), [graph, id]);
   const shown = detail?.node;
@@ -238,20 +242,37 @@ export function DetailPanel({
                 ))}
           </div>
         )}
-        {openTarget && (
-          <button
-            id="open-in-editor"
-            type="button"
-            className="open-editor"
-            {...tip(`Open line ${openTarget.line} of ${openTarget.side} in VS Code`, {
-              keys: 'o',
-            })}
-            onClick={() => open(openTarget)}
-          >
-            <OpenIcon />
-            Open in VS Code
-            <kbd aria-hidden="true">o</kbd>
-          </button>
+        {(onShowLines || openTarget) && (
+          <div className="panel-actions">
+            {/* Its lines in its file's diff, the reviewer's next read (V104). */}
+            {onShowLines && (
+              <button
+                type="button"
+                className="open-editor"
+                {...tip('Its first changed line, on the Files page', { keys: 'g' })}
+                onClick={onShowLines}
+              >
+                <FileIcon />
+                Show its lines
+                <kbd aria-hidden="true">g</kbd>
+              </button>
+            )}
+            {openTarget && (
+              <button
+                id="open-in-editor"
+                type="button"
+                className="open-editor"
+                {...tip(`Open line ${openTarget.line} of ${openTarget.side} in VS Code`, {
+                  keys: 'o',
+                })}
+                onClick={() => open(openTarget)}
+              >
+                <OpenIcon />
+                Open in VS Code
+                <kbd aria-hidden="true">o</kbd>
+              </button>
+            )}
+          </div>
         )}
         {canOpen && (
           <div className={`open-note${note?.error ? ' open-error' : ''}`} role="status">
