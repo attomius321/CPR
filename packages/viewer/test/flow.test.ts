@@ -921,6 +921,43 @@ describe('the links a finding is about (V101, decisions 971–972)', () => {
   });
 });
 
+describe('a change with no stylesheet (V105)', () => {
+  it('lays out exactly as before the stylesheet cards', async () => {
+    // Recorded on main (f790c0c2) before V105: graphs with no stylesheet change, in each view.
+    const graphs = {
+      callers: golden('callers'),
+      detectors: golden('detectors'),
+      projects: golden('projects'),
+      service: golden('service'),
+      hub: hubGraph(),
+    };
+    const views = {
+      default: {},
+      'no context': { context: false },
+      'type references': { typeReferences: true },
+      'a group open': { expanded: new Set([summaryId('users', 'src/hub.ts#hub')]) },
+    };
+    const layouts: Record<string, unknown> = {};
+    for (const [name, graph] of Object.entries(graphs)) {
+      for (const [view, options] of Object.entries(views)) {
+        layouts[`${name}, ${view}`] = layoutFlow(graph, options);
+      }
+    }
+    // A symbol's graph node and an edge's graph edge by their ids: the graph's, not the layout's.
+    const text = JSON.stringify(
+      layouts,
+      (key, value: unknown) =>
+        value instanceof Map
+          ? [...value]
+          : (key === 'node' || key === 'edge') && value
+            ? (value as { id: string }).id
+            : value,
+      1,
+    );
+    await expect(`${text}\n`).toMatchFileSnapshot('__snapshots__/layouts-without-stylesheets.json');
+  });
+});
+
 describe('a box too dense for dagre', () => {
   it("is laid out in about square columns: a stylesheet's rules and tokens (Symbiote 3fff617)", () => {
     const rules = Array.from({ length: 60 }, (_, i) => `src/a.css#.rule${i}!`);
