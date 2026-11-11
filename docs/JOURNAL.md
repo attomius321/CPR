@@ -469,3 +469,4 @@ merge commit.
 - 2026-11-11 [V104 — `g` follows the pick, both ways](journal/v104-graph-files-follow.md)
 - 2026-11-11 [V105 — a stylesheet as one card, one row and one item](journal/v105-stylesheet-cards.md)
 - 2026-11-11 [V106 — the change louder than its context](journal/v106-change-louder-than-context.md)
+- 2026-11-11 [MC3 spike — what Nucleus's 15 workspaces asked of the person](journal/mc3-mcp-batch-confirm.md)
