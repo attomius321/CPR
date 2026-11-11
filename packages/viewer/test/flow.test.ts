@@ -17,6 +17,7 @@ import {
   NODE_HEIGHT,
   onCanvas,
   stylesheetId,
+  stylesheetNoun,
   summaryId,
   toFlow,
   tone,
@@ -1029,6 +1030,13 @@ describe('a stylesheet as one card (V105, decision 979)', () => {
     expect(summaries(nodes).map((n) => [n.id, n.data.of, n.data.count])).toEqual([
       [summaryId('users', CARD), CARD, 13],
     ]);
+  });
+
+  it('counts rules, variables, or symbols when they are of both kinds', () => {
+    const rules = sheetGraph(golden('callers')).nodes.filter((n) => n.id.startsWith(PAGE_CSS));
+    expect(stylesheetNoun(rules.filter((n) => n.kind === 'rule'))).toBe('rule');
+    expect(stylesheetNoun(rules.filter((n) => n.kind === 'variable'))).toBe('variable');
+    expect(stylesheetNoun(rules)).toBe('symbol');
   });
 
   it('folds only a file whose changed symbols are all stylesheet symbols', () => {

@@ -1,6 +1,14 @@
 import type { Finding, Graph, GraphNode, Project, Severity } from '@symbiote/core';
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
-import { groupOf, kindMark, label, stylesheetId, tone, type ChangeKind } from '../graph/flow.js';
+import {
+  groupOf,
+  kindMark,
+  label,
+  stylesheetId,
+  stylesheetNoun,
+  tone,
+  type ChangeKind,
+} from '../graph/flow.js';
 import { pathInProject, projectOf } from '../graph/projects.js';
 import {
   byProject,
@@ -543,7 +551,7 @@ function StylesheetItem({
     const kind = tone(node) as ChangeKind;
     counts.set(kind, (counts.get(kind) ?? 0) + 1);
   }
-  const noun = symbols.every((s) => s.kind === 'rule') ? 'rule' : 'symbol';
+  const noun = stylesheetNoun(symbols);
   const first = symbols[0];
   return (
     <div

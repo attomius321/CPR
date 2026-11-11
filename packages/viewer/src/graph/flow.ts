@@ -139,8 +139,8 @@ export interface StylesheetData extends Record<string, unknown> {
   /** Its changed symbols drawn: in it, or shown once it is open. */
   count: number;
   kinds: Record<ChangeKind, number>;
-  /** What it counts: `rule` when every one is a rule, else `symbol`. */
-  noun: 'rule' | 'symbol';
+  /** What it counts (`stylesheetNoun`). */
+  noun: StylesheetNoun;
   /** Its colour on the map and the minimap: its one kind of change, or modified. */
   tone: Tone;
   /** Its symbols' findings, summed. */
@@ -159,6 +159,15 @@ export interface StylesheetData extends Record<string, unknown> {
 }
 
 export type ChangeKind = 'added' | 'modified' | 'removed' | 'moved';
+
+/** What a stylesheet's card or row counts: its symbols' one kind, rules or variables, or symbols. */
+export type StylesheetNoun = 'rule' | 'variable' | 'symbol';
+
+/** `rule` or `variable` when every one of `nodes` is one, else `symbol` (V105). */
+export function stylesheetNoun(nodes: readonly GraphNode[]): StylesheetNoun {
+  if (nodes.every((n) => n.kind === 'rule')) return 'rule';
+  return nodes.every((n) => n.kind === 'variable') ? 'variable' : 'symbol';
+}
 
 export interface StylesheetFlowNode {
   id: string;
@@ -1064,7 +1073,7 @@ function stylesheetNodesOf(
           name: card.file.slice(card.file.lastIndexOf('/') + 1),
           count: changed.length,
           kinds,
-          noun: changed.every((n) => n.kind === 'rule') ? 'rule' : 'symbol',
+          noun: stylesheetNoun(changed),
           tone: present.length === 1 ? (present[0] as ChangeKind) : 'modified',
           findings: sum,
           symbols: card.symbols.map((n) => n.id),
