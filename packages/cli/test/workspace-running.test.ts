@@ -9,6 +9,7 @@ import {
   TRANSCRIPT_END,
   TRANSCRIPT_FIRST,
   codexRunsOn,
+  interruptedIn,
   runsOnIn,
   transcriptOf,
   transcriptReader,
@@ -95,6 +96,50 @@ describe('runsOnIn (V83)', () => {
   });
 });
 
+describe('interruptedIn (MC3, decision 995)', () => {
+  /** An entry as Claude Code writes it: the person's, an answer, a tool's result, an Esc. */
+  const user = (content: unknown, fields: Record<string, unknown> = {}) =>
+    JSON.stringify({
+      type: 'user',
+      isSidechain: false,
+      message: { role: 'user', content },
+      ...fields,
+    });
+  const esc = (text = '[Request interrupted by user]') =>
+    user([{ type: 'text', text }], { interruptedMessageId: 'msg_1' });
+  const lines = (...all: string[]) => `${all.join('\n')}\n`;
+
+  it("is true when the session's newest message is Claude Code's Esc", () => {
+    expect(interruptedIn(lines(user('Go'), answer({}), esc()))).toBe(true);
+    // During a tool's use: the result refused, then the Esc.
+    const refused = user([{ type: 'tool_result', content: 'refused', is_error: true }]);
+    expect(
+      interruptedIn(lines(user('Go'), refused, esc('[Request interrupted by user for tool use]'))),
+    ).toBe(true);
+    // Lines that are not messages after it change nothing.
+    const other = JSON.stringify({ type: 'file-history-snapshot', snapshot: {} });
+    expect(interruptedIn(lines(user('Go'), esc(), other))).toBe(true);
+  });
+
+  it('is false once a message follows it, or with none: a prompt, an answer, a tool at work', () => {
+    expect(interruptedIn(lines(esc(), user('Again')))).toBe(false);
+    expect(interruptedIn(lines(esc(), user('Again'), answer({})))).toBe(false);
+    expect(interruptedIn(lines(user('Go')))).toBe(false);
+    expect(
+      interruptedIn(lines(user('Go'), answer({}), user([{ type: 'tool_result', content: 'x' }]))),
+    ).toBe(false);
+    // A subagent's Esc is not the session's.
+    expect(
+      interruptedIn(lines(user('Go'), JSON.stringify({ ...JSON.parse(esc()), isSidechain: true }))),
+    ).toBe(false);
+  });
+
+  it('is null when no message is there to read', () => {
+    expect(interruptedIn('')).toBeNull();
+    expect(interruptedIn(lines(JSON.stringify({ type: 'summary' }), 'not json'))).toBeNull();
+  });
+});
+
 describe('transcriptOf (V83)', () => {
   const at = '2026-10-31T10:00:00.000Z';
   const entry = (fields: Partial<ThreadEntry> & Pick<ThreadEntry, 'kind'>, session = 's1') =>
@@ -173,6 +218,26 @@ describe('transcriptReader (V83)', () => {
     });
     writeFileSync(path, `${TRANSCRIPT}${result}\n`);
     expect(await transcriptReader().runsOn(path)).toMatchObject({ model: 'claude-sonnet-5-5' });
+  });
+
+  it('says whether the newest message is an Esc, read with the answer (MC3, decision 995)', async () => {
+    const path = join(tempDir(), 's1.jsonl');
+    writeFileSync(path, TRANSCRIPT);
+    const reader = transcriptReader();
+    expect(await reader.read(path)).toMatchObject({
+      runsOn: { model: 'claude-sonnet-5-5' },
+      interrupted: false,
+    });
+    const esc = JSON.stringify({
+      type: 'user',
+      isSidechain: false,
+      message: { role: 'user', content: [{ type: 'text', text: '[Request interrupted by user]' }] },
+      interruptedMessageId: 'msg_1',
+    });
+    appendFileSync(path, `${esc}\n`);
+    expect(await reader.read(path)).toMatchObject({ interrupted: true });
+    rmSync(path);
+    expect(await reader.read(path)).toEqual({ runsOn: null, interrupted: false });
   });
 
   it('is null for a transcript gone or never written', async () => {

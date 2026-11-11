@@ -1,5 +1,6 @@
 import { execFileSync, execSync, spawn, type ChildProcess } from 'node:child_process';
 import {
+  appendFileSync,
   cpSync,
   existsSync,
   mkdirSync,
@@ -12,7 +13,7 @@ import {
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
-import { basename, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Page } from '@playwright/test';
 import { mockApi, type Recorded } from '../../forge/test/mock-api.js';
@@ -860,7 +861,9 @@ const waiting = (prompt) => (prompt === undefined ? { state: 'blocked', status: 
 // stdin.
 const hooks = (session, input) => {
   if (!session.settings) return;
-  const event = { session_id: session.sessionId, cwd: session.cwd, ...input };
+  // Its transcript, as Claude Code names it to every hook (MC3: where an Esc is recorded).
+  const transcript_path = join(dir, 'transcripts', session.sessionId + '.jsonl');
+  const event = { session_id: session.sessionId, cwd: session.cwd, transcript_path, ...input };
   const entries = JSON.parse(readFileSync(session.settings, 'utf8')).hooks[event.hook_event_name] || [];
   for (const entry of entries) {
     if (entry.matcher && entry.matcher !== event.tool_name) continue;
@@ -1305,12 +1308,16 @@ export async function serveWorkspaces({
     writeFileSync(file, JSON.stringify(sessions));
     return mine;
   };
+  /** A session's transcript, as the fake names it to its hooks (MC3). */
+  const transcriptOf = (session: FakeSession) =>
+    join(fake, 'transcripts', `${session.sessionId}.jsonl`);
   /** A session's hooks for one event, run as the fake (and Claude Code) runs them. */
   const runHooks = (session: FakeSession, input: Record<string, unknown>) => {
     if (!session.settings) return;
     const event: Record<string, unknown> = {
       session_id: session.sessionId,
       cwd: session.cwd,
+      transcript_path: transcriptOf(session),
       ...input,
     };
     const settings = JSON.parse(readFileSync(session.settings, 'utf8')) as {
@@ -1343,7 +1350,25 @@ export async function serveWorkspaces({
       });
     },
     interrupt(branch) {
-      newest(branch, (mine) => Object.assign(mine, { state: 'working', status: 'idle' }));
+      const mine = newest(branch, (s) => {
+        Object.assign(s, { state: 'working', status: 'idle' });
+        delete s.waitingFor;
+      });
+      // Claude Code records the Esc in its transcript (MC3, decision 995): the state's evidence.
+      const transcript = transcriptOf(mine);
+      mkdirSync(dirname(transcript), { recursive: true });
+      appendFileSync(
+        transcript,
+        `${JSON.stringify({
+          type: 'user',
+          isSidechain: false,
+          message: {
+            role: 'user',
+            content: [{ type: 'text', text: '[Request interrupted by user]' }],
+          },
+          interruptedMessageId: 'msg_fake',
+        })}\n`,
+      );
     },
     report(branch, text) {
       const mine = newest(branch, (s) => Object.assign(s, { state: 'blocked', status: 'idle' }));

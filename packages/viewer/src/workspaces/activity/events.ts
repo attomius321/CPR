@@ -85,8 +85,19 @@ export type ActivityEvent = { key: string; at?: string } & (
   | { kind: 'verdict'; verdict: Verdict }
   /** A thread entry of a kind this viewer does not know (a newer Symbiote's). */
   | { kind: 'unknown'; entry: { at: string; kind: string } }
-  /** Nucleus (NU2): a Confirm, asked, and how it ended; `did`, Symbiote's call that asked. */
-  | { kind: 'confirm'; asked?: Confirm; ended?: Confirm; did?: ToolCall }
+  /**
+   * Nucleus (NU2): a Confirm, asked, and how it ended; `did`, Symbiote's call that asked. MC3: a
+   * lapsed one's later end (`later`: confirmed late, dismissed, replaced), and what a batch's
+   * items or a late yes came to (`done`).
+   */
+  | {
+      kind: 'confirm';
+      asked?: Confirm;
+      ended?: Confirm;
+      later?: Confirm;
+      done?: Confirm;
+      did?: ToolCall;
+    }
   /** Nucleus: its context compacted, before and after. */
   | { kind: 'compact'; before?: Compact; after?: Compact }
   /** Nucleus: an error, a turn interrupted, a conversation opened or ended by New conversation. */
@@ -94,6 +105,9 @@ export type ActivityEvent = { key: string; at?: string } & (
 );
 
 type Confirm = Extract<NucleusEntry, { kind: 'confirm' }>;
+
+/** A lapsed Confirm's later ends (MC3, decision 994). */
+const LATER = new Set<string>(['late', 'dismissed', 'replaced']);
 type Compact = Extract<NucleusEntry, { kind: 'compact' }>;
 export type NucleusOwn = Extract<
   NucleusEntry,
@@ -505,16 +519,23 @@ export function nucleusEvents(lines: readonly NucleusActivityLine[]): ActivityEv
       case 'confirm': {
         const known = confirms.get(line.ask);
         const did = line.call ? byId.get(line.call) : undefined;
+        const slot =
+          line.stage === 'asked'
+            ? 'asked'
+            : line.stage === 'done'
+              ? 'done'
+              : line.stage === 'ended' && LATER.has(line.answer)
+                ? 'later'
+                : 'ended';
         if (known) {
-          if (line.stage === 'asked') known.asked = line;
-          else known.ended = line;
+          known[slot] = line;
           continue;
         }
         const event: Extract<ActivityEvent, { kind: 'confirm' }> = {
           key: `confirm:${line.ask}`,
           at: line.at,
           kind: 'confirm',
-          ...(line.stage === 'asked' ? { asked: line } : { ended: line }),
+          [slot]: line,
           ...(did ? { did } : {}),
         };
         confirms.set(line.ask, event);

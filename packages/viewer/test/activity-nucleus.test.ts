@@ -392,6 +392,99 @@ describe("Nucleus's start without a Confirm (NU8, decision 785)", () => {
   });
 });
 
+describe('A batch and a lapsed Confirm in the tab (MC3, decisions 989, 994)', () => {
+  const confirm = (s: number, fields: Record<string, unknown>) =>
+    ({
+      at: at(s),
+      kind: 'confirm',
+      ask: 'a1',
+      tool: 'start_workspace',
+      words: 'Start 3 workspaces',
+      call: 'm1',
+      ...fields,
+    }) as NucleusActivityLine;
+  const asked = confirm(1, {
+    stage: 'asked',
+    until: at(601),
+    items: [
+      { name: 'fix/one', words: '“One”, with Claude Code' },
+      { name: 'fix/two', words: '“Two”, with Claude Code' },
+      {
+        name: 'fix/three',
+        words: '“Three”, with Claude Code',
+        cant: 'a workspace fix/three exists already',
+      },
+    ],
+  });
+  const done = confirm(9, {
+    stage: 'done',
+    items: [
+      { name: 'fix/one', outcome: 'done' },
+      { name: 'fix/two', outcome: 'failed', error: 'no room' },
+      { name: 'fix/three', outcome: 'cant', error: 'a workspace fix/three exists already' },
+    ],
+  });
+  const groupOf = (lines: NucleusActivityLine[]) => {
+    const events = nucleusEvents(lines);
+    expect(events.filter((e) => e.kind === 'confirm')).toHaveLength(1);
+    return activityGroups(events, { agent: working, worktree: ROOT, nucleus: true }).find(
+      (g) => g.kind === 'confirm',
+    );
+  };
+
+  it('a batch is one Confirm, its items and what became of each as its detail', () => {
+    const group = groupOf([
+      asked,
+      confirm(5, { stage: 'ended', answer: 'confirmed', ms: 4000 }),
+      done,
+    ]);
+    expect(group?.title).toBe('Confirm: Start 3 workspaces');
+    expect(group && statusWords(group)).toEqual({ text: 'Confirmed', tone: 'ok' });
+    expect(group?.detail).toBe(
+      'fix/one: started\nfix/two: failed: no room\nfix/three: can’t: a workspace fix/three exists already',
+    );
+    // Asked and not answered yet: its items as asked.
+    expect(groupOf([asked])?.detail).toBe(
+      'fix/one: “One”, with Claude Code\nfix/two: “Two”, with Claude Code\nfix/three: can’t: a workspace fix/three exists already',
+    );
+  });
+
+  it('lapsed, then confirmed late or dismissed: its last end said', () => {
+    const expired = confirm(601, { stage: 'ended', answer: 'expired', ms: 600_000 });
+    const late = groupOf([
+      asked,
+      expired,
+      confirm(900, { stage: 'ended', answer: 'late', ms: 899_000 }),
+      done,
+    ]);
+    expect(late && statusWords(late)).toEqual({ text: 'Confirmed after it lapsed', tone: 'ok' });
+    expect(late?.status).toBe('done');
+    expect(late?.detail).toContain('fix/one: started');
+    const lapsed = groupOf([asked, expired]);
+    expect(lapsed && statusWords(lapsed)).toEqual({
+      text: 'No answer in time',
+      tone: 'warning',
+    });
+    const dismissed = groupOf([
+      asked,
+      expired,
+      confirm(900, { stage: 'ended', answer: 'dismissed', ms: 899_000 }),
+    ]);
+    expect(dismissed && statusWords(dismissed)).toEqual({
+      text: 'Dismissed after it lapsed',
+      tone: 'muted',
+    });
+    expect(dismissed?.status).toBe('cancelled');
+    const single = groupOf([
+      confirm(1, { words: 'Start fix/a', stage: 'asked', until: at(601) }),
+      expired,
+      confirm(900, { stage: 'ended', answer: 'late', ms: 899_000 }),
+      confirm(901, { stage: 'done', error: 'no room' }),
+    ]);
+    expect(single?.detail).toBe('Failed: no room');
+  });
+});
+
 describe("Nucleus's conversation as an agent's state (NU2)", () => {
   it.each([
     ['working', { state: 'working', kind: 'codex' }],

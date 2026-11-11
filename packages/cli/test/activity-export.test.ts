@@ -539,6 +539,67 @@ describe('Nucleus as Markdown: a start without a Confirm (NU8, decision 785)', (
   });
 });
 
+describe('Nucleus as Markdown: a batch and a lapsed Confirm (MC3, decisions 989, 994)', () => {
+  it('lists the items asked and what became of each; a late yes and its end', () => {
+    const at = (s: number) => `2026-11-11T08:00:0${s}.000Z`;
+    const head = {
+      kind: 'confirm',
+      ask: 'a1',
+      tool: 'start_workspace',
+      words: 'Start 2 workspaces',
+      call: 'm1',
+    } as const;
+    const text = markdown({
+      ...nucleus,
+      lines: [
+        {
+          ...head,
+          at: at(0),
+          stage: 'asked',
+          until: at(9),
+          items: [
+            { name: 'fix/a', words: '“A”, with Claude Code' },
+            {
+              name: 'fix/b',
+              words: '“B”, with Claude Code',
+              cant: 'a workspace fix/b exists already',
+            },
+          ],
+        },
+        { ...head, at: at(1), stage: 'ended', answer: 'expired', ms: 1000 },
+        { ...head, at: at(2), stage: 'ended', answer: 'late', ms: 2000 },
+        {
+          ...head,
+          at: at(3),
+          stage: 'done',
+          items: [
+            { name: 'fix/a', outcome: 'done' },
+            { name: 'fix/b', outcome: 'cant', error: 'a workspace fix/b exists already' },
+          ],
+        },
+      ],
+    });
+    expect(text).toContain(
+      [
+        '- 08:00:00 · Confirm asked: Start 2 workspaces (`start_workspace`)',
+        '',
+        '  - `fix/a` “A”, with Claude Code',
+        '  - `fix/b` “B”, with Claude Code (a workspace fix/b exists already)',
+      ].join('\n'),
+    );
+    expect(text).toContain('- 08:00:01 · Confirm not answered in time after 1 s');
+    expect(text).toContain('- 08:00:02 · Confirmed after it lapsed after 2 s');
+    expect(text).toContain(
+      [
+        '- 08:00:03 · Done: Start 2 workspaces',
+        '',
+        '  - `fix/a`: done',
+        "  - `fix/b`: can't be done (a workspace fix/b exists already)",
+      ].join('\n'),
+    );
+  });
+});
+
 describe('what the export keeps intact (V84)', () => {
   it('fences an output in one backtick more than its longest run, and quotes text whole', () => {
     const fenced: WorkspaceSources = {

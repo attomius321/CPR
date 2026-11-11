@@ -266,7 +266,8 @@ What holds now: [Reviews](area/reviews.md) · its decisions: [the register](deci
 | [AR2](plan/ar2-defaults-from-ar1.md) | The changes AR1 found: the journal merged as a union, Hive's check messages, the spike's answer kept, who sent a message in the record, a failed merge check sent to the agent, the flaky e2e tests | ✅ | 738–744 | [journal](journal/ar2-defaults-from-ar1.md) |
 | [NU8](plan/nu8-start-without-confirm.md) | A setting, off by default: Nucleus starts workspaces without the person's Confirm; on while Hive is on; every other asked tool still waits; recorded | ✅ | 782–787 | [journal](journal/nu8-start-without-confirm.md) |
 | [NU9](plan/nu9-nucleus-read-commands.md) | Nucleus's and Alpha Ceph's read commands: the shell's reads (`cat`, `grep`, `sed -n`, `find`, `jq`…) joined and piped, on the checkout and the open worktrees only; with the web on, `curl` GET, `gh`'s reads and `git ls-remote` | ✅ | 917–922 | [journal](journal/nu9-nucleus-read-commands.md) |
-| [Fix](plan/fix-mcp-annotations.md) | MCP tools say which are read-only and refuse unknown arguments | planned | | |
+| [Fix](plan/fix-mcp-annotations.md) | MCP tools say which are read-only and refuse unknown arguments | built in MC3, ready for review | 997 | [journal](journal/mc3-mcp-batch-confirm.md) |
+| [MC3](plan/mc3-mcp-batch-confirm.md) | Symbiote's MCP: one Confirm for many starts or clean-ups, ticked per item; `mark_merged`; an MCP Approve queues its merge, on any branch; `needsYou` without merged workspaces; a lapsed Confirm stays on the bar; `interrupted` only from Claude Code's record | built, ready for review | 987–997 | [journal](journal/mc3-mcp-batch-confirm.md) |
 
 ### The merger
 

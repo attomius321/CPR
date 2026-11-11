@@ -26,6 +26,7 @@ import type { OpenRequest, OpenResult } from './editor.js';
 import type { Workspaces } from './workspace-context.js';
 import type { StateStore } from './state.js';
 import type { WorkspaceDayService } from './workspace-day.js';
+import type { MarkMerged } from './mark-merged.js';
 import type { Merger } from './merges.js';
 import type { PromptSettingsService } from './prompt-settings.js';
 import type { CheckSettingService } from './check-setting.js';
@@ -93,6 +94,8 @@ export interface RepositoryOptions {
   terminals?: Terminals;
   /** Symbiote's merger (V26): approved branches merged, checked and landed: `/api/merges…`. */
   merges?: Merger;
+  /** Merged work marked in the docs (MC3), through Symbiote's MCP's `mark_merged` only. */
+  marks?: MarkMerged;
   /**
    * A Hive workspace's Review tab (HV3): its rounds, a kept test's text, Land
    * (`/api/workspaces/hive…`).
@@ -176,6 +179,8 @@ export interface ViewServerOptions {
    * `start_workspace` goes without a Confirm, on while `hive` is; the MCP reads it at each call.
    */
   nucleusStart?: HiveRecord;
+  /** How long an MCP ask waits for the person before it lapses (MC3; e2e's `SYMBIOTE_ASK_MS`). */
+  askMs?: number;
   /**
    * Enables `/api/hive/reviewer/…` (HV3): the running reviewer's model and level, as the
    * merger's.

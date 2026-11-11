@@ -51,3 +51,118 @@
   flex-basis: 100%;
   margin: 0;
 }
+
+/* A batch (MC3, decision 988): the head as the one-line bar, then a row an item — its tick (or, once
+   confirmed, its state), its branch and its words in columns, a reason under them. Ten rows show;
+   more scroll inside the bar. Lapsed (decision 994): the clock muted, the bar as before. */
+
+.ask-bar.ask-batch {
+  display: block;
+  padding: 6px 12px 10px 16px;
+}
+
+.ask-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  min-height: var(--height-tall);
+}
+
+.ask-head > .icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--you);
+}
+
+.ask-bar.lapsed > .icon,
+.ask-bar.lapsed .ask-head > .icon {
+  color: var(--muted);
+}
+
+.ask-items {
+  display: grid;
+  grid-template-columns: max-content max-content minmax(0, 1fr);
+  column-gap: 12px;
+  max-height: calc(10 * var(--height-tall));
+  margin: 4px 0 0;
+  padding: 0 0 0 20px;
+  overflow: auto;
+  list-style: none;
+}
+
+.ask-item {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: center;
+  min-height: var(--height-tall);
+  padding: 0 8px;
+  border-radius: 8px;
+}
+
+.ask-item:hover {
+  background: var(--hover);
+}
+
+.ask-item > label {
+  display: contents;
+  cursor: pointer;
+}
+
+.ask-item input {
+  justify-self: start;
+}
+
+.ask-item-state {
+  min-width: 104px;
+}
+
+.ask-item-branch {
+  color: var(--text);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.ask-item-words {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Unticked: declined when the person confirms; can't: never done, its reason under it. */
+.ask-item.out .ask-item-branch {
+  color: var(--muted);
+  font-weight: 400;
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--muted) 60%, transparent);
+}
+
+.ask-item.cant .ask-item-branch {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.ask-item.cant > label {
+  cursor: default;
+}
+
+.ask-item-why {
+  grid-column: 3;
+  margin-top: -4px;
+  padding-bottom: 6px;
+  color: var(--error);
+  overflow-wrap: anywhere;
+}
+
+.ask-note {
+  margin: 6px 0 0 28px;
+  color: var(--muted);
+}
+
+.ask-left.ask-lapsed {
+  color: var(--text);
+}

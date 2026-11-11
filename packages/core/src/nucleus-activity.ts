@@ -64,9 +64,27 @@ export interface NucleusCall extends ActivityEntry, Omit<Of, 'at' | 'turn'> {
  * Hive mode is on.
  */
 export type ConfirmStage =
-  | { stage: 'asked'; until: string }
-  | { stage: 'ended'; answer: 'confirmed' | 'declined' | 'expired' | 'gone'; ms: number }
-  | { stage: 'skipped'; why: WithoutConfirm };
+  | { stage: 'asked'; until: string; items?: ConfirmItem[] }
+  | { stage: 'ended'; answer: ConfirmAnswer; ms: number }
+  | { stage: 'skipped'; why: WithoutConfirm; items?: ConfirmItem[] }
+  /** A batch's items once done (MC3), or a single ask confirmed late (`items` absent). */
+  | { stage: 'done'; items?: ConfirmItem[]; error?: string };
+
+/**
+ * How a Confirm ended: as MC1 had it; `late`, confirmed after it lapsed, `dismissed` once lapsed,
+ * `replaced` by the same ask made again (MC3, decision 994).
+ */
+export type ConfirmAnswer =
+  'confirmed' | 'declined' | 'expired' | 'gone' | 'late' | 'dismissed' | 'replaced';
+
+/** One item of a batch's Confirm (MC3): what it acts on, its words, and what became of it. */
+export interface ConfirmItem {
+  name: string;
+  words?: string;
+  cant?: string;
+  outcome?: 'done' | 'failed' | 'declined' | 'cant';
+  error?: string;
+}
 
 /** Why Nucleus's `start_workspace` goes without a Confirm (NU8): the person's setting, or Hive mode. */
 export type WithoutConfirm = 'setting' | 'hive';

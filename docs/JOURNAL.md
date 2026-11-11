@@ -472,3 +472,5 @@ merge commit.
 - 2026-11-11 [V96 — project names as tabs, file names under them faint](journal/v96-map-labels.md)
 - 2026-11-11 [V108 — one review progress](journal/v108-one-review-progress.md)
 - 2026-11-11 [V109 — the Graph page opens on the riskiest finding](journal/v109-open-on-the-risk.md)
+- 2026-11-11 [MC3 spike — what Nucleus's 15 workspaces asked of the person](journal/mc3-mcp-batch-confirm.md)
+- 2026-11-11 [MC3 — one Confirm for many actions, mark merged, and the gaps Nucleus hit](journal/mc3-mcp-batch-confirm.md)

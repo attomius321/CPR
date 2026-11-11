@@ -1,7 +1,7 @@
 # The merger
 
 [Index](../PLAN.md) · [Its decisions](../decisions.md#the-merger) · Checked against the code on
-2026-11-10
+2026-11-11
 
 This page says how Symbiote's merger works today. Read it before you change the merger. The plans
 listed in the index under "The merger" say why each part was built, as it was decided then. If a
@@ -33,7 +33,9 @@ Terms used below:
 1. A person approves a branch in its Review tab. The verdict records the approved commit and the
    branch to merge into (see [Reviews](reviews.md)). Nothing is merged yet.
 2. The person picks **Merge into ▾**, or runs `symbiote merge <branch>`. Symbiote queues an
-   *entry*: the branch, the approved commit, the target and the strategy. In Hive mode, Hive
+   *entry*: the branch, the approved commit, the target and the strategy. Through Symbiote's MCP,
+   an approval queues it in the same Confirm, and `queue_merge` on a branch nobody approved
+   approves its tip first (MC3, decisions 991, 992; see [Reviews](reviews.md)). In Hive mode, Hive
    approves the commit it checked and reviewed and queues the entry itself, with no press (see
    [Hive's merges](#hives-merges)).
 3. The merger takes one entry at a time per repository. It resets its merge worktree to the
@@ -171,7 +173,8 @@ stops during a merge, the entry is merged again from the start when Symbiote run
 | The merge page: state, files, log | `packages/viewer/src/workspaces/Merge.tsx` (its state, head and output card), its steps card `MergeStepsCard.tsx`, a conflict's files and regions `MergeFiles.tsx`; its words from `merge-steps.ts` (pure, `test/merge-steps.test.ts`); the pipeline card `ui/Pipeline.tsx` |
 | HTTP | `/api/merges…` in `packages/cli/src/server-merges.ts`; the log as server-sent events |
 | Command line | `symbiote merge <branch>`, with `--into`, `--strategy`, `--land`, `--approve` and `--again` |
-| MCP tools | `merges`, `merge_log`, `queue_merge`, `land_merge`, `merge_resolution`, `retry_merge`, `recheck_merge`, `remove_merge` |
+| MCP tools | `merges`, `merge_log`, `queue_merge`, `land_merge`, `merge_resolution`, `retry_merge`, `recheck_merge`, `remove_merge`; `mark_merged` |
+| Merged work marked in the docs (MC3): the repository's `merged` commands at the target's tip, one commit, landed as a merge lands | `packages/cli/src/mark-merged.ts`; its worktree `<cache>/worktrees/<repo-id>/marks`; the tool in `mcp-merges.ts` |
 
 `<id>` is the entry's ID, a UUID. `<cache>` is `SYMBIOTE_CACHE_DIR`, else `~/.cache/symbiote` on
 Linux. `<repo-id>` is the folder name Symbiote gives the repository there: its folder's name and a
@@ -219,6 +222,8 @@ when a later decision or a fix changed it.
 | 788 | `hive.lands`: the merge queue (the default) or a pull or merge request; with a request, no queue entry and no push of the start branch | [HV8](../plan/hv8-hive-pull-requests.md) |
 | 789 | By request, the person's merge on the forge lands it: the start branch fetched and fast-forwarded (as 770); closed stops; cannot merge goes to the agent (as 769) | HV8 |
 | 792 | By request with no `origin`, forge or token, or a refused push or open: stopped, never the queue instead | HV8 |
+| 990 | `mark_merged` runs the repository's `merged` commands at the target's tip in the cache, makes their changes one commit and lands it as a merge lands (144), pushed as `merge.push` says; refused while a merge into that target is past `queued` and not landed | [MC3](../plan/mc3-mcp-batch-confirm.md) |
+| 991–992 | An MCP approval queues its merge in the same Confirm; `queue_merge` approves an unapproved tip first | MC3 |
 
 These no longer hold:
 
@@ -250,6 +255,9 @@ These no longer hold:
 - **A merge commit needs a git user name**, which a test repository may lack: "Committer identity
   unknown" (HV4).
 - **Read the target's tip before every start**, **Check again** included (the queue fix).
+- **Moving a target under a merge runs that merge again**: the merger reads the target's tip
+  before landing and merges again when it moved, check and all. So `mark_merged` waits while a
+  merge into its branch is past `queued` (MC3).
 - **The person's Claude Code hooks run in the merger's `claude -p`**: two `SessionStart` hooks a
   run here ([V46](../journal/v46-merger-logs.md)).
 - **e2e tests must not find the developer's own agent.** The merger runs `claude` from `PATH`.

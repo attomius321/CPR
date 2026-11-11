@@ -662,7 +662,17 @@ export function parseMcpAnswer(text: string): McpAnswer {
     throw new Error('id: an ask');
   }
   if (typeof value.yes !== 'boolean') throw new Error('yes: true or false');
-  return { id: value.id, yes: value.yes };
+  // A batch's ticked items (MC3, decision 987): their ids, all when absent.
+  const items = value.items;
+  if (items === undefined) return { id: value.id, yes: value.yes };
+  if (
+    !Array.isArray(items) ||
+    items.length > 100 ||
+    !items.every((item) => typeof item === 'string' && item !== '' && item.length <= 20)
+  ) {
+    throw new Error("items: the ticked items' ids");
+  }
+  return { id: value.id, yes: value.yes, items: items as string[] };
 }
 
 /** `{ ref }`: a branch or remote branch name. */

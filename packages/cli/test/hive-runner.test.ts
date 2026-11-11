@@ -2446,7 +2446,7 @@ describe('No gate before landing (HV4, decision 773)', () => {
 });
 
 describe('A message is not the writer asking (fix/hive-spurious-decide, decisions 794, 795)', () => {
-  it("Hive's message, delivered by stopping and resuming the writer, gets no hive.decide while the writer reads interrupted", async () => {
+  it("Hive's message, delivered by stopping and resuming the writer, gets no hive.decide while Claude Code lists the writer working and idle", async () => {
     const repo = repository(['false']);
     const s = await setup(repo, { stopWaitMs: 0 });
     await s.turn(true);
@@ -2461,10 +2461,10 @@ describe('A message is not the writer asking (fix/hive-spurious-decide, decision
       round: 2,
       message: { key: 'hive.check', sent: true },
     });
-    // Resumed with Hive's message, before its first busy moment: an interrupted turn, to its card.
+    // Resumed with Hive's message, before its first busy moment: no Esc recorded, so its turn
+    // works (MC3, decision 995; until then read as an interrupted turn).
     expect((await s.service.summaryOf('feature/woken'))?.agent).toMatchObject({
-      state: 'needs-you',
-      interrupted: true,
+      state: 'working',
     });
     for (let i = 0; i < 3; i++) {
       await runner.tick();
@@ -2490,7 +2490,7 @@ describe('A message is not the writer asking (fix/hive-spurious-decide, decision
     expect(s.fake.resume).toHaveBeenCalledTimes(2);
   });
 
-  it("the person's message to a Hive writer, read as interrupted as it starts, gets no hive.decide either", async () => {
+  it("the person's message to a Hive writer, listed working and idle as it starts, gets no hive.decide either", async () => {
     const repo = repository(['true']);
     const s = await setup(repo, { stopWaitMs: 0 });
     await s.turn(true);
@@ -2501,8 +2501,7 @@ describe('A message is not the writer asking (fix/hive-spurious-decide, decision
     s.fake.drowse();
     await s.service.reply({ branch: 'feature/told', text: 'Write it in Rust.', stop: true });
     expect((await s.service.summaryOf('feature/told'))?.agent).toMatchObject({
-      state: 'needs-you',
-      interrupted: true,
+      state: 'working',
     });
     for (let i = 0; i < 3; i++) {
       await runner.tick();
@@ -2571,11 +2570,10 @@ describe('A report ends the turn, whatever Claude Code lists (fix/hive-turn-end-
       round: 2,
       message: { key: 'hive.check', sent: true },
     });
-    // Hive's message taken, no report yet: an interrupted turn waits, as decision 794 has it.
+    // Hive's message taken, no report yet and no Esc recorded: its turn works (decision 995).
     Object.assign(s.fake.sessionIn(worktree) ?? {}, { state: 'working', status: 'idle' });
     expect((await s.service.summaryOf('feature/listed'))?.agent).toMatchObject({
-      state: 'needs-you',
-      interrupted: true,
+      state: 'working',
     });
     await runner.tick();
     await runner.idle();

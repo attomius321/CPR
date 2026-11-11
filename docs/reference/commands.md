@@ -220,22 +220,39 @@ agent finds on your `PATH`. If `symbiote` is only an alias, write the full comma
 
 | Tools | What they do | Asks you |
 |---|---|---|
-| `overview` | What needs you: workspaces that wait or are ready, merges that wait | |
+| `overview` | What needs you: workspaces that wait or are ready (a merged one is only counted), merges that wait; asks that lapsed, and what became of them | |
 | `workspaces`, `workspace`, `thread` | The workspaces; one workspace with its brief, its worktree's folder, commits and files; its agent's thread | |
 | `activity` | A workspace's activity (or, with `nucleus: true`, Nucleus's) as [an exported activity](#an-exported-activity): its newest messages within 60 KB | |
-| `start_options`, `start_workspace` | What a start takes here; a start. Its **Confirm** names the model and the effort it starts with | Yes, to start; not Nucleus's start while [Start workspaces without a Confirm](configuration.md#starting-workspaces-without-a-confirm) or Hive mode is on |
+| `start_options`, `start_workspace` | What a start takes here; a start, or with `workspaces` up to 10 in one **Confirm**. It names the model and the effort each starts with | Yes, to start; not Nucleus's start while [Start workspaces without a Confirm](configuration.md#starting-workspaces-without-a-confirm) or Hive mode is on |
 | `suggest_settings` | Suggested settings for a brief, as **Suggest settings** on the Start page: a model, an effort level, plan first and why. It runs one turn of the agent's small model and starts nothing | |
 | `reply`, `stop_agent`, `restart_agent` | Send a message to a workspace's agent; stop it; start it again | Yes, to start again |
-| `clean_workspace` | Clean a workspace up | Yes |
-| `review`, `finish_review` | A branch's change as Symbiote's graph; a verdict on it | Yes, for a verdict |
+| `clean_workspace` | Clean a workspace up, or with `branches` up to 20 in one **Confirm** | Yes |
+| `review`, `finish_review` | A branch's change as Symbiote's graph; a verdict on it. An approval queues its merge in the same **Confirm**, as **Approve** then **Merge into** do on the page; `merge: false` records the verdict alone, and `into` and `strategy` are as `queue_merge`'s | Yes, for a verdict |
 | `merges`, `merge_log` | The merge queue; a merge's log | |
-| `queue_merge`, `land_merge`, `merge_resolution`, `retry_merge`, `recheck_merge`, `remove_merge` | The merge page's actions; `queue_merge` takes a `strategy`, `merge` or `fast-forward`, as `--strategy` | Yes |
+| `queue_merge`, `land_merge`, `merge_resolution`, `retry_merge`, `recheck_merge`, `remove_merge` | The merge page's actions; `queue_merge` takes a `strategy`, `merge` or `fast-forward`, as `--strategy`. On a branch nobody approved, a workspace's or not, `queue_merge` approves its tip in the same **Confirm** | Yes |
+| `mark_merged` | Marks merged work in the docs, as `mark-merged.mjs` and the "Docs: merged" commit do by hand: the commands `merged` names in [`symbiote/config.json`](configuration.md#the-settings-file-symbioteconfigjson), run at the default branch's tip in Symbiote's cache, one commit, moved onto the branch and pushed as the merger does. Listed only where the repository names those commands; refused while a merge into the branch is under way | Yes |
 | `usage`, `code_map` | Your subscriptions' usage; where the code is, by folder | |
 | `wait` | Waits until a workspace's agent or a merge changes state, 10 minutes at most | |
 
+Each tool says whether it only reads (MCP's `readOnlyHint`), so your agent's client can run the reads
+without asking you. An argument a tool does not take is refused before anything runs: `wait` with
+`seconds` says `wait takes minutes`.
+
 When a tool asks, a bar on every page of the app says which agent asks and what it will do, with
 **Decline** and **Confirm**. Nothing happens before you click **Confirm**. If you click
-**Decline**, or do not answer within 10 minutes, the agent is told that nothing was done.
+**Decline**, the agent is told that nothing was done.
+
+Several starts or clean-ups in one call are one **Confirm**: the bar lists them, each ticked.
+Untick one and it is declined; one that cannot be done (a workspace of that name, files not
+committed) is shown with why, and is never done. **Confirm 2** does the ticked ones in order, each
+row saying how it went. If all went well, the bar goes. If one failed, it stays with each one's
+outcome until you click **Close**. The agent gets the same, one line each: started (or cleaned),
+failed and why, declined, or can't.
+
+If you do not answer within 10 minutes, the agent is told that nothing was done yet, and the bar
+keeps the ask for 24 hours, muted: "Nucleus asked at 14:02 … No answer in 10 minutes". **Confirm**
+then checks it again and does it; **Dismiss** drops it. `overview` tells the agent what became of
+it.
 Only Nucleus's `start_workspace` can go without one, while
 [Start workspaces without a Confirm](configuration.md#starting-workspaces-without-a-confirm) or
 Hive mode is on. Its description and Symbiote's instructions to Nucleus say so, and its answer has

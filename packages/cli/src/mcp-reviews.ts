@@ -1,9 +1,11 @@
 // Symbiote's MCP: a branch's review (MC1): its graph read, a verdict recorded once asked.
 import type { Graph } from '@symbiote/core';
 import { parseLocalReview, sourceFiles } from './server-requests.js';
-import type { McpContext, McpRead, McpAsking } from './mcp-context.js';
+import { approveAndQueue } from './approve-merge.js';
+import type { McpContext, McpRead, McpAsking, McpServices } from './mcp-context.js';
 import type { McpLookup } from './mcp-lookup.js';
-import { via, ToolProblem, short, plural, branchOf } from './mcp-tools.js';
+import { approvedRow, strategyOf } from './mcp-merges.js';
+import { via, ToolProblem, short, plural, branchOf, words, flag, type Args } from './mcp-tools.js';
 
 /** A branch's graph as `review` answers it (decision 363): no lines, the decisions. */
 function reviewOf(graph: Graph) {
@@ -56,6 +58,33 @@ function reviewOf(graph: Graph) {
   };
 }
 
+/**
+ * Where an approval's merge goes (MC3, decision 991), checked before asking as queue_merge checks:
+ * not queued already, a target it can take; `into` and `strategy` as queue_merge takes them.
+ */
+async function mergeOf(
+  merger: NonNullable<McpServices['merges']>,
+  args: Args,
+  branch: string,
+  reviewedInto: string,
+) {
+  const into =
+    args.into === undefined ? undefined : words(args, 'into', 'a branch to merge into', 255);
+  const strategy = strategyOf(args);
+  const targets = await merger.targets(branch);
+  if (targets.entry) {
+    throw new ToolProblem(
+      `${branch} is in the merge queue already: merge: false records the verdict alone`,
+    );
+  }
+  const target = into ?? targets.into ?? reviewedInto;
+  if (!targets.branches.includes(target)) {
+    throw new ToolProblem(`into: one of ${targets.branches.join(', ')}`);
+  }
+  const fastForward = (strategy ?? targets.strategy) === 'fast-forward';
+  return { into: target, ...(strategy ? { strategy } : {}), fastForward };
+}
+
 /** How long, in words: "12 s", "3 min". */
 const elapsed = (ms: number) =>
   ms < 90_000 ? `${Math.round(ms / 1000)} s` : `${Math.round(ms / 60_000)} min`;
@@ -102,6 +131,13 @@ export function mcpReviews(
         throw new ToolProblem('event: approve, request-changes or comment');
       }
       if (typeof args.summary !== 'string') throw new ToolProblem('summary: the verdict in words');
+      if (args.merge !== undefined) flag(args, 'merge');
+      if (
+        (args.into !== undefined || args.strategy !== undefined) &&
+        (event !== 'approve' || args.merge === false)
+      ) {
+        throw new ToolProblem('into, strategy: for an approve that merges');
+      }
       const comments = args.comments ?? [];
       if (!Array.isArray(comments)) throw new ToolProblem('comments: a list');
       const { info, pair, graph } = await analyzed(branch, signal);
@@ -135,9 +171,19 @@ export function mcpReviews(
       const n = review.comments.length;
       const many = n > 0 ? ` (${plural(n, 'comment')})` : '';
       const at = `${branch} at ${short(info.head)}`;
+      // An approval queues its merge in the same Confirm (MC3, decision 991), unless merge: false.
+      const merger =
+        event === 'approve' && info.into && args.merge !== false ? services.merges : undefined;
+      const merge = merger ? await mergeOf(merger, args, branch, info.into ?? '') : undefined;
       const said =
         event === 'approve'
-          ? `Approve ${at}${info.into ? `: it is to be merged into ${info.into}` : ''}${many}`
+          ? merge
+            ? `Approve ${at} and ${
+                merge.fastForward
+                  ? `fast-forward ${merge.into} to it: no merge commit`
+                  : `merge it into ${merge.into}`
+              }${many}`
+            : `Approve ${at}${info.into ? `: it is to be merged into ${info.into}` : ''}${many}`
           : event === 'request-changes'
             ? `Request changes on ${at}${many}`
             : `Comment on ${at}${many}`;
@@ -146,7 +192,19 @@ export function mcpReviews(
       const finished = { ...review, via: via(caller) };
       return {
         words: said,
-        act: () => service('reviews').finish(info, finished, read),
+        act: () =>
+          merger && merge
+            ? approveAndQueue(
+                { reviews: service('reviews'), merges: merger },
+                info,
+                finished,
+                read,
+                {
+                  into: merge.into,
+                  ...(merge.strategy ? { strategy: merge.strategy } : {}),
+                },
+              ).then(approvedRow)
+            : service('reviews').finish(info, finished, read),
       };
     },
   };

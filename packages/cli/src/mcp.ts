@@ -9,11 +9,12 @@ import type {
   McpServices,
   McpOptions,
   Held,
+  Lapsed,
   McpContext,
   McpRead,
   McpAsking,
 } from './mcp-context.js';
-import { mcpConfirm } from './mcp-confirm.js';
+import { AnswerRefused, lapsedText, mcpConfirm } from './mcp-confirm.js';
 import { mcpLookup } from './mcp-lookup.js';
 import {
   ToolProblem,
@@ -39,13 +40,15 @@ const ANALYSIS_MS = 60_000;
 const POLL_MS = 2_000;
 /** How long the person's answer waits for what they confirmed to be done, before it is answered. */
 const ANSWER_MS = 30_000;
+/** How long a lapsed ask is kept on the person's bar for a late yes (MC3, decision 994). */
+const KEEP_MS = 24 * 60 * 60_000;
 
 /** An ask or a write the server cannot take: its status and why. */
 export class McpRefused extends Error {
   override name = 'McpRefused';
   constructor(
     message: string,
-    readonly status: 404 | 409,
+    readonly status: 400 | 404 | 409,
   ) {
     super(message);
   }
@@ -77,6 +80,7 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
     url = () => '/',
     now = () => new Date(),
     askMs = ASK_MS,
+    keepMs = KEEP_MS,
     analysisMs = ANALYSIS_MS,
     pollMs = POLL_MS,
     minuteMs = 60_000,
@@ -94,9 +98,13 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
       }
     });
   const held = new Map<string, Held>();
+  const lapsed = new Map<string, Lapsed>();
   const closing = new AbortController();
 
   const available = (tool: ToolSpec) => tool.needs.every((need) => services[need] !== undefined);
+  /** A tool listed now: `mark_merged` only while the repository names its commands (MC3). */
+  const listedNow = (tool: ToolSpec) =>
+    tool.name !== 'mark_merged' || services.marks?.configured() === true;
   const tools = MCP_TOOLS.filter(available);
   const ctx: McpContext = {
     services,
@@ -104,20 +112,26 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
     url,
     now,
     askMs,
+    keepMs,
     analysisMs,
     pollMs,
     minuteMs,
     held,
+    lapsed,
     exclusive,
   };
-  const { ask, recorder } = mcpConfirm(ctx);
+  const confirm = mcpConfirm(ctx);
+  const { ask, recorder } = confirm;
   const lookup = mcpLookup(ctx);
   const families = [
     mcpOverview(ctx, lookup),
     mcpWorkspaces(ctx, lookup),
     mcpReviews(ctx, lookup),
-    mcpMerges(lookup),
+    mcpMerges(ctx, lookup),
   ];
+
+  /** A held ask by its ID, while it is held. */
+  const heldOf = (id: string) => held.get(id) ?? null;
 
   /** The tools that run at once. */
   const reads: Record<string, McpRead> = Object.fromEntries(
@@ -164,6 +178,14 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
     recording: ReturnType<typeof recorder>,
   ): Promise<{ text: string; isError?: true } | null> {
     try {
+      // An argument its schema does not name: refused before anything runs (decision 997).
+      const named = Object.keys(tools.find((t) => t.name === name)?.inputSchema.properties ?? {});
+      const unknown = Object.keys(args).find((key) => !named.includes(key));
+      if (unknown !== undefined) {
+        throw new ToolProblem(
+          `unknown argument: ${unknown} (${name} takes ${named.length > 0 ? named.join(', ') : 'none'})`,
+        );
+      }
       const read = reads[name];
       if (read) {
         const value = await read(args, caller, signal);
@@ -173,29 +195,46 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
       }
       const prepare = asking[name];
       if (!prepare) throw new ToolProblem(`unknown tool: ${name}`);
-      const { words: said, act } = await prepare(args, caller, signal);
+      const prepared = await prepare(args, caller, signal);
+      const said = prepared.words;
       const why = await startsAtOnce(name, caller);
       if (why) {
-        recording?.skipped(name, said, why);
-        const started = (await act()) as Record<string, unknown>;
+        const skipped = recording?.skipped(name, prepared, why);
+        if ('items' in prepared) {
+          const out = await confirm.runBatch(null, prepared, undefined);
+          if (skipped) {
+            recording?.done(skipped, { items: confirm.recordedItems(out.results, prepared.did) });
+          }
+          return { text: JSON.stringify({ results: out.results, withoutConfirm: why }) };
+        }
+        const started = (await prepared.act()) as Record<string, unknown>;
         return { text: JSON.stringify({ ...started, withoutConfirm: why }) };
       }
-      const { answer: answered, done, ask: held } = ask(name, said, caller, signal);
+      // A late yes prepares the call again: checked as it is then (MC3, decision 994).
+      const again = () => prepare(args, caller, closing.signal);
+      const {
+        answer: answered,
+        done,
+        ask: held,
+      } = ask(name, prepared, caller, signal, { again, recording });
       recording?.asked(held);
       try {
-        const answer = await answered;
+        const { answer, items } = await answered;
         recording?.answered(held, answer);
         if (answer === 'gone') return null;
         if (answer === 'no') {
           return { text: `The person declined: ${said}. Nothing was done.`, isError: true };
         }
-        if (answer === 'expired') {
+        if (answer === 'expired') return { text: lapsedText(said), isError: true };
+        if ('items' in prepared) {
+          const out = await confirm.runBatch(heldOf(held.id), prepared, items);
+          recording?.done(held, { items: confirm.recordedItems(out.results, prepared.did) });
           return {
-            text: `No answer from the person to: ${said}. Nothing was done; ask them, then call again.`,
-            isError: true,
+            text: JSON.stringify({ results: out.results }),
+            ...(out.none ? { isError: true as const } : {}),
           };
         }
-        return { text: JSON.stringify(await act()) };
+        return { text: JSON.stringify(await prepared.act()) };
       } finally {
         done();
       }
@@ -234,11 +273,14 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
       const p = (params && typeof params === 'object' ? params : {}) as Record<string, unknown>;
       if (method === 'initialize') {
         const why = await startsAtOnce('start_workspace', caller);
+        // MC3: a lapsed Confirm stays on the person's bar; several starts or clean-ups, one call.
+        const lapse =
+          ' Unanswered, a Confirm stays on their Symbiote bar to confirm later: do not ask again unless they say so. Several starts or clean-ups go in one call, one Confirm.';
         const waits = why
           ? `start_workspace starts at once, without the person's Confirm (${
               why === 'hive' ? 'Hive mode is on' : 'their setting in Symbiote'
-            }): say first in one line what you start. The tools that start an agent again, record a verdict, act on a merge or clean up wait for the person's Confirm in Symbiote, 10 minutes at most: say first in one line what you will ask.`
-          : "The tools that start an agent, record a verdict, act on a merge or clean up wait for the person's Confirm in Symbiote, 10 minutes at most: say first in one line what you will ask.";
+            }): say first in one line what you start. The tools that start an agent again, record a verdict, act on a merge, mark merged work or clean up wait for the person's Confirm in Symbiote, 10 minutes at most: say first in one line what you will ask.${lapse}`
+          : `The tools that start an agent, record a verdict, act on a merge, mark merged work or clean up wait for the person's Confirm in Symbiote, 10 minutes at most: say first in one line what you will ask.${lapse}`;
         return reply(id, {
           protocolVersion:
             typeof p.protocolVersion === 'string' ? p.protocolVersion : LATEST_PROTOCOL,
@@ -253,19 +295,20 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
       if (method === 'tools/list') {
         const why = await startsAtOnce('start_workspace', caller);
         return reply(id, {
-          tools: tools.map(({ name, description, inputSchema }) => ({
+          tools: tools.filter(listedNow).map(({ name, description, inputSchema, annotations }) => ({
             name,
             description:
               why && name === 'start_workspace'
                 ? description.replace(ASKS, STARTS_AT_ONCE[why])
                 : description,
             inputSchema,
+            annotations,
           })),
         });
       }
       if (method !== 'tools/call') return failure(id, -32601, `unknown method: ${method}`);
       const name = p.name;
-      if (typeof name !== 'string' || !tools.some((t) => t.name === name)) {
+      if (typeof name !== 'string' || !tools.some((t) => t.name === name && listedNow(t))) {
         return failure(id, -32602, `unknown tool: ${String(name)}`);
       }
       const args = p.arguments ?? {};
@@ -283,22 +326,19 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
 
     asks: () => ({ asks: [...held.values()].map((h) => h.ask) }),
 
-    async answer({ id, yes }) {
-      const found = held.get(id);
-      if (!found) throw new McpRefused(`no ask ${id}`, 404);
-      found.settle(yes ? 'yes' : 'no');
-      // Answered once it is done (30 s at most): the page reads what it changed then.
-      let timer: ReturnType<typeof setTimeout> | undefined;
-      await Promise.race([
-        found.finished,
-        new Promise<void>((resolve) => (timer = setTimeout(resolve, ANSWER_MS))),
-      ]);
-      clearTimeout(timer);
+    async answer(answer) {
+      try {
+        await confirm.answer(answer, ANSWER_MS);
+      } catch (error) {
+        if (error instanceof AnswerRefused) throw new McpRefused(error.message, error.status);
+        throw error;
+      }
       return { asks: [...held.values()].map((h) => h.ask) };
     },
 
     close() {
       closing.abort();
+      for (const h of held.values()) if (h.keep) clearTimeout(h.keep);
     },
   };
 }

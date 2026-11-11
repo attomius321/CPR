@@ -674,16 +674,19 @@ describe('agentState', () => {
     );
   });
 
-  it('reads a turn interrupted with Esc as waiting for the person', () => {
+  it('reads a turn interrupted with Esc as waiting for the person, from its transcript (MC3, decision 995)', () => {
     // Measured (V21 spike): after Esc no hook fires, and Claude Code says `status: idle` with
-    // `state: working` until the next turn ends.
+    // `state: working` until the next turn ends; it writes the Esc into the transcript.
     const f = record();
-    expect(at(f, [session({ state: 'working', status: 'idle' })])).toEqual({
+    const idle = [session({ state: 'working', status: 'idle' })];
+    expect(agentState(f, idle, 0, (p) => p, false, true)).toEqual({
       state: 'needs-you',
       kind: 'claude',
       id: 'abc',
       interrupted: true,
     });
+    // The same listing with no Esc recorded: a turn submitted and not begun (a start, a resume).
+    expect(at(f, idle)).toEqual({ state: 'working', kind: 'claude', id: 'abc' });
     expect(at(f, [session({ state: 'working', status: 'busy' })]).state).toBe('working');
     // The thread says the turn ended with a report: finished, whatever `state` still says.
     expect(
@@ -733,8 +736,11 @@ describe('reviewPlace in a linked worktree', () => {
 });
 
 describe('workspaces', () => {
-  /** A fake Claude Code: records what it is asked to start, lists the sessions given. */
-  function fakeClaude() {
+  /**
+   * A fake Claude Code: records what it is asked to start, lists the sessions given; a started
+   * one as `listedAs` says (busy unless given).
+   */
+  function fakeClaude(listedAs: Partial<AgentSession> = {}) {
     const listed: AgentSession[] = [];
     const start = vi.fn<ClaudeCode['start']>(({ cwd }) => {
       listed.push({
@@ -745,6 +751,7 @@ describe('workspaces', () => {
         sessionId: 'session-1',
         state: 'working',
         status: 'busy',
+        ...listedAs,
       });
       return Promise.resolve({ ok: true });
     });
@@ -1043,6 +1050,48 @@ describe('workspaces', () => {
     utimesSync(join(uploads, 'notes.txt'), eightDays, eightDays);
     const next = await s.saveDocument('shot.png', Buffer.from('png'));
     expect(readdirSync(uploads).sort()).toEqual([saved.id, next.id, 'notes.txt'].sort());
+  });
+
+  it('reads a start Claude Code lists working and idle as working until its transcript records an Esc (MC3, decision 995)', async () => {
+    // Measured on feature/v99 (2026-11-10): the start's own answer read `needs-you`,
+    // `interrupted` 0.4 s before the session's first request; nothing had recorded an Esc.
+    const { repo } = fresh();
+    const { claude } = fakeClaude({ status: 'idle' });
+    const s = await service(repo, claude);
+    const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    expect(workspace.agent).toEqual({ state: 'working', kind: 'claude', id: 's1' });
+    // Its hooks name the transcript; Claude Code writes the person's Esc there.
+    const symbiote = join(repo.root, 'symbiote');
+    const transcript = join(tempDir(), 'session-1.jsonl');
+    const line = (fields: Record<string, unknown>) => `${JSON.stringify(fields)}\n`;
+    writeFileSync(
+      transcript,
+      line({ type: 'user', isSidechain: false, message: { role: 'user', content: 'One' } }),
+    );
+    const at = new Date(Date.now() + 1000).toISOString();
+    await appendThread(symbiote, 'feature/one', {
+      at,
+      session: 'session-1',
+      kind: 'prompt',
+      text: 'One',
+      transcript,
+    });
+    const read = async () =>
+      (await s.list()).workspaces.find((w) => w.branch === 'feature/one')?.agent;
+    expect(await read()).toMatchObject({ state: 'working' });
+    appendFileSync(
+      transcript,
+      line({
+        type: 'user',
+        isSidechain: false,
+        message: {
+          role: 'user',
+          content: [{ type: 'text', text: '[Request interrupted by user]' }],
+        },
+        interruptedMessageId: 'msg_1',
+      }),
+    );
+    expect(await read()).toMatchObject({ state: 'needs-you', interrupted: true });
   });
 
   it('starts a workspace with documents: moved beside its record, named in its prompt, kept by the record (V40)', async () => {
@@ -2664,7 +2713,7 @@ describe('workspaces', () => {
     });
   });
 
-  it('reads a reported turn as finished while Claude Code lists it working and idle; with no report, interrupted (decision 810)', async () => {
+  it('reads a reported turn as finished while Claude Code lists it working and idle; with no report and no Esc recorded, working (decision 810, MC3)', async () => {
     const { repo } = fresh();
     const { claude, listed } = fakeClaude();
     const s = await service(repo, claude);
@@ -2680,10 +2729,11 @@ describe('workspaces', () => {
       { hook_event_name: 'UserPromptSubmit', prompt: 'Start' },
       '2026-10-15T09:00:01.000Z',
     );
-    // No report after the prompt: an Esc, as before.
-    expect((await s.list()).workspaces[0]?.agent).toMatchObject({
-      state: 'needs-you',
-      interrupted: true,
+    // No report after the prompt and no Esc in a transcript: the turn works (decision 995).
+    expect((await s.list()).workspaces[0]?.agent).toEqual({
+      state: 'working',
+      kind: 'claude',
+      id: 's1',
     });
     await event(
       { hook_event_name: 'Stop', last_assistant_message: 'Done.' },

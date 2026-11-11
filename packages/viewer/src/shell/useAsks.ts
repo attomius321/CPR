@@ -18,10 +18,11 @@ let timer: ReturnType<typeof setTimeout> | undefined;
 /** No MCP here (`symbiote pr`): read once, then never again. */
 let none = false;
 
-const ids = (asks: readonly McpAsk[]) => asks.map((ask) => ask.id).join(' ');
+/** What the asks say: a batch's rows change state while it is done (MC3), not only which asks. */
+const said = (asks: readonly McpAsk[]) => JSON.stringify(asks);
 
 function set(next: McpAsk[]): void {
-  if (ids(next) === ids(current)) return;
+  if (said(next) === said(current)) return;
   current = next;
   for (const listener of listeners) listener(current);
 }
@@ -74,10 +75,11 @@ export function useAsks(): McpAsk[] {
 }
 
 /**
- * The person's answer to an ask: what the agent asked is done (yes) or not. Answered once it is
- * done: the workspaces, reviews and merges are read again then, as after a page's own action.
+ * The person's answer to an ask: what the agent asked is done (yes) or not; a batch's ticked
+ * items (MC3). Answered once it is done: the workspaces, reviews and merges are read again then,
+ * as after a page's own action.
  */
-export async function answerAsk(id: string, yes: boolean): Promise<void> {
-  set((await postJson<McpAsks>('/api/mcp/answer', { id, yes })).asks);
+export async function answerAsk(id: string, yes: boolean, items?: string[]): Promise<void> {
+  set((await postJson<McpAsks>('/api/mcp/answer', { id, yes, ...(items ? { items } : {}) })).asks);
   if (yes) await reloadWorkspaces();
 }

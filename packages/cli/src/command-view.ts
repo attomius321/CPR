@@ -43,6 +43,7 @@ import { vsCodeFolder, vsCodeOpener } from './editor.js';
 import { fileStateStore, stateDir } from './state.js';
 import { branchReviews, reviewPlace } from './reviews.js';
 import { merger } from './merges.js';
+import { markMerged } from './mark-merged.js';
 import { projectCheck } from './merge-config.js';
 import { promptSettingsService } from './prompt-settings.js';
 import { checkSettingService } from './check-setting.js';
@@ -293,6 +294,8 @@ export async function view(argv: string[], ctx: CliContext): Promise<number> {
       }),
       terminals,
       merges: repoMerges,
+      // MC3 (decision 990): merged work marked in the docs, where the repository says how.
+      marks: markMerged(repo, cacheDir),
       hiveWorkspace: hiveWorkspace(repo, cacheDir, { hive }),
       // The Overview's read of the days (V91, decision 852).
       day: workspaceDay(repo, cacheDir),
@@ -356,6 +359,8 @@ export async function view(argv: string[], ctx: CliContext): Promise<number> {
     // The check Hive would run (V92): the default checkout's, as the runner finds it.
     hiveCheck: () => projectCheck(repo, repo.root, 'HEAD'),
     nucleusStart: nucleusStartSetting,
+    // How long an MCP ask waits before it lapses: 10 minutes unless set (the viewer's e2e sets it).
+    ...(Number(ctx.env.SYMBIOTE_ASK_MS) > 0 ? { askMs: Number(ctx.env.SYMBIOTE_ASK_MS) } : {}),
     // The page's stream (V94); `SYMBIOTE_EVENTS=off`: the pages poll as before.
     events: ctx.env.SYMBIOTE_EVENTS !== 'off',
     log,

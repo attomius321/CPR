@@ -13,9 +13,11 @@ export function mcpOverview(
   {
     services,
     held,
+    lapsed,
+    now,
     minuteMs,
     pollMs,
-  }: Pick<McpContext, 'services' | 'held' | 'minuteMs' | 'pollMs'>,
+  }: Pick<McpContext, 'services' | 'held' | 'lapsed' | 'now' | 'minuteMs' | 'pollMs'>,
   { service, states }: Pick<McpLookup, 'service' | 'states'>,
 ) {
   const reads: Record<string, McpRead> = {
@@ -27,9 +29,24 @@ export function mcpOverview(
       ]);
       const workspaces = list?.workspaces ?? [];
       const merges = (queue?.merges ?? []).filter((e) => e.state !== 'landed');
+      // A merged workspace is done, as the page's Done group has it (MC3, decision 993): counted as
+      // merged, never among what needs the person.
       const counts: Record<string, number> = {};
-      for (const w of workspaces) counts[w.agent.state] = (counts[w.agent.state] ?? 0) + 1;
-      const open = [...held.values()].map((h) => h.ask.words);
+      for (const w of workspaces) {
+        const state = w.merged ? 'merged' : w.agent.state;
+        counts[state] = (counts[state] ?? 0) + 1;
+      }
+      // The asks that wait; lapsed ones, kept for a late yes, with what became of them (MC3).
+      const open = [...held.values()].filter((h) => !h.ask.stage).map((h) => h.ask.words);
+      const at = now().getTime();
+      const late = [...lapsed.values()]
+        .filter((l) => l.until > at)
+        .map((l) => ({
+          words: l.words,
+          asked: l.asked,
+          now: l.now,
+          ...(l.results ? { results: l.results } : {}),
+        }));
       return {
         ...(services.name ? { repository: services.name } : {}),
         checkout: {
@@ -40,7 +57,7 @@ export function mcpOverview(
         },
         needsYou: [
           ...workspaces
-            .filter((w) => WORKSPACE_NEEDS.has(w.agent.state))
+            .filter((w) => !w.merged && WORKSPACE_NEEDS.has(w.agent.state))
             .map((w) => ({
               workspace: w.branch,
               state: w.agent.state,
@@ -59,6 +76,7 @@ export function mcpOverview(
         workspaces: counts,
         merges: merges.map((e) => ({ id: e.id, branch: e.branch, into: e.into, state: e.state })),
         ...(open.length > 0 ? { asks: open } : {}),
+        ...(late.length > 0 ? { lapsed: late } : {}),
       };
     },
 

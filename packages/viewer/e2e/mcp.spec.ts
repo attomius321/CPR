@@ -107,10 +107,12 @@ test("Nucleus reviews a branch, approves it and queues its merge, each on the pe
 
   // An approval waits for the person, on whatever page they are.
   await page.goto(`${running.url}history`);
+  // merge: false, the verdict alone (MC3); its merge is asked for below.
   const approving = nucleus.call('finish_review', {
     branch: 'agent',
     event: 'approve',
     summary: 'Square and cube, as asked.',
+    merge: false,
   });
   await expect(ask(page)).toBeVisible(POLL);
   await expect(ask(page)).toHaveAccessibleName('Nucleus asks');
@@ -291,4 +293,133 @@ test("Nucleus starts a workspace without the person's Confirm once they turn it 
   expect(await startDescription()).toContain("Waits for the person's Confirm");
   expect(existsSync(setting)).toBe(true);
   expect(JSON.parse(readFileSync(setting, 'utf8'))).toEqual({ on: false });
+});
+
+// MC3: one Confirm for many starts or clean-ups (decisions 987, 988), and a Confirm that lapses
+// (decision 994), through Nucleus's bridge and the fake agent.
+/** The bar, waiting ("… asks") or past it ("… asked"). */
+const bar = (page: Page) => page.locator('section.ask-bar');
+
+const brief3 = (branch: string, title: string) => ({
+  kind: 'fix',
+  title,
+  branch,
+  parts: { happens: 'It subtracts the percent as cents' },
+  planFirst: true,
+});
+
+test('Nucleus starts three workspaces with one Confirm, one unticked, and cleans them up with another, one that cannot be kept to read (MC3)', async ({
+  page,
+}) => {
+  const running = await serveWorkspaces();
+  symbiote = running;
+  const nucleus = client(
+    [BRIDGE, '--as', 'nucleus', '--view', record(running.cache)],
+    running.repo,
+  );
+  await nucleus.request('initialize', { clientInfo: { name: 'claude-code', version: '2' } });
+  await page.goto(`${running.url}git`);
+  const starting = nucleus.call('start_workspace', {
+    workspaces: [brief3('fix/one', 'One'), brief3('fix/two', 'Two'), brief3('fix/three', 'Three')],
+  });
+  await expect(bar(page).locator('.ask-head .ask-words')).toHaveText(
+    'Nucleus asks: Start 3 workspaces',
+    POLL,
+  );
+  const rows = bar(page).locator('.ask-item');
+  await expect(rows).toHaveCount(3);
+  await expect(rows.nth(0)).toContainText('fix/one');
+  await expect(rows.nth(0)).toContainText('“One”, with Claude Code, plan first');
+  await expect(bar(page).getByRole('button', { name: 'Confirm 3' })).toBeEnabled();
+  await bar(page)
+    .getByRole('checkbox', { name: /fix\/three/ })
+    .uncheck();
+  await expect(bar(page).locator('.ask-note')).toHaveText(
+    'Unticked ones are declined when you confirm.',
+  );
+  await bar(page).getByRole('button', { name: 'Confirm 2' }).click();
+  const started = await starting;
+  expect(started.isError).toBe(false);
+  expect(started.value).toMatchObject({
+    results: [
+      { branch: 'fix/one', outcome: 'started', workspace: { branch: 'fix/one' } },
+      { branch: 'fix/two', outcome: 'started', workspace: { branch: 'fix/two' } },
+      { branch: 'fix/three', outcome: 'declined' },
+    ],
+  });
+  // All done: the bar goes, the cards say it.
+  await expect(bar(page)).toHaveCount(0, POLL);
+  await expect(page.locator('.sidenav [data-branch="fix/one"]')).toBeVisible(POLL);
+  await expect(page.locator('.sidenav [data-branch="fix/two"]')).toBeVisible(POLL);
+  await expect(page.locator('.sidenav [data-branch="fix/three"]')).toHaveCount(0);
+
+  // Both cleaned up in one Confirm; one with a file not committed can't be, and says why.
+  writeFileSync(join(`${running.repo}.worktrees`, 'fix-one', 'note.txt'), 'kept\n');
+  const cleaning = nucleus.call('clean_workspace', {
+    branches: ['fix/one', 'fix/two'],
+    unmerged: true,
+  });
+  await expect(bar(page).locator('.ask-head .ask-words')).toContainText(
+    'Nucleus asks: Clean up 2 workspaces',
+    POLL,
+  );
+  await expect(bar(page).getByRole('checkbox', { name: /fix\/one/ })).toBeDisabled();
+  await expect(rows.nth(0).locator('.ask-item-why')).toHaveText(
+    'Can’t: 1 file not committed in its worktree: commit or remove it first',
+  );
+  await expect(rows.nth(1)).toContainText('not merged: its branch stays');
+  await bar(page).getByRole('button', { name: 'Confirm 1' }).click();
+  expect((await cleaning).value).toMatchObject({
+    results: [
+      { branch: 'fix/one', outcome: 'cant' },
+      { branch: 'fix/two', outcome: 'cleaned' },
+    ],
+  });
+  // Kept to be read: one could not be done.
+  await expect(bar(page).locator('.ask-tally')).toHaveText('1 cleaned up, 1 can’t', POLL);
+  await expect(rows.nth(1).locator('.ask-item-state')).toHaveText('Cleaned up');
+  await bar(page).getByRole('button', { name: 'Close' }).click();
+  await expect(bar(page)).toHaveCount(0, POLL);
+  await expect(page.locator('.sidenav [data-branch="fix/two"]')).toHaveCount(0, POLL);
+  await expect(page.locator('.sidenav [data-branch="fix/one"]')).toBeVisible();
+});
+
+test("a Confirm nobody answers lapses and stays on the person's bar; confirmed late it is done, dismissed it goes (MC3)", async ({
+  page,
+}) => {
+  const running = await serveWorkspaces({ env: { SYMBIOTE_ASK_MS: '1500' } });
+  symbiote = running;
+  const nucleus = client(
+    [BRIDGE, '--as', 'nucleus', '--view', record(running.cache)],
+    running.repo,
+  );
+  await nucleus.request('initialize', { clientInfo: { name: 'claude-code', version: '2' } });
+  await page.goto(`${running.url}git`);
+  const lapsing = await nucleus.call('start_workspace', brief3('fix/late', 'Late'));
+  expect(lapsing.isError).toBe(true);
+  expect(lapsing.text).toContain('the ask stays on their Symbiote bar for 24 hours');
+  await expect(bar(page)).toHaveClass(/lapsed/, POLL);
+  await expect(bar(page)).toHaveAccessibleName('Nucleus asked');
+  await expect(bar(page).locator('.ask-words')).toContainText(
+    'Start fix/late, "Late", with Claude Code, plan first',
+  );
+  await expect(bar(page).locator('.ask-words .ask-who')).toHaveText(/^Nucleus asked at .+:$/);
+  await expect(bar(page).locator('.ask-left')).toHaveText('No answer in time: nothing done yet');
+  // Still the person's to answer: Nucleus's mark says so.
+  await expect(nucleusLink(page)).toHaveAttribute('data-tip', 'Nucleus\nWaits for you');
+  await bar(page).getByRole('button', { name: 'Confirm' }).click();
+  await expect(bar(page)).toHaveCount(0, POLL);
+  await expect(page.locator('.sidenav [data-branch="fix/late"]')).toBeVisible(POLL);
+  expect((await nucleus.call('overview')).value.lapsed).toMatchObject([{ now: 'done' }]);
+
+  // Another lapses; Dismiss ends it, nothing done.
+  await nucleus.call('start_workspace', brief3('fix/never', 'Never'));
+  await expect(bar(page)).toHaveClass(/lapsed/, POLL);
+  await bar(page).getByRole('button', { name: 'Dismiss' }).click();
+  await expect(bar(page)).toHaveCount(0, POLL);
+  await expect(page.locator('.sidenav [data-branch="fix/never"]')).toHaveCount(0);
+  expect((await nucleus.call('overview')).value.lapsed).toMatchObject([
+    { now: 'done' },
+    { now: 'dismissed' },
+  ]);
 });

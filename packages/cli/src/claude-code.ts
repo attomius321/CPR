@@ -239,7 +239,9 @@ export const isBlocked = (session: AgentSession) =>
  * plan from finished work. `ended`: the thread says its last turn ended (V18c) — Claude Code reads
  * a finished plan as `blocked` with nothing named it waits for, so that is a finished turn. A
  * turn interrupted with Esc fires no hook and reads `idle` with `working` until the next one ends;
- * so can a turn that ended with its report (decision 810), which `ended` tells apart.
+ * so can a turn that ended with its report (decision 810), which `ended` tells apart, and a turn
+ * just submitted to a session started or resumed. `interrupted`: its transcript records the Esc
+ * (decision 995); without it the turn is working, never guessed stopped.
  */
 export function agentState(
   workspace: WorkspaceFile,
@@ -247,6 +249,7 @@ export function agentState(
   ahead: number,
   real: (path: string) => string,
   ended = false,
+  interrupted = false,
 ): WorkspaceAgentState {
   const { agent } = workspace;
   if (!agent) return { state: 'no-agent' };
@@ -267,7 +270,10 @@ export function agentState(
     case 'working':
       if (session.status !== 'idle') return { state: 'working', kind, ...id };
       if (ended) return { state: finished(), kind, ...id };
-      return { state: 'needs-you', kind, ...id, ...waiting, interrupted: true };
+      // What it names it waits for, or the Esc its transcript records; else the turn works.
+      if (session.waitingFor) return { state: 'needs-you', kind, ...id, ...waiting };
+      if (!interrupted) return { state: 'working', kind, ...id };
+      return { state: 'needs-you', kind, ...id, interrupted: true };
     case 'busy':
       return { state: 'working', kind, ...id };
     case 'blocked':
