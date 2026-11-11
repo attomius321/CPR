@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import type { Graph } from '@symbiote/core';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { Graph, ReviewFile } from '@symbiote/core';
 import {
   newDraft,
   newLineDraft,
@@ -9,27 +9,56 @@ import {
   type ReviewDraft,
   type ReviewEvent,
 } from './comments.js';
-import { toggleFileMark, toggleMark, type Marks } from './review.js';
+import { readChangeFiles } from './change-files.js';
+import {
+  derivedMarks,
+  toggleFileMark,
+  toggleFileSymbols,
+  toggleFileViewed,
+  toggleMark,
+  type Marks,
+} from './review.js';
 import { asMarks, asReviewDraft, type Store } from './store.js';
 
 /**
- * A diff's review as the person makes it: the symbols marked reviewed and the draft comments and
- * summary, read from `store` for each graph and saved there as they change; the verdict picked,
- * kept for both pages (`g` between them) and never saved: a verdict is given to the head shown.
+ * A diff's review as the person makes it: the symbols marked reviewed, the files viewed and the
+ * draft comments and summary, read from `store` for each graph and saved there as they change; the
+ * verdict picked, kept for both pages (`g` between them) and never saved: a verdict is given to the
+ * head shown.
+ *
+ * `marks` are what both pages read (V108, decision 983): the person's own, kept in the store as
+ * before (an older review's load as they are), derived both ways against the change's files and
+ * their blobs, which the server that keeps them gives (`./api/files`).
  */
 export function useReview(graph: Graph | undefined, store: Store | undefined) {
-  const [marks, setMarks] = useState<Marks>({});
+  const [own, setOwn] = useState<Marks>({});
+  const [files, setFiles] = useState<readonly ReviewFile[]>([]);
   const [draft, setDraft] = useState<ReviewDraft>({ drafts: [], body: '' });
   const [verdict, setVerdict] = useState<ReviewEvent>('comment');
   useEffect(() => {
+    setFiles([]);
+    if (!graph || !store?.server) return;
+    let live = true;
+    void readChangeFiles(graph).then((read) => {
+      if (live && read) setFiles(read);
+    });
+    return () => {
+      live = false;
+    };
+  }, [graph, store]);
+  // Until the server's files arrive, and without a server, the graph's own: no blobs, so a file
+  // reads viewed through its symbols only.
+  const known = useMemo(() => (files.length > 0 || !graph ? files : graph.files), [files, graph]);
+  const marks = useMemo(() => (graph ? derivedMarks(graph, known, own) : own), [graph, known, own]);
+  useEffect(() => {
     if (!graph || !store) return;
     let live = true;
-    setMarks({});
+    setOwn({});
     setDraft({ drafts: [], body: '' });
     setVerdict('comment');
     void Promise.all([store.load('review'), store.load('drafts')]).then(([marks, drafts]) => {
       if (!live) return;
-      setMarks(asMarks(marks));
+      setOwn(asMarks(marks));
       // Under `symbiote pr`, drafts may come from an earlier push of the change.
       const saved = asReviewDraft(drafts);
       const loaded = { ...saved, drafts: refreshDrafts(graph, saved.drafts) };
@@ -57,28 +86,37 @@ export function useReview(graph: Graph | undefined, store: Store | undefined) {
     [store],
   );
 
+  /**
+   * A symbol (or a stylesheet, V105) reviewed or not; with `whole`, every changed symbol of its
+   * file (`R`, V108, decision 985).
+   */
   const toggleReviewed = useCallback(
-    (id: string) => {
+    (id: string, whole?: 'file') => {
       if (!graph) return;
-      setMarks((current) => {
-        const next = toggleMark(graph, current, id);
-        store?.save('review', next);
-        return next;
-      });
-    },
-    [graph, store],
-  );
-
-  /** A file viewed on the Files page, or not (V90): a mark by its blob. */
-  const toggleViewed = useCallback(
-    (file: { path: string; blob?: string }) => {
-      setMarks((current) => {
-        const next = toggleFileMark(current, file);
+      setOwn((current) => {
+        const next =
+          whole === 'file'
+            ? toggleFileSymbols(graph, known, current, id)
+            : toggleMark(graph, current, id, known);
         if (next !== current) store?.save('review', next);
         return next;
       });
     },
-    [store],
+    [graph, store, known],
+  );
+
+  /** A file viewed on the Files page, or not (V90): a mark by its blob; its symbols' too (V108). */
+  const toggleViewed = useCallback(
+    (file: { path: string; previousPath?: string; blob?: string }) => {
+      setOwn((current) => {
+        const next = graph
+          ? toggleFileViewed(graph, known, current, file)
+          : toggleFileMark(current, file);
+        if (next !== current) store?.save('review', next);
+        return next;
+      });
+    },
+    [graph, store, known],
   );
 
   const addDraft = useCallback(

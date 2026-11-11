@@ -1,4 +1,12 @@
-import type { Finding, Graph, GraphNode, GraphSide, Project, Severity } from '@symbiote/core';
+import type {
+  Finding,
+  Graph,
+  GraphNode,
+  GraphSide,
+  Project,
+  ReviewFile,
+  Severity,
+} from '@symbiote/core';
 import {
   groupOf,
   label,
@@ -294,6 +302,61 @@ export type Marks = Readonly<Record<string, string>>;
 
 const FILE_MARK = 'file:';
 
+/** A changed file as the review reads it: its path, a renamed file's old one, git's blob. */
+type ChangedPath = Pick<ReviewFile, 'path' | 'previousPath' | 'blob'>;
+
+/**
+ * Each changed file's changed symbols, by the file's path, in the graph's order (V108). A symbol is
+ * in its file: the head's, the base's for a removed one, which a renamed file holds under its new
+ * path (as `fileFindings` places a finding). A file with none has no entry; a symbol in none of
+ * `files` (a graph opened from a file has none) is under its own file.
+ */
+export function fileSymbols(graph: Graph, files: readonly ChangedPath[]): Map<string, GraphNode[]> {
+  const rows = new Map<string, string>();
+  for (const file of files) if (file.previousPath) rows.set(file.previousPath, file.path);
+  for (const file of files) rows.set(file.path, file.path);
+  const held = new Map<string, GraphNode[]>();
+  for (const node of graph.nodes) {
+    const own = (node.head ?? node.base)?.file;
+    if (node.status === 'unchanged' || own === undefined) continue;
+    const path = rows.get(own) ?? own;
+    held.set(path, [...(held.get(path) ?? []), node]);
+  }
+  return held;
+}
+
+/**
+ * The marks both pages read (V108, decision 983): the person's own, derived both ways. A file
+ * marked viewed at the blob it has now reviews its changed symbols; a file whose changed symbols
+ * all carry their own current marks is viewed, with or without a blob (a graph opened from a file
+ * has none). A file's own mark is kept only while current, so a `file:<path>` here means viewed
+ * now (`viewedIn`): changed since (843), or without a blob to check it by, it is left out.
+ * Symbols' marks are kept as given: one changed since is still found stale (`reviewStatus`). The
+ * store keeps only the person's own.
+ */
+export function derivedMarks(graph: Graph, files: readonly ChangedPath[], marks: Marks): Marks {
+  const held = fileSymbols(graph, files);
+  const next: Record<string, string> = {};
+  for (const [key, mark] of Object.entries(marks)) {
+    if (!key.startsWith(FILE_MARK)) next[key] = mark;
+  }
+  for (const file of files) {
+    const symbols = held.get(file.path) ?? [];
+    if (file.blob !== undefined && fileViewed(marks, file)) {
+      next[`${FILE_MARK}${file.path}`] = file.blob;
+      for (const node of symbols) next[node.id] = fingerprint(node);
+    } else if (symbols.length > 0 && symbols.every((n) => marks[n.id] === fingerprint(n))) {
+      next[`${FILE_MARK}${file.path}`] = file.blob ?? '';
+    }
+  }
+  return next;
+}
+
+/** Whether `path` reads viewed in marks as `derivedMarks` gives them. */
+export function viewedIn(marks: Marks, path: string): boolean {
+  return marks[`${FILE_MARK}${path}`] !== undefined;
+}
+
 /** Whether `file` was marked viewed at the blob it has now. */
 export function fileViewed(marks: Marks, file: { path: string; blob?: string }): boolean {
   return file.blob !== undefined && marks[`${FILE_MARK}${file.path}`] === file.blob;
@@ -338,11 +401,16 @@ export function reviewProgress(
 }
 
 export interface ReviewStatus {
+  /**
+   * The changed symbols reviewed, by ID, and the files viewed, as `file:<path>` (the marks' own
+   * keys, 843): the Graph page counts files viewed from it (V108).
+   */
   reviewed: Set<string>;
   /** Marked reviewed, but the symbol changed since. */
   stale: Set<string>;
 }
 
+/** What `marks` say, read as `derivedMarks` gives them: a file mark there is a file viewed now. */
 export function reviewStatus(graph: Graph, marks: Marks): ReviewStatus {
   const status: ReviewStatus = { reviewed: new Set(), stale: new Set() };
   for (const node of graph.nodes) {
@@ -350,15 +418,36 @@ export function reviewStatus(graph: Graph, marks: Marks): ReviewStatus {
     if (node.status === 'unchanged' || mark === undefined) continue;
     (mark === fingerprint(node) ? status.reviewed : status.stale).add(node.id);
   }
+  for (const key of Object.keys(marks)) if (key.startsWith(FILE_MARK)) status.reviewed.add(key);
   return status;
+}
+
+/** The changed symbol `id`, or a stylesheet card's first rule (V105); undefined for any other. */
+function changedNode(graph: Graph, id: string): GraphNode | undefined {
+  const node = graph.nodes.find((n) => n.id === id && n.status !== 'unchanged');
+  if (node) return node;
+  const file = [...stylesheetFiles(graph.nodes)].find((f) => stylesheetId(f) === id);
+  return file === undefined
+    ? undefined
+    : graph.nodes.find((n) => n.status !== 'unchanged' && groupOf(n).file === file);
 }
 
 /**
  * Marks or unmarks a symbol; marks of symbols no longer in the change are dropped, files' viewed
  * marks kept (the Files page keeps them). A stylesheet of changed rules is marked as one (V105,
  * decision 980), by its card's id or any of its rules: all of them, or none once all are.
+ *
+ * With the change's `files` (their blobs), it toggles what both pages read (V108, decision 983): a
+ * symbol reviewed through its file's mark is unmarked by dropping that mark, its file's other
+ * symbols keeping their review as marks of their own. Marking a file's last symbol leaves no file
+ * mark: the file reads viewed through them.
  */
-export function toggleMark(graph: Graph, marks: Marks, id: string): Marks {
+export function toggleMark(
+  graph: Graph,
+  marks: Marks,
+  id: string,
+  files: readonly ChangedPath[] = [],
+): Marks {
   const changed = new Map(
     graph.nodes.filter((n) => n.status !== 'unchanged').map((n) => [n.id, n]),
   );
@@ -376,10 +465,137 @@ export function toggleMark(graph: Graph, marks: Marks, id: string): Marks {
   for (const [key, mark] of Object.entries(marks)) {
     if (changed.has(key) || key.startsWith(FILE_MARK)) next[key] = mark;
   }
-  const all = nodes.every((n) => marks[n.id] === fingerprint(n));
-  for (const n of nodes) {
-    if (all) delete next[n.id];
-    else next[n.id] = fingerprint(n);
+  const read = derivedMarks(graph, files, marks);
+  const all = nodes.every((n) => read[n.id] === fingerprint(n));
+  if (!all) {
+    for (const n of nodes) next[n.id] = fingerprint(n);
+    return next;
+  }
+  const targets = new Set(nodes.map((n) => n.id));
+  for (const n of nodes) delete next[n.id];
+  const held = fileSymbols(graph, files);
+  for (const viewed of files.filter((f) => fileViewed(marks, f))) {
+    const symbols = held.get(viewed.path) ?? [];
+    if (!symbols.some((n) => targets.has(n.id))) continue;
+    delete next[`${FILE_MARK}${viewed.path}`];
+    for (const n of symbols) if (!targets.has(n.id)) next[n.id] = fingerprint(n);
   }
   return next;
+}
+
+/**
+ * A file viewed or not on the Files page (V108, decision 983), as both pages read it: one not
+ * viewed is marked at its blob, its symbols reviewed through the mark; one viewed loses its mark,
+ * and its symbols' own marks too when they alone would keep it viewed. A file git gave no blob for
+ * cannot be marked.
+ */
+export function toggleFileViewed(
+  graph: Graph,
+  files: readonly ChangedPath[],
+  marks: Marks,
+  file: ChangedPath,
+): Marks {
+  if (file.blob === undefined) return marks;
+  const key = `${FILE_MARK}${file.path}`;
+  if (!fileViewed(derivedMarks(graph, files, marks), file)) return { ...marks, [key]: file.blob };
+  const next: Record<string, string> = { ...marks };
+  delete next[key];
+  const symbols = fileSymbols(graph, files).get(file.path) ?? [];
+  if (symbols.length > 0 && symbols.every((n) => marks[n.id] === fingerprint(n))) {
+    for (const n of symbols) delete next[n.id];
+  }
+  return next;
+}
+
+/**
+ * `R` (V108, decision 985): every changed symbol of the file holding `id` marked reviewed, each
+ * with a mark of its own, in one write; once all are reviewed, all unmarked, the file's mark
+ * dropped. The rest of the review is kept.
+ */
+export function toggleFileSymbols(
+  graph: Graph,
+  files: readonly ChangedPath[],
+  marks: Marks,
+  id: string,
+): Marks {
+  const node = changedNode(graph, id);
+  if (!node) return marks;
+  const held = fileSymbols(graph, files);
+  const [path, symbols] = [...held].find(([, nodes]) => nodes.includes(node)) ?? [];
+  if (path === undefined || !symbols) return marks;
+  const read = derivedMarks(graph, files, marks);
+  const reviewed = (n: GraphNode) => read[n.id] === fingerprint(n);
+  const next: Record<string, string> = { ...marks };
+  if (symbols.every(reviewed)) {
+    for (const n of symbols) delete next[n.id];
+    delete next[`${FILE_MARK}${path}`];
+  } else {
+    for (const n of symbols) if (!reviewed(n)) next[n.id] = fingerprint(n);
+  }
+  return next;
+}
+
+/** How far the review is (V108, decision 984): what both pages' line shows. */
+export interface ProgressLine {
+  files: { done: number; total: number };
+  /** Items: a changed symbol, or a stylesheet's rules as one (980); `sheets` of them stylesheets. */
+  items: { done: number; total: number; sheets: number };
+  /** Listed findings on changed symbols not reviewed yet. */
+  findings: number;
+  /** Each item, and each file holding none, once: full when nothing is left. */
+  bar: { done: number; total: number };
+  /** The files not viewed, in the order given. */
+  filesLeft: string[];
+  /** The items not reviewed, by their first symbol, in the list's order. */
+  itemsLeft: string[];
+}
+
+/**
+ * The review's progress line, the same on both pages (V108, decision 984): `files` in the page's
+ * order (without blobs on the Graph page), the change list, `reviewed` from `reviewStatus` over
+ * `derivedMarks` (symbols, and files as `file:<path>`), the findings the Findings tab lists.
+ */
+export function progressLine(
+  files: readonly ChangedPath[],
+  list: readonly FileChanges[],
+  reviewed: ReadonlySet<string>,
+  findings: readonly Finding[],
+): ProgressLine {
+  const items = reviewItems(list);
+  const itemsLeft = items.filter((item) => !item.every((id) => reviewed.has(id)));
+  const filesLeft = files.filter((f) => !reviewed.has(`${FILE_MARK}${f.path}`)).map((f) => f.path);
+  const rows = new Map<string, string>();
+  for (const file of files) if (file.previousPath) rows.set(file.previousPath, file.path);
+  const holding = new Set(list.map((f) => rows.get(f.file) ?? f.file));
+  const bare = files.filter((f) => !holding.has(f.path));
+  const bareLeft = bare.filter((f) => !reviewed.has(`${FILE_MARK}${f.path}`)).length;
+  const symbols = new Set(items.flat());
+  const done = items.length - itemsLeft.length;
+  return {
+    files: { done: files.length - filesLeft.length, total: files.length },
+    items: { done, total: items.length, sheets: list.filter((f) => f.stylesheet).length },
+    findings: findings.filter((f) => symbols.has(f.symbol) && !reviewed.has(f.symbol)).length,
+    bar: { done: done + bare.length - bareLeft, total: items.length + bare.length },
+    filesLeft,
+    itemsLeft: itemsLeft.map((item) => item[0] ?? '').filter(Boolean),
+  };
+}
+
+/**
+ * The line's "next": the first of `left` after `current` in `order`, wrapping around; the first
+ * left when `current` is none or not in `order`; null when nothing is left.
+ */
+export function leftAfter(
+  order: readonly string[],
+  left: readonly string[],
+  current: string | null,
+): string | null {
+  if (left.length === 0) return null;
+  const remaining = new Set(left);
+  const at = current === null ? -1 : order.indexOf(current);
+  for (let step = 1; step <= order.length; step++) {
+    const next = order[(at + step + order.length) % order.length];
+    if (next !== undefined && remaining.has(next)) return next;
+  }
+  return left[0] ?? null;
 }

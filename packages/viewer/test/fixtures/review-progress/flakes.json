@@ -1,0 +1,928 @@
+{
+ "about": "The changed symbols (id, name, kind, language, status; file, range and hashes per side), files with their blobs (git diff --raw) and findings (without related) of symbiote diff on Symbiote, fix/e2e-flakes merge 4cbcae0c (4cbcae0c^1 4cbcae0c^2), schema 0.7.0: the small fix the graph usability spike walked (V108, the review progress).",
+ "revisions": {
+  "base": {
+   "ref": "4cbcae0c^1",
+   "sha": "3f45ca4682a20309dafa4164d1718c3e33110edc",
+   "mergeBase": "3f45ca4682a20309dafa4164d1718c3e33110edc"
+  },
+  "head": {
+   "ref": "4cbcae0c^2",
+   "sha": "0c87309483fbc71c208e7c7e1baddcc7cef99498"
+  },
+  "from": "3f45ca4682a20309dafa4164d1718c3e33110edc"
+ },
+ "projects": [
+  {
+   "folder": "",
+   "name": "symbiote-monorepo",
+   "source": "root"
+  },
+  {
+   "folder": "packages/cli",
+   "name": "@symbiote/cli",
+   "source": "workspace"
+  },
+  {
+   "folder": "packages/core",
+   "name": "@symbiote/core",
+   "source": "workspace"
+  },
+  {
+   "folder": "packages/log",
+   "name": "@symbiote/log",
+   "source": "workspace"
+  },
+  {
+   "folder": "packages/monitor",
+   "name": "@symbiote/monitor",
+   "source": "workspace"
+  },
+  {
+   "folder": "packages/nexus",
+   "name": "@symbiote/nexus",
+   "source": "workspace"
+  },
+  {
+   "folder": "packages/viewer",
+   "name": "@symbiote/viewer",
+   "source": "workspace"
+  }
+ ],
+ "files": [
+  {
+   "status": "modified",
+   "path": "docs/JOURNAL.md",
+   "blob": "M"
+  },
+  {
+   "status": "modified",
+   "path": "docs/PLAN.md",
+   "blob": "M"
+  },
+  {
+   "status": "modified",
+   "path": "docs/area/merger.md",
+   "blob": "M"
+  },
+  {
+   "status": "added",
+   "path": "docs/journal/fix-e2e-flakes.md",
+   "blob": "A"
+  },
+  {
+   "status": "modified",
+   "path": "packages/cli/src/command-view.ts",
+   "blob": "M"
+  },
+  {
+   "status": "modified",
+   "path": "packages/cli/src/merge-context.ts",
+   "blob": "M"
+  },
+  {
+   "status": "modified",
+   "path": "packages/cli/src/merges.ts",
+   "blob": "M"
+  },
+  {
+   "status": "modified",
+   "path": "packages/cli/src/workspace-agent.ts",
+   "blob": "M"
+  },
+  {
+   "status": "modified",
+   "path": "packages/cli/src/workspace-context.ts",
+   "blob": "M"
+  },
+  {
+   "status": "added",
+   "path": "packages/cli/src/workspace-launches.ts",
+   "blob": "A"
+  },
+  {
+   "status": "modified",
+   "path": "packages/cli/src/workspace-summary.ts",
+   "blob": "M"
+  },
+  {
+   "status": "modified",
+   "path": "packages/cli/src/workspaces.ts",
+   "blob": "M"
+  },
+  {
+   "status": "modified",
+   "path": "packages/cli/test/merges.test.ts",
+   "blob": "M"
+  },
+  {
+   "status": "modified",
+   "path": "packages/cli/test/workspaces.test.ts",
+   "blob": "M"
+  },
+  {
+   "status": "modified",
+   "path": "packages/viewer/e2e/shell.spec.ts",
+   "blob": "M"
+  },
+  {
+   "status": "modified",
+   "path": "packages/viewer/e2e/symbiote.ts",
+   "blob": "M"
+  },
+  {
+   "status": "modified",
+   "path": "packages/viewer/e2e/workspaces.spec.ts",
+   "blob": "M"
+  },
+  {
+   "status": "modified",
+   "path": "packages/viewer/src/workspaces/useWorkspaces.ts",
+   "blob": "M"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "packages/cli/src/command-view.ts#view",
+   "name": "view",
+   "kind": "function",
+   "language": "typescript",
+   "status": "modified",
+   "base": {
+    "file": "packages/cli/src/command-view.ts",
+    "range": {
+     "start": {
+      "line": 113,
+      "col": 1
+     },
+     "end": {
+      "line": 416,
+      "col": 2
+     }
+    },
+    "hashes": {
+     "signature": "1cb6b2b4c1df1271",
+     "body": "9b5d106e622876fb"
+    }
+   },
+   "head": {
+    "file": "packages/cli/src/command-view.ts",
+    "range": {
+     "start": {
+      "line": 113,
+      "col": 1
+     },
+     "end": {
+      "line": 421,
+      "col": 2
+     }
+    },
+    "hashes": {
+     "signature": "1cb6b2b4c1df1271",
+     "body": "e25c1b10dbec1108"
+    }
+   }
+  },
+  {
+   "id": "packages/cli/src/merge-context.ts#MergerOptions",
+   "name": "MergerOptions",
+   "kind": "interface",
+   "language": "typescript",
+   "status": "modified",
+   "base": {
+    "file": "packages/cli/src/merge-context.ts",
+    "range": {
+     "start": {
+      "line": 49,
+      "col": 1
+     },
+     "end": {
+      "line": 64,
+      "col": 2
+     }
+    },
+    "hashes": {
+     "signature": "289f6f5ef3a0a7ee",
+     "body": ""
+    }
+   },
+   "head": {
+    "file": "packages/cli/src/merge-context.ts",
+    "range": {
+     "start": {
+      "line": 49,
+      "col": 1
+     },
+     "end": {
+      "line": 69,
+      "col": 2
+     }
+    },
+    "hashes": {
+     "signature": "ddeff0dd7492b667",
+     "body": ""
+    }
+   }
+  },
+  {
+   "id": "packages/cli/src/merges.ts#merger",
+   "name": "merger",
+   "kind": "function",
+   "language": "typescript",
+   "status": "modified",
+   "base": {
+    "file": "packages/cli/src/merges.ts",
+    "range": {
+     "start": {
+      "line": 146,
+      "col": 1
+     },
+     "end": {
+      "line": 548,
+      "col": 2
+     }
+    },
+    "hashes": {
+     "signature": "37fb164f52f3871e",
+     "body": "caecdb86b155309d"
+    }
+   },
+   "head": {
+    "file": "packages/cli/src/merges.ts",
+    "range": {
+     "start": {
+      "line": 146,
+      "col": 1
+     },
+     "end": {
+      "line": 549,
+      "col": 2
+     }
+    },
+    "hashes": {
+     "signature": "23ffb5bee8ab4d8e",
+     "body": "f2de17f9bc48d912"
+    }
+   }
+  },
+  {
+   "id": "packages/cli/src/workspace-agent.ts#workspaceAgent",
+   "name": "workspaceAgent",
+   "kind": "function",
+   "language": "typescript",
+   "status": "modified",
+   "base": {
+    "file": "packages/cli/src/workspace-agent.ts",
+    "range": {
+     "start": {
+      "line": 65,
+      "col": 1
+     },
+     "end": {
+      "line": 313,
+      "col": 2
+     }
+    },
+    "hashes": {
+     "signature": "e8a033d5456a19f4",
+     "body": "875975a1ca207de7"
+    }
+   },
+   "head": {
+    "file": "packages/cli/src/workspace-agent.ts",
+    "range": {
+     "start": {
+      "line": 65,
+      "col": 1
+     },
+     "end": {
+      "line": 324,
+      "col": 2
+     }
+    },
+    "hashes": {
+     "signature": "888f67cd06244f30",
+     "body": "743ce4357160268b"
+    }
+   }
+  },
+  {
+   "id": "packages/cli/src/workspace-context.ts#WorkspacesContext",
+   "name": "WorkspacesContext",
+   "kind": "interface",
+   "language": "typescript",
+   "status": "modified",
+   "base": {
+    "file": "packages/cli/src/workspace-context.ts",
+    "range": {
+     "start": {
+      "line": 235,
+      "col": 1
+     },
+     "end": {
+      "line": 259,
+      "col": 2
+     }
+    },
+    "hashes": {
+     "signature": "e3be7574663b17d2",
+     "body": ""
+    }
+   },
+   "head": {
+    "file": "packages/cli/src/workspace-context.ts",
+    "range": {
+     "start": {
+      "line": 236,
+      "col": 1
+     },
+     "end": {
+      "line": 262,
+      "col": 2
+     }
+    },
+    "hashes": {
+     "signature": "2ef0e15947728c9b",
+     "body": ""
+    }
+   }
+  },
+  {
+   "id": "packages/cli/src/workspace-launches.ts#WorkspaceLaunches",
+   "name": "WorkspaceLaunches",
+   "kind": "interface",
+   "language": "typescript",
+   "status": "added",
+   "base": null,
+   "head": {
+    "file": "packages/cli/src/workspace-launches.ts",
+    "range": {
+     "start": {
+      "line": 7,
+      "col": 1
+     },
+     "end": {
+      "line": 14,
+      "col": 2
+     }
+    },
+    "hashes": {
+     "signature": "8e9cff546764f053",
+     "body": ""
+    }
+   }
+  },
+  {
+   "id": "packages/cli/src/workspace-launches.ts#workspaceLaunches",
+   "name": "workspaceLaunches",
+   "kind": "function",
+   "language": "typescript",
+   "status": "added",
+   "base": null,
+   "head": {
+    "file": "packages/cli/src/workspace-launches.ts",
+    "range": {
+     "start": {
+      "line": 16,
+      "col": 1
+     },
+     "end": {
+      "line": 42,
+      "col": 2
+     }
+    },
+    "hashes": {
+     "signature": "b955b2c58b8faddb",
+     "body": "d7495c2039f9c93a"
+    }
+   }
+  },
+  {
+   "id": "packages/cli/src/workspace-summary.ts#workspaceSummary",
+   "name": "workspaceSummary",
+   "kind": "function",
+   "language": "typescript",
+   "status": "modified",
+   "base": {
+    "file": "packages/cli/src/workspace-summary.ts",
+    "range": {
+     "start": {
+      "line": 79,
+      "col": 1
+     },
+     "end": {
+      "line": 518,
+      "col": 2
+     }
+    },
+    "hashes": {
+     "signature": "933663e5d306a615",
+     "body": "d77c76051101fffe"
+    }
+   },
+   "head": {
+    "file": "packages/cli/src/workspace-summary.ts",
+    "range": {
+     "start": {
+      "line": 79,
+      "col": 1
+     },
+     "end": {
+      "line": 539,
+      "col": 2
+     }
+    },
+    "hashes": {
+     "signature": "012bb685e3a9a9c4",
+     "body": "c035f96a272c34d5"
+    }
+   }
+  },
+  {
+   "id": "packages/cli/src/workspaces.ts#workspaces",
+   "name": "workspaces",
+   "kind": "function",
+   "language": "typescript",
+   "status": "modified",
+   "base": {
+    "file": "packages/cli/src/workspaces.ts",
+    "range": {
+     "start": {
+      "line": 118,
+      "col": 1
+     },
+     "end": {
+      "line": 208,
+      "col": 2
+     }
+    },
+    "hashes": {
+     "signature": "aceaade885efad44",
+     "body": "59cf9b43a4432a79"
+    }
+   },
+   "head": {
+    "file": "packages/cli/src/workspaces.ts",
+    "range": {
+     "start": {
+      "line": 119,
+      "col": 1
+     },
+     "end": {
+      "line": 210,
+      "col": 2
+     }
+    },
+    "hashes": {
+     "signature": "aceaade885efad44",
+     "body": "cff1df373c4572d7"
+    }
+   }
+  },
+  {
+   "id": "packages/viewer/e2e/symbiote.ts#serveAgentBranch",
+   "name": "serveAgentBranch",
+   "kind": "function",
+   "language": "typescript",
+   "status": "modified",
+   "base": {
+    "file": "packages/viewer/e2e/symbiote.ts",
+    "range": {
+     "start": {
+      "line": 199,
+      "col": 1
+     },
+     "end": {
+      "line": 305,
+      "col": 2
+     }
+    },
+    "hashes": {
+     "signature": "9a4a16e9e3caa512",
+     "body": "379ced9b63269f72"
+    }
+   },
+   "head": {
+    "file": "packages/viewer/e2e/symbiote.ts",
+    "range": {
+     "start": {
+      "line": 199,
+      "col": 1
+     },
+     "end": {
+      "line": 306,
+      "col": 2
+     }
+    },
+    "hashes": {
+     "signature": "9a4a16e9e3caa512",
+     "body": "55cc25ab7622852d"
+    }
+   }
+  },
+  {
+   "id": "packages/viewer/e2e/symbiote.ts#RunningWorkspaces",
+   "name": "RunningWorkspaces",
+   "kind": "interface",
+   "language": "typescript",
+   "status": "modified",
+   "base": {
+    "file": "packages/viewer/e2e/symbiote.ts",
+    "range": {
+     "start": {
+      "line": 606,
+      "col": 1
+     },
+     "end": {
+      "line": 709,
+      "col": 2
+     }
+    },
+    "hashes": {
+     "signature": "44c6d3975bf42e8c",
+     "body": ""
+    }
+   },
+   "head": {
+    "file": "packages/viewer/e2e/symbiote.ts",
+    "range": {
+     "start": {
+      "line": 607,
+      "col": 1
+     },
+     "end": {
+      "line": 715,
+      "col": 2
+     }
+    },
+    "hashes": {
+     "signature": "ea3d31ecb28cc285",
+     "body": ""
+    }
+   }
+  },
+  {
+   "id": "packages/viewer/e2e/symbiote.ts#keepCache",
+   "name": "keepCache",
+   "kind": "function",
+   "language": "typescript",
+   "status": "added",
+   "base": null,
+   "head": {
+    "file": "packages/viewer/e2e/symbiote.ts",
+    "range": {
+     "start": {
+      "line": 722,
+      "col": 1
+     },
+     "end": {
+      "line": 732,
+      "col": 2
+     }
+    },
+    "hashes": {
+     "signature": "7d76b4672d7c7105",
+     "body": "a37ba438b6214111"
+    }
+   }
+  },
+  {
+   "id": "packages/viewer/e2e/symbiote.ts#fakeClaude",
+   "name": "fakeClaude",
+   "kind": "function",
+   "language": "typescript",
+   "status": "modified",
+   "base": {
+    "file": "packages/viewer/e2e/symbiote.ts",
+    "range": {
+     "start": {
+      "line": 767,
+      "col": 1
+     },
+     "end": {
+      "line": 985,
+      "col": 2
+     }
+    },
+    "hashes": {
+     "signature": "9a35be8ff64549a4",
+     "body": "00ce22d6ddc2072f"
+    }
+   },
+   "head": {
+    "file": "packages/viewer/e2e/symbiote.ts",
+    "range": {
+     "start": {
+      "line": 790,
+      "col": 1
+     },
+     "end": {
+      "line": 1010,
+      "col": 2
+     }
+    },
+    "hashes": {
+     "signature": "9a35be8ff64549a4",
+     "body": "982dedd3ec406cfb"
+    }
+   }
+  },
+  {
+   "id": "packages/viewer/e2e/symbiote.ts#serveWorkspaces",
+   "name": "serveWorkspaces",
+   "kind": "function",
+   "language": "typescript",
+   "status": "modified",
+   "base": {
+    "file": "packages/viewer/e2e/symbiote.ts",
+    "range": {
+     "start": {
+      "line": 1173,
+      "col": 1
+     },
+     "end": {
+      "line": 1425,
+      "col": 2
+     }
+    },
+    "hashes": {
+     "signature": "9584d612c3507a65",
+     "body": "84b54ac5171730fb"
+    }
+   },
+   "head": {
+    "file": "packages/viewer/e2e/symbiote.ts",
+    "range": {
+     "start": {
+      "line": 1198,
+      "col": 1
+     },
+     "end": {
+      "line": 1453,
+      "col": 2
+     }
+    },
+    "hashes": {
+     "signature": "9584d612c3507a65",
+     "body": "f3f7fc3e4ea5a87a"
+    }
+   }
+  },
+  {
+   "id": "packages/viewer/src/workspaces/useWorkspaces.ts#pushes",
+   "name": "pushes",
+   "kind": "variable",
+   "language": "typescript",
+   "status": "added",
+   "base": null,
+   "head": {
+    "file": "packages/viewer/src/workspaces/useWorkspaces.ts",
+    "range": {
+     "start": {
+      "line": 115,
+      "col": 1
+     },
+     "end": {
+      "line": 115,
+      "col": 16
+     }
+    },
+    "hashes": {
+     "signature": "e110175f067bc669",
+     "body": "5feceb66ffc86f38"
+    }
+   }
+  },
+  {
+   "id": "packages/viewer/src/workspaces/useWorkspaces.ts#pushedAt",
+   "name": "pushedAt",
+   "kind": "variable",
+   "language": "typescript",
+   "status": "added",
+   "base": null,
+   "head": {
+    "file": "packages/viewer/src/workspaces/useWorkspaces.ts",
+    "range": {
+     "start": {
+      "line": 116,
+      "col": 1
+     },
+     "end": {
+      "line": 116,
+      "col": 59
+     }
+    },
+    "hashes": {
+     "signature": "b8ae012cd2079421",
+     "body": "c77db0e3774f68da"
+    }
+   }
+  },
+  {
+   "id": "packages/viewer/src/workspaces/useWorkspaces.ts#newer",
+   "name": "newer",
+   "kind": "function",
+   "language": "typescript",
+   "status": "added",
+   "base": null,
+   "head": {
+    "file": "packages/viewer/src/workspaces/useWorkspaces.ts",
+    "range": {
+     "start": {
+      "line": 119,
+      "col": 1
+     },
+     "end": {
+      "line": 120,
+      "col": 61
+     }
+    },
+    "hashes": {
+     "signature": "969151a13a524140",
+     "body": "2a614d33d2f7e7a5"
+    }
+   }
+  },
+  {
+   "id": "packages/viewer/src/workspaces/useWorkspaces.ts#refresh",
+   "name": "refresh",
+   "kind": "function",
+   "language": "typescript",
+   "status": "modified",
+   "base": {
+    "file": "packages/viewer/src/workspaces/useWorkspaces.ts",
+    "range": {
+     "start": {
+      "line": 110,
+      "col": 1
+     },
+     "end": {
+      "line": 146,
+      "col": 2
+     }
+    },
+    "hashes": {
+     "signature": "2fc8326b5621f1b2",
+     "body": "e699915ba41b1991"
+    }
+   },
+   "head": {
+    "file": "packages/viewer/src/workspaces/useWorkspaces.ts",
+    "range": {
+     "start": {
+      "line": 123,
+      "col": 1
+     },
+     "end": {
+      "line": 160,
+      "col": 2
+     }
+    },
+    "hashes": {
+     "signature": "2fc8326b5621f1b2",
+     "body": "06fd99952a8c34dc"
+    }
+   }
+  },
+  {
+   "id": "packages/viewer/src/workspaces/useWorkspaces.ts#onPushed",
+   "name": "onPushed",
+   "kind": "function",
+   "language": "typescript",
+   "status": "modified",
+   "base": {
+    "file": "packages/viewer/src/workspaces/useWorkspaces.ts",
+    "range": {
+     "start": {
+      "line": 208,
+      "col": 1
+     },
+     "end": {
+      "line": 231,
+      "col": 2
+     }
+    },
+    "hashes": {
+     "signature": "2a96c56f8572c6a7",
+     "body": "dcbb53357b6e3401"
+    }
+   },
+   "head": {
+    "file": "packages/viewer/src/workspaces/useWorkspaces.ts",
+    "range": {
+     "start": {
+      "line": 222,
+      "col": 1
+     },
+     "end": {
+      "line": 246,
+      "col": 2
+     }
+    },
+    "hashes": {
+     "signature": "2a96c56f8572c6a7",
+     "body": "66ad138611a990f3"
+    }
+   }
+  }
+ ],
+ "edges": [],
+ "findings": [
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/merge-context.ts#MergerOptions",
+   "message": "MergerOptions changed its signature compatibly; existing users keep working (1 user, 0 untouched)",
+   "data": {
+    "callers": 1,
+    "updated": 1,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f1"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/merges.ts#merger",
+   "message": "merger changed its signature compatibly; existing users keep working (2 users, 1 untouched · 10 test users, 9 not updated)",
+   "data": {
+    "callers": 12,
+    "updated": 2,
+    "untouched": 10,
+    "untouchedElsewhere": 1,
+    "tests": 10,
+    "untouchedTests": 9,
+    "compatibility": "compatible"
+   },
+   "id": "f2"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/workspace-agent.ts#workspaceAgent",
+   "message": "workspaceAgent changed its signature; 1 of 2 users not updated: WorkspaceAgent",
+   "data": {
+    "callers": 2,
+    "updated": 1,
+    "untouched": 1,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "breaking"
+   },
+   "id": "f3"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/workspace-context.ts#WorkspacesContext",
+   "message": "WorkspacesContext gained required members; code that creates it must add them (9 users, 6 untouched)",
+   "data": {
+    "callers": 9,
+    "updated": 3,
+    "untouched": 6,
+    "untouchedElsewhere": 6,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "additive"
+   },
+   "id": "f4"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/workspace-summary.ts#workspaceSummary",
+   "message": "workspaceSummary changed its signature; 1 of 2 users not updated: WorkspaceSummaries",
+   "data": {
+    "callers": 2,
+    "updated": 1,
+    "untouched": 1,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "breaking"
+   },
+   "id": "f5"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/viewer/e2e/symbiote.ts#RunningWorkspaces",
+   "message": "RunningWorkspaces gained required members; code that creates it must add them (32 test users, 31 not updated)",
+   "data": {
+    "callers": 32,
+    "updated": 1,
+    "untouched": 31,
+    "untouchedElsewhere": 0,
+    "tests": 32,
+    "untouchedTests": 31,
+    "compatibility": "additive"
+   },
+   "id": "f6"
+  }
+ ]
+}

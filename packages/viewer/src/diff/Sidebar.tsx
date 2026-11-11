@@ -1,5 +1,5 @@
 import type { Finding, Graph, GraphNode, Project, Severity } from '@symbiote/core';
-import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   groupOf,
   kindMark,
@@ -12,11 +12,15 @@ import {
 import { pathInProject, projectOf } from '../graph/projects.js';
 import {
   byProject,
+  changeList,
+  leftAfter,
+  progressLine,
   reviewItems,
   reviewProgress,
   type FileChanges,
   type FindingFold,
 } from './review.js';
+import { ReviewProgress } from './ReviewProgress.js';
 import { ReviewTab, type ReviewProps } from './ReviewTab.js';
 import type { Draft } from './comments.js';
 import {
@@ -100,9 +104,24 @@ export function Sidebar({
     if (symbol !== undefined) commented.set(symbol, (commented.get(symbol) ?? 0) + 1);
   }
   // Items (V105, decision 980): a changed symbol, or a stylesheet with all its rules.
-  const { done, total } = reviewProgress(changes, reviewed);
+  const { total } = reviewProgress(changes, reviewed);
   const matches = reviewItems(shown).length;
-  const sheets = changes.filter((f) => f.stylesheet).length;
+  // The line counts the whole change, as Files does (V108): `changes` may leave out what changed
+  // the same way since an earlier version.
+  const whole = useMemo(() => changeList(graph), [graph]);
+  const line = useMemo(
+    () => progressLine(graph.files, whole, reviewed, findings.shown),
+    [graph, whole, reviewed, findings.shown],
+  );
+  const nextLeft = useMemo(() => {
+    const items = reviewItems(whole);
+    const holding = selected === null ? undefined : items.find((item) => item.includes(selected));
+    return leftAfter(
+      items.map((item) => item[0] ?? ''),
+      line.itemsLeft,
+      holding?.[0] ?? null,
+    );
+  }, [whole, selected, line.itemsLeft]);
   /** The folds opened, by their project's folder. */
   const [opened, setOpened] = useState<ReadonlySet<string>>(new Set());
   /** The stylesheets whose rules are shown under their row (V105), by file. */
@@ -218,29 +237,25 @@ export function Sidebar({
           </button>
         )}
       </div>
-      {/* How far the review is (V90, decision 840): in words, and a bar. */}
-      <div className="review-progress">
-        <div className="review-progress-words">
-          {sheets === 0 ? (
-            <span>
-              {done} of {total} changed symbol{total === 1 ? '' : 's'} reviewed
-            </span>
-          ) : (
-            // A stylesheet counts once (V105, decision 980).
-            <span
-              {...tip(
-                `${plural(total - sheets, 'symbol')} and ${plural(sheets, 'stylesheet')}: a stylesheet's rules count as one`,
-              )}
-            >
-              {done} of {plural(total, 'change')} reviewed
-            </span>
-          )}
-          <span className="review-progress-keys">j / k next</span>
-        </div>
-        <div className="progress" aria-label={`${done} of ${total} reviewed`}>
-          <div style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
-        </div>
-      </div>
+      {/* How far the review is: the line Files shows too (V108, decision 984). */}
+      <ReviewProgress
+        progress={line}
+        next={
+          nextLeft === null
+            ? undefined
+            : { label: 'Next symbol left', onNext: () => onSelect(nextLeft) }
+        }
+        elsewhere={
+          <span
+            className="review-progress-keys"
+            {...tip(`${plural(line.filesLeft.length, 'file')} left to view on Files`, {
+              keys: 'g',
+            })}
+          >
+            Files <kbd>g</kbd>
+          </span>
+        }
+      />
 
       {tab === 'changes' ? (
         <>
@@ -426,6 +441,8 @@ export function DiffKeys({
       'next/previous',
     ],
     [<kbd>r</kbd>, 'reviewed'],
+    // The pick's whole file (V108, decision 985).
+    [<kbd>R</kbd>, 'its file reviewed'],
     [<kbd>f</kbd>, 'focus'],
     ...(grouped ? [[<kbd>p</kbd>, 'project'] as [ReactNode, string]] : []),
     [<kbd>/</kbd>, 'search'],

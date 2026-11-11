@@ -1,0 +1,105 @@
+/* How far the review is (V108, decision 984; V90's line, decision 840, before): the same line on
+   both pages' left card, under Graph's tabs and above Files' list. Files viewed and symbols
+   reviewed, parts that wrap as units; then the bar, the findings left and Next. */
+.review-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px var(--card-pad);
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: var(--size-caption);
+}
+
+.review-progress-words {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 0;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.review-progress-words > span {
+  white-space: nowrap;
+}
+
+/* A separator after each part but the last: a part that wraps starts its line without one. */
+.review-progress-words > span:not(:last-child)::after {
+  content: '·';
+  padding: 0 6px;
+}
+
+.review-progress.done .review-progress-words {
+  gap: 6px;
+  color: var(--text);
+}
+
+.review-progress.done .review-progress-words svg {
+  width: 14px;
+  height: 14px;
+  color: var(--ok);
+}
+
+.review-progress-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+}
+
+.review-progress-bar > .progress {
+  flex: 1;
+}
+
+.progress {
+  height: 4px;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: var(--raised);
+}
+
+/* The person's review, in their violet. */
+.review-progress .progress > div {
+  height: 100%;
+  border-radius: 9999px;
+  background: var(--you);
+  transition: width 0.2s;
+}
+
+.review-progress.done .progress > div {
+  background: var(--ok);
+}
+
+/* Next: a quiet raised control, 24 px high (WCAG 2.2's 2.5.8). */
+.review-next {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  background: var(--raised);
+  color: var(--text);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.review-next:hover {
+  border-color: var(--edge);
+  background: color-mix(in srgb, var(--text) 4%, var(--raised));
+}
+
+.review-next svg {
+  width: 12px;
+  height: 12px;
+}
+
+.review-progress-findings,
+.review-progress-keys {
+  flex: none;
+  white-space: nowrap;
+}
