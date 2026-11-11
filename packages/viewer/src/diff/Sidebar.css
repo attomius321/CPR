@@ -276,6 +276,53 @@
   color: var(--muted);
 }
 
+/* ---- a stylesheet as one row (V105, decision 980) -------------------------------------- */
+
+/* Its caret shows its rules under it; 24 px, the targets' size. */
+.list-sheet-toggle {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+}
+
+.list-sheet-toggle:hover {
+  background: var(--hover);
+}
+
+/* How many changed each way: a node's mark for the kind (SymbolNode.css), with its count. */
+.list-sheet-mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 4px;
+  color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 16%, transparent);
+  font: 600 var(--size-caps) / 1 var(--mono);
+}
+
+.list-sheet-mark svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Its rules, shown: under its caret, with no box of their own (the stylesheet's marks them). */
+.list-item.list-part {
+  padding-left: 40px;
+}
+
+.list-project .list-item.list-part {
+  padding-left: 52px;
+}
+
 .list-link {
   display: flex;
   align-items: center;

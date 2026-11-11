@@ -41,10 +41,19 @@ export function DropZone({
 }
 
 /**
- * The canvas's foot (V90): the marks for a change's kinds, the edges, the frames' parts when
- * drawn; the view's toggles (`children`) at its end. `frames`: the canvas draws projects' frames.
+ * The canvas's foot (V90): the marks for a change's kinds, the edges, the frames' parts and the
+ * stylesheet cards when drawn; the view's toggles (`children`) at its end.
  */
-function Legend({ frames, children }: { frames: boolean; children: ReactNode }) {
+function Legend({
+  frames,
+  stylesheets,
+  children,
+}: {
+  frames: boolean;
+  /** The canvas draws a stylesheet's rules as one card (V105). */
+  stylesheets: boolean;
+  children: ReactNode;
+}) {
   return (
     <footer className="legend">
       {(
@@ -67,6 +76,9 @@ function Legend({ frames, children }: { frames: boolean; children: ReactNode }) 
       <span className="legend-edge edge-base">removed call</span>
       {frames && <span className="legend-edge edge-cross">call between projects</span>}
       <span className="legend-item legend-summary">many neighbours, grouped</span>
+      {stylesheets && (
+        <span className="legend-item legend-stylesheet">a stylesheet's rules, as one card</span>
+      )}
       {frames && <span className="legend-item legend-project">project (app or library)</span>}
       <span className="legend-toggles">{children}</span>
     </footer>
@@ -144,7 +156,10 @@ export function CanvasCard({
         </Loading>
       )}
       {layout && (
-        <Legend frames={layout.nodes[0]?.type === 'project'}>
+        <Legend
+          frames={layout.nodes[0]?.type === 'project'}
+          stylesheets={layout.nodes.some((n) => n.type === 'stylesheet')}
+        >
           {/* The view's toggles at the legend's end (V90, decision 838). */}
           {state.graph.since && (
             <label

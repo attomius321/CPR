@@ -128,7 +128,54 @@ export interface ProjectFlowNode {
   selectable: false;
 }
 
-export type FlowNode = ProjectFlowNode | FileFlowNode | SymbolFlowNode | SummaryFlowNode;
+/**
+ * A stylesheet's changed rules as one card in its file's box (V105, decision 979): its counts by
+ * kind of change, its rules' findings; a click shows its rules, as a summary shows its symbols.
+ */
+export interface StylesheetData extends Record<string, unknown> {
+  file: string;
+  /** The file's name, without its folder. */
+  name: string;
+  /** Its changed symbols drawn: in it, or shown once it is open. */
+  count: number;
+  kinds: Record<ChangeKind, number>;
+  /** What it counts: `rule` when every one is a rule, else `symbol`. */
+  noun: 'rule' | 'symbol';
+  /** Its colour on the map and the minimap: its one kind of change, or modified. */
+  tone: Tone;
+  /** Its symbols' findings, summed. */
+  findings: Record<Severity, number>;
+  /** Every symbol of the file it holds, changed or not: a pick among them rings the card. */
+  symbols: string[];
+  /** Its changed symbols: the card is reviewed when every one is. */
+  changed: string[];
+  /** With `--since`: every one changed the same way as in the earlier version. */
+  sameSince: boolean;
+  /** Shown: its symbols are laid out, and this card hides them again. */
+  expanded: boolean;
+  reviewed: boolean;
+  /** With `--since`, and `sameSince`. */
+  settled: boolean;
+}
+
+export type ChangeKind = 'added' | 'modified' | 'removed' | 'moved';
+
+export interface StylesheetFlowNode {
+  id: string;
+  type: 'stylesheet';
+  position: { x: number; y: number };
+  data: StylesheetData;
+  width: number;
+  height: number;
+  /** Its file's box. */
+  parentId: string;
+  extent: 'parent';
+  /** A pick among its symbols, while it is closed. */
+  selected?: boolean;
+}
+
+export type FlowNode =
+  ProjectFlowNode | FileFlowNode | SymbolFlowNode | SummaryFlowNode | StylesheetFlowNode;
 
 export interface FlowEdge {
   id: string;
@@ -139,7 +186,8 @@ export interface FlowEdge {
   zIndex?: number;
   /**
    * The graph's edge; `null` for the edge between a summary and its symbol, and for a file
-   * pair's edge, which has the `count` of symbol edges it stands for.
+   * pair's edge or a stylesheet card's (V105), which have the `count` of symbol edges they stand
+   * for.
    */
   data: { edge: GraphEdge | null; count?: number };
 }
@@ -157,7 +205,7 @@ export interface FlowLayout {
   hiddenEdges: FlowEdge[];
   /** Symbols drawn only as part of a collapsed summary: symbol → summary node. */
   hidden: Map<string, string>;
-  /** Every summary's neighbours, shown or not: summary → symbols. */
+  /** Every summary's neighbours, and every stylesheet card's symbols, shown or not. */
   members: Map<string, string[]>;
 }
 
@@ -208,6 +256,32 @@ const CLUSTER_GAP = 80;
 const PAGE_ASPECT = 1.6;
 const MARGIN = 20;
 
+/** The card a stylesheet's changed rules are drawn as (V105, decision 979). */
+export function stylesheetId(file: string): string {
+  return `rules:${file}`;
+}
+
+/** Symbols of a stylesheet: rules, custom properties, keyframes, SCSS members (L1–L2). */
+const STYLESHEET_LANGUAGES: ReadonlySet<string> = new Set(['css', 'scss']);
+
+/**
+ * The files whose changed symbols are all stylesheet symbols, two or more (V105, decisions
+ * 979–980): each is one card on the canvas, one row of the change list and one item of the
+ * review. A stylesheet with one changed rule is that rule.
+ */
+export function stylesheetFiles(nodes: readonly GraphNode[]): Set<string> {
+  // Changed stylesheet symbols per file; -1 once the file holds any other change.
+  const counts = new Map<string, number>();
+  for (const node of nodes) {
+    if (node.status === 'unchanged') continue;
+    const { file } = groupOf(node);
+    const was = counts.get(file ?? '') ?? 0;
+    if (file === undefined || was < 0) continue;
+    counts.set(file, STYLESHEET_LANGUAGES.has(node.language) ? was + 1 : -1);
+  }
+  return new Set([...counts].filter(([, n]) => n >= 2).map(([file]) => file));
+}
+
 export function summaryId(side: SummaryData['side'], of: string): string {
   return `summary:${side}:${of}`;
 }
@@ -229,13 +303,22 @@ export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayou
   const findings = countFindings(graph);
   const listed = listedSeverities(graph.findings);
 
-  const visible = graph.nodes.filter(
+  const shown = graph.nodes.filter(
     (n) => (context || n.status !== 'unchanged') && (!focus || focus.has(n.id)),
   );
-  const byId = new Map(visible.map((n) => [n.id, n]));
-  const candidateEdges = graph.edges.filter(
-    (e) => byId.has(e.from) && byId.has(e.to) && (typeReferences || e.kind !== 'type-reference'),
+  const shownEdges = graph.edges.filter((e) => typeReferences || e.kind !== 'type-reference');
+  // A stylesheet of changed rules is one card (V105): its symbols leave the layout, the card
+  // takes their place and their links. With none, everything below is as before.
+  const { visible, candidateEdges, cards, weights } = foldStylesheets(
+    shown,
+    shownEdges,
+    stylesheetFiles(graph.nodes),
+    expanded,
   );
+  const byId = new Map(visible.map((n) => [n.id, n]));
+  if (cards.size > 0) addCardFindings(cards, findings, listed);
+  const width = (node: GraphNode) => cards.get(node.id)?.width ?? nodeWidth(node);
+  const boxGroup = (node: GraphNode) => cards.get(node.id)?.group ?? groupOf(node);
 
   const { drawn, grouped, summaries, hidden } = summarize(
     neighboursOf(candidateEdges, byId),
@@ -249,7 +332,7 @@ export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayou
   const spans = summarySpans(summaries, byId, projects);
   const summaryWidth = (id: string) => (spans.has(id) ? SUMMARY_WIDE : SUMMARY_WIDTH);
 
-  const { boxes, boxOf } = fileBoxes(nodes, summaries, byId, summaryWidth);
+  const { boxes, boxOf } = fileBoxes(nodes, summaries, byId, summaryWidth, width, boxGroup);
 
   const summaryEdges = summaryEdgesOf(summaries, boxOf);
   const links = [
@@ -271,7 +354,7 @@ export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayou
   const projectNodes = projectNodesOf(frames, frameRects);
 
   const boxSeverity = worstByBox(nodes, boxOf, listed);
-  const boxCounts = mapCounts(nodes, boxOf, inner, findings, listed);
+  const boxCounts = mapCounts(nodes, boxOf, inner, findings, listed, width);
   const fileNodes: FileFlowNode[] = [...boxes].map(([id, box]) => {
     const size = boxSizes.get(id) ?? { width: 0, height: 0 };
     const frame = placedIn.get(id);
@@ -294,7 +377,12 @@ export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayou
     };
   });
 
-  const symbolNodes = symbolNodesOf(nodes, boxOf, inner, findings);
+  const symbolNodes = symbolNodesOf(
+    cards.size > 0 ? nodes.filter((n) => !cards.has(n.id)) : nodes,
+    boxOf,
+    inner,
+    findings,
+  );
 
   const summaryNodes: SummaryFlowNode[] = summaries
     .filter((s) => boxOf.has(s.id))
@@ -319,14 +407,22 @@ export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayou
       };
     });
 
+  const stylesheetNodes = stylesheetNodesOf(cards, boxOf, inner, findings);
+
   /** Between two projects' frames (not to a package outside every project). */
   const crosses = (edge: GraphEdge) => {
     const from = frameOf.get(boxOf.get(edge.from) ?? '');
     const to = frameOf.get(boxOf.get(edge.to) ?? '');
     return from !== undefined && to !== undefined && from !== to;
   };
+  /** A symbol's edge, or a card's (V105): the links it stands for counted, no graph edge. */
+  const flowEdge = (edge: GraphEdge) => {
+    const flow = symbolEdge(edge, crosses(edge));
+    const count = weights.get(edge.id);
+    return count === undefined ? flow : { ...flow, data: { edge: null, count } };
+  };
 
-  const fileEdges = fileEdgesOf(edges, boxOf, crosses);
+  const fileEdges = fileEdgesOf(edges, boxOf, crosses, weights);
   // After placement, so they move nothing.
   const hiddenEdges = typeReferences
     ? []
@@ -336,12 +432,15 @@ export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayou
 
   return {
     // Parents before their children, as React Flow requires.
-    nodes: [...projectNodes, ...fileNodes, ...symbolNodes, ...summaryNodes],
-    edges: [...edges.map((edge) => symbolEdge(edge, crosses(edge))), ...summaryEdges],
+    nodes: [...projectNodes, ...fileNodes, ...symbolNodes, ...summaryNodes, ...stylesheetNodes],
+    edges: [...edges.map(flowEdge), ...summaryEdges],
     fileEdges,
     hiddenEdges,
     hidden,
-    members: new Map(summaries.map((s) => [s.id, [...s.members]])),
+    members: new Map([
+      ...summaries.map((s): [string, string[]] => [s.id, [...s.members]]),
+      ...[...cards].map(([id, card]): [string, string[]] => [id, card.symbols.map((n) => n.id)]),
+    ]),
   };
 }
 
@@ -352,6 +451,7 @@ export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayou
 export function decorate(nodes: readonly FlowNode[], options: DecorateOptions = {}): FlowNode[] {
   const { reviewed, sinceOnly = false, selected = null } = options;
   return nodes.map((n) => {
+    if (n.type === 'stylesheet') return decorateCard(n, reviewed, sinceOnly, selected);
     if (n.type !== 'symbol') return n;
     const isReviewed = reviewed?.has(n.id) ?? false;
     const settled = sinceOnly && n.data.node.since === 'same';
@@ -363,6 +463,37 @@ export function decorate(nodes: readonly FlowNode[], options: DecorateOptions = 
       data: { ...n.data, reviewed: isReviewed, settled },
     };
   });
+}
+
+/**
+ * A stylesheet's card (V105): reviewed when every changed symbol in it is, settled when every one
+ * is, ringed while closed on a pick among its symbols (the pick stays where it is, in the card).
+ */
+function decorateCard(
+  n: StylesheetFlowNode,
+  reviewed: ReadonlySet<string> | undefined,
+  sinceOnly: boolean,
+  selected: string | null,
+): StylesheetFlowNode {
+  const { changed, symbols, expanded, sameSince } = n.data;
+  const isReviewed = changed.length > 0 && !!reviewed && changed.every((id) => reviewed.has(id));
+  const settled = sinceOnly && sameSince;
+  const holds = !expanded && selected !== null && symbols.includes(selected);
+  if (!isReviewed && !settled && !holds) return n;
+  return {
+    ...n,
+    ...(holds ? { selected: true } : {}),
+    data: { ...n.data, reviewed: isReviewed, settled },
+  };
+}
+
+/** The node that draws `id`: itself, the closed stylesheet card holding it (V105), or none. */
+export function drawnAs(nodes: readonly FlowNode[], id: string): string {
+  if (nodes.some((n) => n.id === id)) return id;
+  const card = nodes.find(
+    (n) => n.type === 'stylesheet' && !n.data.expanded && n.data.symbols.includes(id),
+  );
+  return card?.id ?? id;
 }
 
 /**
@@ -411,15 +542,21 @@ export function edgesToDraw(
 
 /**
  * The symbols on the canvas for a pick: drawn, or grouped in one of its own summaries, which is
- * linked to it. One grouped in another symbol's summary is not: nothing on the canvas links it to
- * the pick. The detail panel marks a neighbour that is neither (V101, decision 972).
+ * linked to it, or in a closed stylesheet card (V105), which takes its symbols' links and, for a
+ * pick in it, their summaries. One grouped in another symbol's summary is not: nothing on the
+ * canvas links it to the pick. The detail panel marks a neighbour that is none of these (V101,
+ * decision 972).
  */
 export function onCanvas(layout: Pick<FlowLayout, 'nodes' | 'members'>, pick: string): Set<string> {
   const ids = new Set<string>();
+  // A pick in a closed card is drawn as the card: its groups are the pick's own.
+  const holder = drawnAs(layout.nodes, pick);
   for (const node of layout.nodes) {
     if (node.type === 'symbol') ids.add(node.id);
-    else if (node.type === 'summary' && node.data.of === pick) {
+    else if (node.type === 'summary' && (node.data.of === pick || node.data.of === holder)) {
       for (const member of layout.members.get(node.id) ?? []) ids.add(member);
+    } else if (node.type === 'stylesheet' && !node.data.expanded) {
+      for (const symbol of node.data.symbols) ids.add(symbol);
     }
   }
   return ids;
@@ -518,6 +655,7 @@ function mapCounts(
   inner: ReadonlyMap<string, { x: number; y: number }>,
   findings: ReadonlyMap<string, Record<Severity, number>>,
   listed: ReadonlyMap<string, Severity>,
+  width: (node: GraphNode) => number,
 ): Map<string, MapCount[]> {
   const counts = new Map<string, MapCount[]>();
   for (const node of nodes) {
@@ -529,7 +667,7 @@ function mapCounts(
       ...(counts.get(box) ?? []),
       {
         symbol: node.id,
-        x: at.x + nodeWidth(node),
+        x: at.x + width(node),
         y: at.y,
         count: count.count,
         severity: count.severity,
@@ -684,6 +822,8 @@ function fileBoxes(
   summaries: readonly Summary[],
   byId: ReadonlyMap<string, GraphNode>,
   summaryWidth: (id: string) => number,
+  width: (node: GraphNode) => number,
+  boxGroup: (node: GraphNode) => ReturnType<typeof groupOf>,
 ): { boxes: Map<string, Box>; boxOf: Map<string, string> } {
   const boxOf = new Map<string, string>();
   const boxes = new Map<string, Box>();
@@ -701,8 +841,8 @@ function fileBoxes(
   };
   for (const node of nodes) {
     join(
-      { id: node.id, width: nodeWidth(node), changed: node.status !== 'unchanged' },
-      groupOf(node),
+      { id: node.id, width: width(node), changed: node.status !== 'unchanged' },
+      boxGroup(node),
       node.status !== 'unchanged',
     );
   }
@@ -711,7 +851,7 @@ function fileBoxes(
     if (!owner || !boxOf.has(summary.of)) continue;
     join(
       { id: summary.id, width: summaryWidth(summary.id), changed: false },
-      groupOf(owner),
+      boxGroup(owner),
       false,
     );
   }
@@ -732,6 +872,210 @@ function summaryEdgesOf(
       className: 'edge-summary',
       data: { edge: null },
     }));
+}
+
+/** A stylesheet's card while laid out: its file's box, its size, the symbols it holds. */
+interface Card {
+  file: string;
+  group: ReturnType<typeof groupOf>;
+  width: number;
+  /** The file's symbols in view, changed or not, in the graph's order. */
+  symbols: GraphNode[];
+  expanded: boolean;
+}
+
+/** A card's node in the layout: a changed node of its own, which takes its file's place. */
+function cardNode(id: string, file: string): GraphNode {
+  return {
+    id,
+    kind: 'rule',
+    name: file,
+    container: null,
+    language: 'css',
+    exported: false,
+    status: 'modified',
+    previousId: null,
+    base: null,
+    head: null,
+  };
+}
+
+/** A card's width: its file's name in the name's monospace, or its counts' line. */
+function cardWidth(name: string): number {
+  return Math.min(380, Math.max(230, Math.round(name.length * 9.4 + 40)));
+}
+
+/**
+ * Stylesheets as cards (V105, decision 979): of each file in `files` with a changed symbol in
+ * view, the symbols in view become one card, unless `expanded` holds it, which then stands beside
+ * them to close it. A closed card's links are its symbols', one per neighbour and direction
+ * (`weights`: how many each stands for); those between its own symbols are gone. With no such
+ * file, the nodes and edges in view are what they were.
+ */
+function foldStylesheets(
+  shown: readonly GraphNode[],
+  shownEdges: readonly GraphEdge[],
+  files: ReadonlySet<string>,
+  expanded: ReadonlySet<string>,
+): {
+  visible: GraphNode[];
+  candidateEdges: GraphEdge[];
+  cards: Map<string, Card>;
+  weights: Map<string, number>;
+} {
+  const cards = new Map<string, Card>();
+  const weights = new Map<string, number>();
+  const inView = new Set(shown.map((n) => n.id));
+  const inViewEdges = shownEdges.filter((e) => inView.has(e.from) && inView.has(e.to));
+  if (files.size === 0) return { visible: [...shown], candidateEdges: inViewEdges, cards, weights };
+
+  const byFile = new Map<string, GraphNode[]>();
+  for (const node of shown) {
+    const { file } = groupOf(node);
+    if (file !== undefined && files.has(file))
+      byFile.set(file, [...(byFile.get(file) ?? []), node]);
+  }
+  /** Symbol → its closed card. */
+  const cardOf = new Map<string, string>();
+  for (const [file, symbols] of byFile) {
+    if (!symbols.some((n) => n.status !== 'unchanged')) continue;
+    const id = stylesheetId(file);
+    const open = expanded.has(id);
+    const name = file.slice(file.lastIndexOf('/') + 1);
+    cards.set(id, {
+      file,
+      group: groupOf(symbols[0] as GraphNode),
+      width: cardWidth(name),
+      symbols,
+      expanded: open,
+    });
+    if (!open) for (const node of symbols) cardOf.set(node.id, id);
+  }
+  if (cards.size === 0) return { visible: [...shown], candidateEdges: inViewEdges, cards, weights };
+
+  // The card where its file's first symbol was: boxes keep their order. An open card sits before
+  // its symbols.
+  const visible: GraphNode[] = [];
+  const placed = new Set<string>();
+  for (const node of shown) {
+    const { file } = groupOf(node);
+    const id = file === undefined ? undefined : stylesheetId(file);
+    if (id !== undefined && cards.has(id) && !placed.has(id)) {
+      placed.add(id);
+      visible.push(cardNode(id, file as string));
+    }
+    if (!cardOf.has(node.id)) visible.push(node);
+  }
+
+  // Links to a card's symbols become the card's, merged per pair in the order first met.
+  const merged = new Map<string, { edges: GraphEdge[]; from: string; to: string }>();
+  const order: (GraphEdge | string)[] = [];
+  for (const edge of inViewEdges) {
+    const from = cardOf.get(edge.from) ?? edge.from;
+    const to = cardOf.get(edge.to) ?? edge.to;
+    if (from === edge.from && to === edge.to) order.push(edge);
+    else if (from !== to) {
+      const id = `${from} → ${to}`;
+      const pair = merged.get(id);
+      if (pair) pair.edges.push(edge);
+      else {
+        merged.set(id, { edges: [edge], from, to });
+        order.push(id);
+      }
+    }
+  }
+  const candidateEdges = order.map((entry): GraphEdge => {
+    if (typeof entry !== 'string') return entry;
+    const { edges, from, to } = merged.get(entry) as {
+      edges: GraphEdge[];
+      from: string;
+      to: string;
+    };
+    const [first] = edges as [GraphEdge];
+    const sides = new Set(edges.map((e) => e.side));
+    const kinds = new Set(edges.map((e) => e.kind));
+    const id = `rules-edge:${entry}`;
+    weights.set(id, edges.length);
+    return {
+      id,
+      from,
+      to,
+      kind: kinds.size === 1 ? first.kind : 'reference',
+      side: sides.size === 1 ? first.side : 'both',
+      resolution: edges.every((e) => e.resolution === 'unknown') ? 'unknown' : 'resolved',
+      sites: {},
+    };
+  });
+  return { visible, candidateEdges, cards, weights };
+}
+
+/** A closed card's findings are its symbols', summed, and its worst listed one theirs. */
+function addCardFindings(
+  cards: ReadonlyMap<string, Card>,
+  findings: Map<string, Record<Severity, number>>,
+  listed: Map<string, Severity>,
+): void {
+  for (const [id, card] of cards) {
+    if (card.expanded) continue;
+    const sum = { error: 0, warning: 0, info: 0 };
+    let worst: Severity | undefined;
+    for (const node of card.symbols) {
+      const own = findings.get(node.id);
+      if (own) for (const severity of SEVERITIES) sum[severity] += own[severity];
+      const severity = listed.get(node.id);
+      if (severity && (!worst || SEVERITIES.indexOf(severity) < SEVERITIES.indexOf(worst))) {
+        worst = severity;
+      }
+    }
+    if (sum.error + sum.warning + sum.info > 0) findings.set(id, sum);
+    if (worst) listed.set(id, worst);
+  }
+}
+
+/** Each card drawn, in its file's box, with its counts; no review state yet. */
+function stylesheetNodesOf(
+  cards: ReadonlyMap<string, Card>,
+  boxOf: ReadonlyMap<string, string>,
+  inner: ReadonlyMap<string, { x: number; y: number }>,
+  findings: ReadonlyMap<string, Record<Severity, number>>,
+): StylesheetFlowNode[] {
+  return [...cards]
+    .filter(([id]) => boxOf.has(id))
+    .map(([id, card]) => {
+      const changed = card.symbols.filter((n) => n.status !== 'unchanged');
+      const kinds: Record<ChangeKind, number> = { added: 0, modified: 0, removed: 0, moved: 0 };
+      for (const node of changed) kinds[tone(node) as ChangeKind] += 1;
+      const present = (Object.keys(kinds) as ChangeKind[]).filter((kind) => kinds[kind] > 0);
+      const sum = { error: 0, warning: 0, info: 0 };
+      for (const node of card.symbols) {
+        const own = findings.get(node.id);
+        if (own) for (const severity of SEVERITIES) sum[severity] += own[severity];
+      }
+      return {
+        id,
+        type: 'stylesheet',
+        parentId: boxOf.get(id) ?? '',
+        extent: 'parent',
+        position: inner.get(id) ?? { x: 0, y: 0 },
+        width: card.width,
+        height: NODE_HEIGHT,
+        data: {
+          file: card.file,
+          name: card.file.slice(card.file.lastIndexOf('/') + 1),
+          count: changed.length,
+          kinds,
+          noun: changed.every((n) => n.kind === 'rule') ? 'rule' : 'symbol',
+          tone: present.length === 1 ? (present[0] as ChangeKind) : 'modified',
+          findings: sum,
+          symbols: card.symbols.map((n) => n.id),
+          changed: changed.map((n) => n.id),
+          sameSince: changed.every((n) => n.since === 'same'),
+          expanded: card.expanded,
+          reviewed: false,
+          settled: false,
+        },
+      };
+    });
 }
 
 /**
@@ -959,13 +1303,15 @@ function symbolEdge(edge: GraphEdge, cross: boolean): FlowEdge {
 }
 
 /**
- * For the map: one edge per pair of linked boxes, as thick as its symbols' edges are many. A file
- * pair's edge is drawn as its symbols' edges are when they all share a side.
+ * For the map: one edge per pair of linked boxes, as thick as its symbols' edges are many (a
+ * stylesheet card's edge counts the links it stands for, `weights`). A file pair's edge is drawn
+ * as its symbols' edges are when they all share a side.
  */
 function fileEdgesOf(
   edges: readonly GraphEdge[],
   boxOf: ReadonlyMap<string, string>,
   crosses: (edge: GraphEdge) => boolean,
+  weights: ReadonlyMap<string, number>,
 ): FlowEdge[] {
   const pairs = new Map<
     string,
@@ -979,7 +1325,7 @@ function fileEdgesOf(
     let pair = pairs.get(id);
     if (!pair) pairs.set(id, (pair = { source, target, sides: new Set(), count: 0, cross: false }));
     pair.sides.add(edge.side);
-    pair.count++;
+    pair.count += weights.get(edge.id) ?? 1;
     pair.cross ||= crosses(edge);
   }
   return [...pairs].map(([id, pair]) => {

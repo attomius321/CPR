@@ -25,14 +25,17 @@ import {
 } from 'react';
 import { FileNode } from '../graph/FileNode.js';
 import {
+  drawnAs,
   edgesToDraw,
   projectAt,
   type FlowEdge,
   type FlowNode,
+  type StylesheetData,
   type SymbolData,
 } from '../graph/flow.js';
 import { MAP_ZOOM, mapZoomStyle, pickView, readingZoom } from '../graph/mapzoom.js';
 import { ProjectNode } from '../graph/ProjectNode.js';
+import { StylesheetNode } from '../graph/StylesheetNode.js';
 import { SummaryNode } from '../graph/SummaryNode.js';
 import { SymbolNode } from '../graph/SymbolNode.js';
 import { useTextSize } from '../shell/text-size.js';
@@ -44,6 +47,7 @@ const nodeTypes = {
   symbol: SymbolNode,
   file: FileNode,
   summary: SummaryNode,
+  stylesheet: StylesheetNode,
   project: ProjectNode,
 };
 
@@ -85,6 +89,7 @@ const MINIMAP_SIZE = { width: 160, height: 112 };
 function minimapClass(n: Node): string {
   if (n.type === 'symbol') return `minimap-${(n.data as SymbolData).tone}`;
   if (n.type === 'summary') return 'minimap-summary';
+  if (n.type === 'stylesheet') return `minimap-${(n.data as StylesheetData).tone}`;
   return n.type === 'project' ? 'minimap-project' : 'minimap-file';
 }
 
@@ -150,7 +155,8 @@ export function Canvas({
   const onNodeClick = useCallback<NodeMouseHandler>(
     (_, node) => {
       if (node.type === 'symbol') onSelect(node.id);
-      else if (node.type === 'summary') onToggleSummary(node.id);
+      // A group of neighbours, or a stylesheet's rules (V105): shown or hidden in place.
+      else if (node.type === 'summary' || node.type === 'stylesheet') onToggleSummary(node.id);
       // On the map, a file box is what is clicked: zoom into it.
       else if (node.type === 'file' && map) {
         void fitView({ nodes: [{ id: node.id }], duration: 300, maxZoom: reading });
@@ -210,7 +216,8 @@ export function Canvas({
         // The picked symbol readable and in view (V99, decision 966, amending V93's 886): a name
         // drawn under 11 px comes to the reading zoom; a readable one moves nothing when it is in
         // view (the canvas as proof 03 frames it), and is panned to at the person's zoom when not.
-        const bounds = getNodesBounds([selected]);
+        // A pick in a closed stylesheet card is its card (V105).
+        const bounds = getNodesBounds([drawnAs(layoutNodes, selected)]);
         const { x, y, zoom } = getViewport();
         const [width = 0, height = 0] = size.split('x').map(Number);
         const left = -x / zoom;

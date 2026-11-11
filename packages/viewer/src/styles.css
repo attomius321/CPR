@@ -24,6 +24,7 @@
 @import './ui/ground.css';
 @import './graph/SymbolNode.css';
 @import './graph/SummaryNode.css';
+@import './graph/StylesheetNode.css';
 @import './graph/FileNode.css';
 @import './graph/ProjectNode.css';
 @import './graph/canvas.css';

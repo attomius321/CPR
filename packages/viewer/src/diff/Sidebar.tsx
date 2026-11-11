@@ -1,8 +1,14 @@
 import type { Finding, Graph, GraphNode, Project, Severity } from '@symbiote/core';
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
-import { groupOf, kindMark, label, tone } from '../graph/flow.js';
+import { groupOf, kindMark, label, stylesheetId, tone, type ChangeKind } from '../graph/flow.js';
 import { pathInProject, projectOf } from '../graph/projects.js';
-import { byProject, type FileChanges, type FindingFold } from './review.js';
+import {
+  byProject,
+  reviewItems,
+  reviewProgress,
+  type FileChanges,
+  type FindingFold,
+} from './review.js';
 import { ReviewTab, type ReviewProps } from './ReviewTab.js';
 import type { Draft } from './comments.js';
 import {
@@ -85,11 +91,20 @@ export function Sidebar({
   for (const { symbol } of review?.draft.drafts ?? []) {
     if (symbol !== undefined) commented.set(symbol, (commented.get(symbol) ?? 0) + 1);
   }
-  const total = changes.reduce((n, f) => n + f.symbols.length, 0);
-  const matches = shown.reduce((n, f) => n + f.symbols.length, 0);
-  const done = changes.reduce((n, f) => n + f.symbols.filter((s) => reviewed.has(s.id)).length, 0);
+  // Items (V105, decision 980): a changed symbol, or a stylesheet with all its rules.
+  const { done, total } = reviewProgress(changes, reviewed);
+  const matches = reviewItems(shown).length;
+  const sheets = changes.filter((f) => f.stylesheet).length;
   /** The folds opened, by their project's folder. */
   const [opened, setOpened] = useState<ReadonlySet<string>>(new Set());
+  /** The stylesheets whose rules are shown under their row (V105), by file. */
+  const [openSheets, setOpenSheets] = useState<ReadonlySet<string>>(new Set());
+  const toggleSheet = (file: string) =>
+    setOpenSheets((current) => {
+      const next = new Set(current);
+      if (!next.delete(file)) next.add(file);
+      return next;
+    });
   const findingList = useRef<HTMLDivElement>(null);
   // A head's pill (V100, decision 968): the first finding of its severity at the list's top, and
   // focused, so the keyboard goes on from it.
@@ -105,12 +120,13 @@ export function Sidebar({
   // By project only when the changes span two or more.
   const grouped = changes.some((f) => f.project);
   const progress = new Map<string, { done: number; total: number }>();
-  for (const { project: of, symbols } of changes) {
-    if (!of) continue;
-    const entry = progress.get(of.folder) ?? { done: 0, total: 0 };
-    entry.total += symbols.length;
-    entry.done += symbols.filter((s) => reviewed.has(s.id)).length;
-    progress.set(of.folder, entry);
+  for (const file of changes) {
+    if (!file.project) continue;
+    const entry = progress.get(file.project.folder) ?? { done: 0, total: 0 };
+    const own = reviewProgress([file], reviewed);
+    entry.total += own.total;
+    entry.done += own.done;
+    progress.set(file.project.folder, entry);
   }
   const shownProject =
     project === null ? undefined : changes.find((f) => f.project?.folder === project)?.project;
@@ -132,26 +148,52 @@ export function Sidebar({
     />
   );
 
+  const changeItem = (node: GraphNode, part = false) => (
+    <ChangeItem
+      key={node.id}
+      node={node}
+      part={part}
+      current={node.id === selected}
+      reviewed={reviewed.has(node.id)}
+      stale={stale.has(node.id)}
+      comments={commented.get(node.id)}
+      onSelect={onSelect}
+      onToggleReviewed={onToggleReviewed}
+    />
+  );
+
   const fileList = (files: FileChanges[], of?: Project) =>
-    files.map(({ file, symbols }) => (
-      <div key={file} className="list-file">
-        <div className="list-file-name" {...tip(file)}>
-          {of ? pathInProject(file, of) : file}
+    files.map(({ file, stylesheet, symbols }) => {
+      // While searching, a stylesheet shows the rules that match.
+      const open = openSheets.has(file) || search.trim() !== '';
+      return (
+        <div key={file} className="list-file">
+          <div className="list-file-name" {...tip(file)}>
+            {of ? pathInProject(file, of) : file}
+          </div>
+          {stylesheet ? (
+            <>
+              <StylesheetItem
+                file={file}
+                symbols={symbols}
+                open={open}
+                // The pick's own row is current once its rules are shown.
+                current={!open && symbols.some((s) => s.id === selected)}
+                reviewed={symbols.every((s) => reviewed.has(s.id))}
+                stale={symbols.some((s) => stale.has(s.id))}
+                comments={symbols.reduce((n, s) => n + (commented.get(s.id) ?? 0), 0)}
+                onSelect={onSelect}
+                onToggleReviewed={onToggleReviewed}
+                onToggleOpen={() => toggleSheet(file)}
+              />
+              {open && symbols.map((node) => changeItem(node, true))}
+            </>
+          ) : (
+            symbols.map((node) => changeItem(node))
+          )}
         </div>
-        {symbols.map((node) => (
-          <ChangeItem
-            key={node.id}
-            node={node}
-            current={node.id === selected}
-            reviewed={reviewed.has(node.id)}
-            stale={stale.has(node.id)}
-            comments={commented.get(node.id)}
-            onSelect={onSelect}
-            onToggleReviewed={onToggleReviewed}
-          />
-        ))}
-      </div>
-    ));
+      );
+    });
 
   return (
     <nav className="sidebar" aria-label="Review">
@@ -171,9 +213,20 @@ export function Sidebar({
       {/* How far the review is (V90, decision 840): in words, and a bar. */}
       <div className="review-progress">
         <div className="review-progress-words">
-          <span>
-            {done} of {total} changed symbol{total === 1 ? '' : 's'} reviewed
-          </span>
+          {sheets === 0 ? (
+            <span>
+              {done} of {total} changed symbol{total === 1 ? '' : 's'} reviewed
+            </span>
+          ) : (
+            // A stylesheet counts once (V105, decision 980).
+            <span
+              {...tip(
+                `${plural(total - sheets, 'symbol')} and ${plural(sheets, 'stylesheet')}: a stylesheet's rules count as one`,
+              )}
+            >
+              {done} of {plural(total, 'change')} reviewed
+            </span>
+          )}
           <span className="review-progress-keys">j / k next</span>
         </div>
         <div className="progress" aria-label={`${done} of ${total} reviewed`}>
@@ -385,9 +438,13 @@ export function DiffKeys({
   );
 }
 
-/** A changed symbol in the list: its reviewed box, its name, and marks. */
+/**
+ * A changed symbol in the list: its reviewed box, its name, and marks. A rule shown under its
+ * stylesheet's row (`part`, V105) has no box: the stylesheet's marks them all.
+ */
 function ChangeItem({
   node,
+  part,
   current,
   reviewed,
   stale,
@@ -396,6 +453,7 @@ function ChangeItem({
   onToggleReviewed,
 }: {
   node: GraphNode;
+  part: boolean;
   current: boolean;
   reviewed: boolean;
   stale: boolean;
@@ -405,14 +463,16 @@ function ChangeItem({
 }) {
   return (
     <div
-      className={`list-item tone-${tone(node)}${current ? ' current' : ''}${reviewed ? ' done' : ''}${stale ? ' stale' : ''}`}
+      className={`list-item tone-${tone(node)}${part ? ' list-part' : ''}${current ? ' current' : ''}${reviewed ? ' done' : ''}${stale ? ' stale' : ''}`}
     >
-      <input
-        type="checkbox"
-        checked={reviewed}
-        onChange={() => onToggleReviewed(node.id)}
-        aria-label={`Mark ${label(node)} reviewed`}
-      />
+      {!part && (
+        <input
+          type="checkbox"
+          checked={reviewed}
+          onChange={() => onToggleReviewed(node.id)}
+          aria-label={`Mark ${label(node)} reviewed`}
+        />
+      )}
       {/* Beside the name, not in it: the button is named by the symbol alone. */}
       <KindMark node={node} />
       <button className="list-link" onClick={() => onSelect(node.id)}>
@@ -445,6 +505,94 @@ function KindMark({ node }: { node: GraphNode }) {
     <span className={`symbol-mark mark-${mark.kind}`} role="img" aria-label={mark.kind}>
       {mark.glyph ?? <ForwardIcon />}
     </span>
+  );
+}
+
+const CHANGE_KINDS: readonly ChangeKind[] = ['added', 'modified', 'removed', 'moved'];
+
+/**
+ * A stylesheet of changed rules as one row (V105, decision 980): one box marks them all, its name
+ * picks its first rule (its card on the canvas), the caret shows its rules under it.
+ */
+function StylesheetItem({
+  file,
+  symbols,
+  open,
+  current,
+  reviewed,
+  stale,
+  comments,
+  onSelect,
+  onToggleReviewed,
+  onToggleOpen,
+}: {
+  file: string;
+  symbols: GraphNode[];
+  open: boolean;
+  current: boolean;
+  reviewed: boolean;
+  stale: boolean;
+  comments: number;
+  onSelect: (id: string) => void;
+  onToggleReviewed: (id: string) => void;
+  onToggleOpen: () => void;
+}) {
+  const name = file.slice(file.lastIndexOf('/') + 1);
+  const counts = new Map<ChangeKind, number>();
+  for (const node of symbols) {
+    const kind = tone(node) as ChangeKind;
+    counts.set(kind, (counts.get(kind) ?? 0) + 1);
+  }
+  const noun = symbols.every((s) => s.kind === 'rule') ? 'rule' : 'symbol';
+  const first = symbols[0];
+  return (
+    <div
+      className={`list-item list-sheet${current ? ' current' : ''}${reviewed ? ' done' : ''}${stale ? ' stale' : ''}`}
+    >
+      <input
+        type="checkbox"
+        checked={reviewed}
+        onChange={() => onToggleReviewed(stylesheetId(file))}
+        aria-label={`Mark ${name} reviewed`}
+      />
+      <button
+        className="list-sheet-toggle"
+        aria-expanded={open}
+        aria-label={`${open ? 'Hide' : 'Show'} the ${noun}s of ${name}`}
+        onClick={onToggleOpen}
+      >
+        <ChevronIcon open={open} />
+      </button>
+      <button className="list-link" onClick={() => first && onSelect(first.id)}>
+        {plural(symbols.length, noun)}
+      </button>
+      {CHANGE_KINDS.filter((kind) => counts.has(kind)).map((kind) => (
+        <span
+          key={kind}
+          className={`list-sheet-mark tone-${kind}`}
+          role="img"
+          aria-label={`${counts.get(kind)} ${kind}`}
+        >
+          {kindMark(kind)?.glyph ?? <ForwardIcon />}
+          {counts.get(kind)}
+        </span>
+      ))}
+      {stale && (
+        <span
+          className="stale-mark"
+          role="img"
+          aria-label="Changed since you reviewed it"
+          {...tip('Changed since you reviewed it', { tone: 'warn' })}
+        >
+          ↻
+        </span>
+      )}
+      {comments > 0 && (
+        <span className="commented" {...tip('Comments on its rules')}>
+          💬 {comments}
+        </span>
+      )}
+    </div>
   );
 }
 

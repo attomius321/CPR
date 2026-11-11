@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import type { Finding, Graph, GraphNode, Project } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
-import { toFlow } from '../src/graph/flow.js';
+import { stylesheetId, toFlow } from '../src/graph/flow.js';
 import {
   byProject,
   changeList,
@@ -16,12 +16,22 @@ import {
   onlyProject,
   projectNeighbourhood,
   reviewKey,
+  reviewProgress,
   reviewStatus,
   stepChange,
   toggleFileMark,
   toggleMark,
   withoutCollapsed,
 } from '../src/diff/review.js';
+import {
+  ONLY,
+  PAGE,
+  PAGE_CSS,
+  RULE_IDS,
+  SINGLE_CSS,
+  rule,
+  sheetGraph,
+} from './stylesheet-graph.js';
 
 const golden = (name: string) =>
   JSON.parse(
@@ -455,5 +465,71 @@ describe('findingPills (V100, decision 968)', () => {
       { severity: 'info', count: 1, words: '1 note' },
     ]);
     expect(findingPills([])).toEqual([]);
+  });
+});
+
+describe('a stylesheet as one item (V105, decision 980)', () => {
+  const graph = sheetGraph(golden('callers'));
+  const list = changeList(graph);
+  const CARD = stylesheetId(PAGE_CSS);
+
+  it('gives a stylesheet of changed rules one entry, its rules in line order', () => {
+    expect(list.map((f) => [f.file, f.stylesheet ?? false, f.symbols.length])).toEqual([
+      ['src/Page.tsx', false, 1],
+      [SINGLE_CSS, false, 1],
+      [PAGE_CSS, true, 10],
+    ]);
+    expect(list[2]?.symbols.map((s) => s.id)).toEqual(RULE_IDS);
+    // The search keeps it one entry, with the rules that match.
+    expect(
+      filterChanges(list, 'card').map((f) => [f.file, f.stylesheet, f.symbols.map((s) => s.name)]),
+    ).toEqual([[PAGE_CSS, true, ['.card', '.card-head']]]);
+  });
+
+  it('counts it once in the progress, reviewed when all its rules are', () => {
+    expect(reviewProgress(list, new Set())).toEqual({ done: 0, total: 3 });
+    expect(reviewProgress(list, new Set([PAGE, ...RULE_IDS.slice(1)]))).toEqual({
+      done: 1,
+      total: 3,
+    });
+    expect(reviewProgress(list, new Set([PAGE, ...RULE_IDS]))).toEqual({ done: 2, total: 3 });
+    // Without stylesheets, a symbol an item, as before.
+    const callers = changeList(golden('callers'));
+    expect(reviewProgress(callers, new Set())).toEqual({
+      done: 0,
+      total: callers.reduce((n, f) => n + f.symbols.length, 0),
+    });
+  });
+
+  it('steps over it as one, landing on its first rule', () => {
+    expect(stepChange(list, PAGE, 1)).toBe(ONLY);
+    expect(stepChange(list, ONLY, 1)).toBe(RULE_IDS[0]);
+    expect(stepChange(list, rule('.card'), 1)).toBe(PAGE);
+    expect(stepChange(list, rule('.card'), -1)).toBe(ONLY);
+    expect(stepChange(list, PAGE, -1)).toBe(RULE_IDS[0]);
+    expect(stepChange(list, null, -1)).toBe(RULE_IDS[0]);
+  });
+
+  it('marks all its rules with one mark, from its row or any of its rules', () => {
+    const all = toggleMark(graph, {}, CARD);
+    expect(reviewStatus(graph, all).reviewed).toEqual(new Set(RULE_IDS));
+    expect(toggleMark(graph, all, CARD)).toEqual({});
+    expect(reviewStatus(graph, toggleMark(graph, {}, rule('.card'))).reviewed).toEqual(
+      new Set(RULE_IDS),
+    );
+    expect(toggleMark(graph, all, rule('.badge'))).toEqual({});
+    // One rule changed since: the next mark reviews them all again.
+    const pushed: Graph = {
+      ...graph,
+      nodes: graph.nodes.map((n) =>
+        n.id === rule('.card') && n.head
+          ? { ...n, head: { ...n.head, hashes: { ...n.head.hashes, body: 'new' } } }
+          : n,
+      ),
+    };
+    expect(reviewStatus(pushed, all).stale).toEqual(new Set([rule('.card')]));
+    expect(reviewStatus(pushed, toggleMark(pushed, all, CARD)).reviewed).toEqual(new Set(RULE_IDS));
+    // A stylesheet with one changed rule is that rule's mark.
+    expect(Object.keys(toggleMark(graph, {}, ONLY))).toEqual([ONLY]);
   });
 });

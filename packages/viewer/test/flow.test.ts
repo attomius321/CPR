@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   decorate,
   decorateEdges,
+  drawnAs,
   edgesToDraw,
   findingCount,
   kindMark,
@@ -15,6 +16,7 @@ import {
   NEIGHBOUR_LIMIT,
   NODE_HEIGHT,
   onCanvas,
+  stylesheetId,
   summaryId,
   toFlow,
   tone,
@@ -22,10 +24,23 @@ import {
   type FlowEdge,
   type FlowNode,
   type ProjectFlowNode,
+  type StylesheetFlowNode,
   type SummaryFlowNode,
   type SymbolFlowNode,
 } from '../src/graph/flow.js';
 import { changeList, layoutView } from '../src/diff/review.js';
+import {
+  ACCENT,
+  GAP,
+  LINE,
+  ONLY,
+  OTHER,
+  PAGE,
+  PAGE_CSS,
+  RULE_IDS,
+  rule,
+  sheetGraph,
+} from './stylesheet-graph.js';
 
 /** The engine's golden graphs double as viewer fixtures. */
 const golden = (name: string) =>
@@ -918,6 +933,174 @@ describe('the links a finding is about (V101, decisions 971–972)', () => {
     // In another symbol's group, with no line to `typed`: not on the canvas for it.
     expect(onCanvas(layout, TYPED).has('src/user3.ts#caller3')).toBe(false);
     expect(onCanvas(layout, TYPED).has(summaryId('users', HUB))).toBe(false);
+  });
+});
+
+describe('a stylesheet as one card (V105, decision 979)', () => {
+  const graph = () => sheetGraph(golden('callers'));
+  const CARD = stylesheetId(PAGE_CSS);
+  const cards = (nodes: FlowNode[]) =>
+    nodes.filter((n): n is StylesheetFlowNode => n.type === 'stylesheet');
+  const edgeOf = (layout: { edges: FlowEdge[] }, source: string, target: string) =>
+    layout.edges.find((e) => e.source === source && e.target === target);
+
+  it('draws a stylesheet of changed rules as one card in its box, with its counts', () => {
+    const { nodes } = layoutFlow(graph());
+    expect(cards(nodes).map((n) => [n.id, n.data])).toEqual([
+      [
+        CARD,
+        {
+          file: PAGE_CSS,
+          name: 'Page.css',
+          count: 10,
+          kinds: { added: 6, modified: 3, removed: 1, moved: 0 },
+          noun: 'rule',
+          tone: 'modified',
+          findings: { error: 1, warning: 0, info: 0 },
+          symbols: [...RULE_IDS, GAP],
+          changed: RULE_IDS,
+          sameSince: false,
+          expanded: false,
+          reviewed: false,
+          settled: false,
+        },
+      ],
+    ]);
+    // Its rules and the property of its own are in it, not drawn; its box holds only the card.
+    const drawn = new Set(symbols(nodes).map((n) => n.id));
+    for (const id of [...RULE_IDS, GAP]) expect(drawn.has(id), id).toBe(false);
+    const box = nodes.find((n) => n.type === 'file' && n.data.label === PAGE_CSS);
+    expect(nodes.filter((n) => 'parentId' in n && n.parentId === box?.id).map((n) => n.id)).toEqual(
+      [CARD],
+    );
+    expect(cards(nodes)[0]?.parentId).toBe(box?.id);
+  });
+
+  it('links each user and each use to the card once, as many links as it stands for', () => {
+    const layout = layoutFlow(graph());
+    expect(edgeOf(layout, PAGE, CARD)).toMatchObject({
+      className: 'edge-head edge-reference',
+      data: { edge: null, count: 4 },
+    });
+    // An unchanged user of three rules: one in the base only, two in both.
+    expect(edgeOf(layout, OTHER, CARD)).toMatchObject({
+      className: 'edge-both edge-reference',
+      data: { edge: null, count: 3 },
+    });
+    expect(edgeOf(layout, CARD, ACCENT)?.data).toEqual({ edge: null, count: 3 });
+    expect(edgeOf(layout, CARD, LINE)?.data).toEqual({ edge: null, count: 1 });
+    // Nothing else leads into or out of it: the link inside it (`.page` → `--gap`) is gone.
+    expect(layout.edges.filter((e) => e.source === CARD || e.target === CARD)).toHaveLength(4);
+    // The map's file pair counts every link the card's stand for.
+    const pair = layout.fileEdges.find(
+      (e) => e.source === 'group:file:src/Page.tsx' && e.target === `group:file:${PAGE_CSS}`,
+    );
+    expect(pair?.data.count).toBe(4);
+  });
+
+  it("draws a stylesheet with one changed rule as that rule, and an unchanged one's tokens", () => {
+    const { nodes } = layoutFlow(graph());
+    const drawn = new Set(symbols(nodes).map((n) => n.id));
+    expect(drawn.has(ONLY)).toBe(true);
+    expect(drawn.has(ACCENT)).toBe(true);
+    expect(cards(nodes)).toHaveLength(1);
+  });
+
+  it('opens in place: its rules laid out as without the card, which stays to close them', () => {
+    const layout = layoutFlow(graph(), { expanded: new Set([CARD]) });
+    const drawn = new Set(symbols(layout.nodes).map((n) => n.id));
+    for (const id of [...RULE_IDS, GAP]) expect(drawn.has(id), id).toBe(true);
+    expect(cards(layout.nodes).map((n) => n.data.expanded)).toEqual([true]);
+    expect(layout.edges.filter((e) => e.source === CARD || e.target === CARD)).toEqual([]);
+    expect(edgeOf(layout, PAGE, rule('.page'))).toBeDefined();
+    // Opening fits the card and what it shows.
+    expect(layout.members.get(CARD)).toEqual([...RULE_IDS, GAP]);
+    expect(layoutFlow(graph()).members.get(CARD)).toEqual([...RULE_IDS, GAP]);
+  });
+
+  it('groups the users of all its rules as a summary past the limit', () => {
+    const g = graph();
+    const users = Array.from({ length: 12 }, (_, i) => `src/view${i % 4}.tsx#View${i}`);
+    for (const [i, id] of users.entries()) {
+      g.nodes.push({ ...(g.nodes[1] as GraphNode), id, name: id.slice(id.indexOf('#') + 1) });
+      g.edges.push({ ...(g.edges[0] as GraphEdge), id: `u${i}`, from: id, to: rule('.row') });
+    }
+    const { nodes } = layoutFlow(g);
+    expect(summaries(nodes).map((n) => [n.id, n.data.of, n.data.count])).toEqual([
+      [summaryId('users', CARD), CARD, 13],
+    ]);
+  });
+
+  it('folds only a file whose changed symbols are all stylesheet symbols', () => {
+    const g = graph();
+    const page = g.nodes.find((n) => n.id === rule('.page')) as GraphNode;
+    page.language = 'typescript';
+    expect(cards(layoutFlow(g).nodes)).toEqual([]);
+  });
+
+  it('counts the findings of its rules on the map, at its corner, and colours its file', () => {
+    const { nodes } = layoutFlow(graph());
+    const box = nodes.find(
+      (n): n is FileFlowNode => n.type === 'file' && n.data.label === PAGE_CSS,
+    );
+    const card = cards(nodes)[0];
+    expect(box?.data.severity).toBe('error');
+    expect(box?.data.counts).toEqual([
+      {
+        symbol: CARD,
+        x: (card?.position.x ?? 0) + (card?.width ?? 0),
+        y: card?.position.y,
+        count: 1,
+        severity: 'error',
+      },
+    ]);
+  });
+
+  it('rings the card for a pick inside it, and marks it reviewed when every rule is', () => {
+    const { nodes } = layoutFlow(graph());
+    const picked = decorate(nodes, { selected: rule('.card') });
+    expect(cards(picked)[0]?.selected).toBe(true);
+    expect(drawnAs(nodes, rule('.card'))).toBe(CARD);
+    expect(drawnAs(nodes, PAGE)).toBe(PAGE);
+    expect(drawnAs(nodes, 'nowhere')).toBe('nowhere');
+    // Untouched nodes keep their identity.
+    expect(picked.filter((n, i) => n !== nodes[i]).map((n) => n.id)).toEqual([CARD]);
+
+    const most = new Set(RULE_IDS.slice(1));
+    expect(cards(decorate(nodes, { reviewed: most }))[0]?.data.reviewed).toBe(false);
+    const all = new Set(RULE_IDS);
+    expect(cards(decorate(nodes, { reviewed: all }))[0]?.data.reviewed).toBe(true);
+  });
+
+  it("puts a pick's links into the card on the canvas, and a pick in it the card's groups", () => {
+    const layout = layoutFlow(graph());
+    const shown = onCanvas(layout, PAGE);
+    for (const id of ['.page', '.page-head', '.page-title', '.page-body']) {
+      expect(shown.has(rule(id)), id).toBe(true);
+    }
+    // A rule's users grouped in its card's summary: linked to the card that holds the rule.
+    const g = graph();
+    const users = Array.from({ length: 12 }, (_, i) => `src/view${i % 4}.tsx#View${i}`);
+    for (const [i, id] of users.entries()) {
+      g.nodes.push({ ...(g.nodes[1] as GraphNode), id, name: id.slice(id.indexOf('#') + 1) });
+      g.edges.push({ ...(g.edges[0] as GraphEdge), id: `u${i}`, from: id, to: rule('.row') });
+    }
+    const grouped = layoutFlow(g);
+    expect(onCanvas(grouped, rule('.row')).has(users[0] as string)).toBe(true);
+    expect(onCanvas(grouped, PAGE).has(users[0] as string)).toBe(false);
+  });
+
+  it('opens the card of a rule Focus is on', () => {
+    const g = graph();
+    const view = layoutView(g, changeList(g), {
+      typeReferences: false,
+      context: true,
+      expanded: new Set(),
+      focusOn: rule('.card'),
+      project: null,
+    });
+    expect(view.expanded?.has(CARD)).toBe(true);
+    expect(symbols(layoutFlow(g, view).nodes).some((n) => n.id === rule('.card'))).toBe(true);
   });
 });
 
