@@ -178,6 +178,14 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
     recording: ReturnType<typeof recorder>,
   ): Promise<{ text: string; isError?: true } | null> {
     try {
+      // An argument its schema does not name: refused before anything runs (decision 997).
+      const named = Object.keys(tools.find((t) => t.name === name)?.inputSchema.properties ?? {});
+      const unknown = Object.keys(args).find((key) => !named.includes(key));
+      if (unknown !== undefined) {
+        throw new ToolProblem(
+          `unknown argument: ${unknown} (${name} takes ${named.length > 0 ? named.join(', ') : 'none'})`,
+        );
+      }
       const read = reads[name];
       if (read) {
         const value = await read(args, caller, signal);
@@ -265,11 +273,14 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
       const p = (params && typeof params === 'object' ? params : {}) as Record<string, unknown>;
       if (method === 'initialize') {
         const why = await startsAtOnce('start_workspace', caller);
+        // MC3: a lapsed Confirm stays on the person's bar; several starts or clean-ups, one call.
+        const lapse =
+          ' Unanswered, a Confirm stays on their Symbiote bar to confirm later: do not ask again unless they say so. Several starts or clean-ups go in one call, one Confirm.';
         const waits = why
           ? `start_workspace starts at once, without the person's Confirm (${
               why === 'hive' ? 'Hive mode is on' : 'their setting in Symbiote'
-            }): say first in one line what you start. The tools that start an agent again, record a verdict, act on a merge or clean up wait for the person's Confirm in Symbiote, 10 minutes at most: say first in one line what you will ask.`
-          : "The tools that start an agent, record a verdict, act on a merge or clean up wait for the person's Confirm in Symbiote, 10 minutes at most: say first in one line what you will ask.";
+            }): say first in one line what you start. The tools that start an agent again, record a verdict, act on a merge, mark merged work or clean up wait for the person's Confirm in Symbiote, 10 minutes at most: say first in one line what you will ask.${lapse}`
+          : `The tools that start an agent, record a verdict, act on a merge, mark merged work or clean up wait for the person's Confirm in Symbiote, 10 minutes at most: say first in one line what you will ask.${lapse}`;
         return reply(id, {
           protocolVersion:
             typeof p.protocolVersion === 'string' ? p.protocolVersion : LATEST_PROTOCOL,
@@ -284,13 +295,14 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
       if (method === 'tools/list') {
         const why = await startsAtOnce('start_workspace', caller);
         return reply(id, {
-          tools: tools.filter(listedNow).map(({ name, description, inputSchema }) => ({
+          tools: tools.filter(listedNow).map(({ name, description, inputSchema, annotations }) => ({
             name,
             description:
               why && name === 'start_workspace'
                 ? description.replace(ASKS, STARTS_AT_ONCE[why])
                 : description,
             inputSchema,
+            annotations,
           })),
         });
       }

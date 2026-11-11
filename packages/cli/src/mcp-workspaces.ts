@@ -239,9 +239,15 @@ export function mcpWorkspaces(
       const [options, { workspaces }] = await Promise.all([ws().options(), ws().list()]);
       const agent = () => Promise.resolve(options.agents[0]?.kind);
       const starts: Awaited<ReturnType<typeof startOf>>[] = [];
-      for (const [i, one] of listed.entries()) {
+      for (const [i, one] of (listed as unknown[]).entries()) {
         if (!one || typeof one !== 'object' || Array.isArray(one)) {
           throw new ToolProblem(`workspaces[${i + 1}]: a start's fields`);
+        }
+        const unknown = Object.keys(one).find(
+          (key) => !(START_FIELDS as readonly string[]).includes(key),
+        );
+        if (unknown !== undefined) {
+          throw new ToolProblem(`workspaces[${i + 1}]: unknown argument: ${unknown}`);
         }
         try {
           starts.push(await startOf(one as Args, agent));

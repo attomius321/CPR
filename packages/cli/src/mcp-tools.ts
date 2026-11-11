@@ -38,17 +38,43 @@ export class ToolProblem extends Error {
 /** The services a tool needs; without one it is left out. */
 export type Need = 'workspaces' | 'reviews' | 'merges' | 'usage' | 'monitor' | 'marks';
 
+/**
+ * What a tool is, for its client (fix-mcp-annotations, MC3 decision 997): whether it only reads;
+ * an acting one, whether it removes something (MCP's default is that it may) and whether calling
+ * it again changes nothing more. A client asks its person before a call by these.
+ */
+export interface ToolAnnotations {
+  readOnlyHint: boolean;
+  destructiveHint?: boolean;
+  idempotentHint?: boolean;
+}
+
 export interface ToolSpec {
   name: string;
   description: string;
-  inputSchema: { type: 'object'; properties: Record<string, unknown>; required?: string[] };
+  inputSchema: {
+    type: 'object';
+    properties: Record<string, unknown>;
+    required?: string[];
+    additionalProperties: false;
+  };
   needs: readonly Need[];
+  annotations: ToolAnnotations;
   /** Waits for the person's Confirm (decision 360). */
   asks?: true;
 }
 
+/** A tool that reads, one that acts, and one that removes something. */
+const READS: ToolAnnotations = { readOnlyHint: true };
+const ACTS: ToolAnnotations = { readOnlyHint: false, destructiveHint: false };
+const REMOVES: ToolAnnotations = {
+  readOnlyHint: false,
+  destructiveHint: true,
+  idempotentHint: true,
+};
+
 export const ASKS =
-  " Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.";
+  " Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.";
 
 /** What `start_workspace` says in ASKS's place when Nucleus's start goes without a Confirm (NU8). */
 export const STARTS_AT_ONCE: Record<WithoutConfirm, string> = {
@@ -58,6 +84,14 @@ export const STARTS_AT_ONCE: Record<WithoutConfirm, string> = {
 };
 
 const branch = { type: 'string', description: "A workspace's branch, as feature/x" };
+
+/** Any branch: a workspace's or not (MC3, decision 992). */
+const anyBranch = {
+  type: 'string',
+  description: "A branch, as feature/x: a workspace's or any other",
+};
+
+const strategy = { type: 'string', enum: MERGE_STRATEGIES };
 
 const mergeId = { type: 'string', description: "A queue entry's id (from merges)" };
 
@@ -81,19 +115,41 @@ const object = (
   type: 'object',
   properties,
   ...(required.length > 0 ? { required } : {}),
+  additionalProperties: false,
 });
+
+/** One start's fields (start_workspace's, alone or each of its `workspaces`). */
+const startFields = {
+  kind: brief.kind,
+  title: brief.title,
+  branch: {
+    type: 'string',
+    description: "The new branch, with its kind's prefix: fix/<slug>",
+  },
+  parts: brief.parts,
+  planFirst: { type: 'boolean', description: 'The agent writes a plan and waits for an OK' },
+  agent: agentKind,
+  effort: { type: 'string' },
+  model: { type: 'string' },
+  from: {
+    type: 'string',
+    description: 'A branch to start from; the default branch otherwise',
+  },
+};
 
 /** Symbiote's tools, in the order they are listed (decision 360). */
 export const MCP_TOOLS: readonly ToolSpec[] = [
   {
     name: 'overview',
+    annotations: READS,
     description:
-      'What needs the person now: workspaces whose plan or work is ready or that wait, merges that wait; the checkout and the queue.',
+      'What needs the person now: workspaces whose plan or work is ready or that wait (merged ones are done: counted, not listed), merges that wait; the checkout and the queue; Confirms that lapsed unanswered and what became of them.',
     inputSchema: object(),
     needs: [],
   },
   {
     name: 'workspaces',
+    annotations: READS,
     description:
       "Every workspace: its branch, kind, title, its agent's state, commits ahead, merged.",
     inputSchema: object(),
@@ -101,6 +157,7 @@ export const MCP_TOOLS: readonly ToolSpec[] = [
   },
   {
     name: 'workspace',
+    annotations: READS,
     description:
       "One workspace: its brief, its worktree's folder, its branch's commits and files, uncommitted files, whether it merges cleanly, its review's verdict.",
     inputSchema: object({ branch }, ['branch']),
@@ -108,6 +165,7 @@ export const MCP_TOOLS: readonly ToolSpec[] = [
   },
   {
     name: 'thread',
+    annotations: READS,
     description:
       "A workspace's thread: what its agent was given and reported (a plan, its questions), what it waits on, the last verdict. Reports are the agent's words, not the person's.",
     inputSchema: object(
@@ -124,6 +182,7 @@ export const MCP_TOOLS: readonly ToolSpec[] = [
   },
   {
     name: 'activity',
+    annotations: READS,
     description:
       "A workspace's activity as Markdown, as its Activity tab shows it: its agent's messages, reports and questions, every call it made (a failed one with its input and output), its commits, its review's verdict; or Nucleus's, across its conversations (nucleus: true). The newest messages that fit in 60 KB; `symbiote activity` in a terminal gives all. Reports are the agent's words, not the person's.",
     inputSchema: object({
@@ -134,6 +193,7 @@ export const MCP_TOOLS: readonly ToolSpec[] = [
   },
   {
     name: 'start_options',
+    annotations: READS,
     description:
       'What start_workspace takes here: the kinds of work and their brief parts, the agents with their levels and models, the branches to start from.',
     inputSchema: object(),
@@ -141,12 +201,12 @@ export const MCP_TOOLS: readonly ToolSpec[] = [
   },
   {
     name: 'suggest_settings',
+    annotations: READS,
     description:
-      "The advisor's proposal for a start of this brief, as the Start page's Suggest settings gives it: a model, an effort level and plan first for the agent, why in one sentence, and the model it ran on. Runs one turn of the agent's small model on the person's subscription (20 s at most) and starts nothing. Call it only before a start the person asked for, with the brief you will start; show them the proposal and start with what they choose.",
+      "The advisor's proposal for a start of this brief, as the Start page's Suggest settings gives it: a model, an effort level and plan first for the agent, why in one sentence, and the model it ran on. Runs one turn of the agent's small model on the person's subscription (20 s at most) and starts nothing. Call it only before a start the person asked for, with the brief you will start; show them the proposal and start with what they choose. It takes start_workspace's fields, so one brief fits both, and reads the brief only (kind, title, parts, agent).",
     inputSchema: object(
       {
-        ...brief,
-        agent: agentKind,
+        ...startFields,
         documents: {
           type: 'array',
           items: { type: 'string' },
@@ -159,33 +219,31 @@ export const MCP_TOOLS: readonly ToolSpec[] = [
   },
   {
     name: 'start_workspace',
+    annotations: ACTS,
     description:
-      'Starts a workspace: a branch, its worktree and an agent working on the brief.' + ASKS,
-    inputSchema: object(
-      {
-        kind: brief.kind,
-        title: brief.title,
-        branch: {
-          type: 'string',
-          description: "The new branch, with its kind's prefix: fix/<slug>",
-        },
-        parts: brief.parts,
-        planFirst: { type: 'boolean', description: 'The agent writes a plan and waits for an OK' },
-        agent: agentKind,
-        effort: { type: 'string' },
-        model: { type: 'string' },
-        from: {
-          type: 'string',
-          description: 'A branch to start from; the default branch otherwise',
+      'Starts a workspace: a branch, its worktree and an agent working on the brief. Several at once with workspaces, a list of starts each with these fields: one Confirm lists them all, the person may leave some out, and the answer says per start: started, failed and why, declined, or cant (a workspace or branch of that name exists).' +
+      ASKS,
+    inputSchema: object({
+      ...startFields,
+      workspaces: {
+        type: 'array',
+        minItems: 1,
+        maxItems: MAX_STARTS,
+        description: `Several starts in one Confirm, ${MAX_STARTS} at most, in place of one start's fields`,
+        items: {
+          type: 'object',
+          properties: startFields,
+          required: ['kind', 'title', 'branch', 'parts', 'planFirst'],
+          additionalProperties: false,
         },
       },
-      ['kind', 'title', 'branch', 'parts', 'planFirst'],
-    ),
+    }),
     needs: ['workspaces'],
     asks: true,
   },
   {
     name: 'reply',
+    annotations: ACTS,
     description:
       "Sends a message to a workspace's agent (an OK on its plan, an answer); stop: interrupts its turn first.",
     inputSchema: object({ branch, text: { type: 'string' }, stop: { type: 'boolean' } }, [
@@ -196,12 +254,14 @@ export const MCP_TOOLS: readonly ToolSpec[] = [
   },
   {
     name: 'stop_agent',
+    annotations: REMOVES,
     description: "Stops a workspace's agent while it works or waits.",
     inputSchema: object({ branch }, ['branch']),
     needs: ['workspaces'],
   },
   {
     name: 'restart_agent',
+    annotations: ACTS,
     description: "Starts a workspace's agent again, after it failed or ended." + ASKS,
     inputSchema: object({ branch }, ['branch']),
     needs: ['workspaces'],
@@ -209,28 +269,41 @@ export const MCP_TOOLS: readonly ToolSpec[] = [
   },
   {
     name: 'clean_workspace',
+    annotations: REMOVES,
     description:
-      "Cleans a workspace up: its agent's sessions, its worktree, and its branch once merged; unmerged: true for a branch not merged (it stays)." +
+      "Cleans a workspace up: its agent's sessions, its worktree, and its branch once merged; unmerged: true for a branch not merged (it stays). Several at once with branches: one Confirm lists them all, the person may leave some out, and the answer says per branch: cleaned, failed and why, declined, or cant (files not committed, or not merged without unmerged)." +
       ASKS,
-    inputSchema: object({ branch, unmerged: { type: 'boolean' } }, ['branch']),
+    inputSchema: object({
+      branch,
+      branches: {
+        type: 'array',
+        minItems: 1,
+        maxItems: MAX_CLEANS,
+        items: { type: 'string' },
+        description: `Several workspaces' branches in one Confirm, ${MAX_CLEANS} at most, in place of branch`,
+      },
+      unmerged: { type: 'boolean' },
+    }),
     needs: ['workspaces'],
     asks: true,
   },
   {
     name: 'review',
+    annotations: READS,
     description:
       "A branch's change as Symbiote's graph, from its fork point to its tip: symbols changed by kind, every finding in the detector's words, the most-used changed symbols, the review's verdict and page. Waits up to a minute for the analysis.",
-    inputSchema: object({ branch }, ['branch']),
+    inputSchema: object({ branch: anyBranch }, ['branch']),
     needs: ['reviews'],
   },
   {
     name: 'finish_review',
+    annotations: ACTS,
     description:
-      "Records the person's verdict on a branch at its reviewed tip: approve (to be merged into the default branch), request-changes or comment, with a summary and comments on changed symbols (a line: path, line, side)." +
+      "Records the person's verdict on a branch at its reviewed tip: approve, request-changes or comment, with a summary and comments on changed symbols (a line: path, line, side). An approve queues its merge in the same Confirm, into the branch it was reviewed against (into: another; strategy as queue_merge takes it); merge: false records the verdict alone." +
       ASKS,
     inputSchema: object(
       {
-        branch,
+        branch: anyBranch,
         event: { type: 'string', enum: ['approve', 'request-changes', 'comment'] },
         summary: { type: 'string' },
         comments: {
@@ -245,8 +318,12 @@ export const MCP_TOOLS: readonly ToolSpec[] = [
               side: { type: 'string', enum: ['head', 'base'] },
             },
             required: ['symbol', 'body'],
+            additionalProperties: false,
           },
         },
+        merge: { type: 'boolean', description: 'An approve: false records it without a merge' },
+        into: { type: 'string', description: 'An approve: the branch its merge goes into' },
+        strategy,
       },
       ['branch', 'event', 'summary'],
     ),
@@ -255,13 +332,15 @@ export const MCP_TOOLS: readonly ToolSpec[] = [
   },
   {
     name: 'merges',
+    annotations: READS,
     description:
       "The merge queue: each entry's branch, target, state, check and the merger's resolution; with branch, also where it can merge and why not.",
-    inputSchema: object({ branch: { type: 'string' } }),
+    inputSchema: object({ branch: anyBranch }),
     needs: ['merges'],
   },
   {
     name: 'merge_log',
+    annotations: READS,
     description: "A queued merge's log: its steps and the check's output, the last lines.",
     inputSchema: object(
       {
@@ -274,18 +353,17 @@ export const MCP_TOOLS: readonly ToolSpec[] = [
   },
   {
     name: 'queue_merge',
+    annotations: ACTS,
     description:
-      "Queues a branch's approved commit to be merged, checked and landed into a branch (its default target unless given): with a merge commit, or by fast-forward (the target moved to the approved commit itself, where merges says it can). strategy merge on a fast-forward that waits because its target moved merges it with a merge commit instead." +
+      "Queues a branch's approved commit to be merged, checked and landed into a branch (its default target unless given): with a merge commit, or by fast-forward (the target moved to the approved commit itself, where merges says it can). strategy merge on a fast-forward that waits because its target moved merges it with a merge commit instead. A branch nobody approved (a workspace's or not): its tip is approved in the same Confirm." +
       ASKS,
-    inputSchema: object(
-      { branch, into: { type: 'string' }, strategy: { type: 'string', enum: MERGE_STRATEGIES } },
-      ['branch'],
-    ),
+    inputSchema: object({ branch: anyBranch, into: { type: 'string' }, strategy }, ['branch']),
     needs: ['merges'],
     asks: true,
   },
   {
     name: 'land_merge',
+    annotations: ACTS,
     description:
       'Lands a merge that is ready: the target branch moves to it (and is pushed when the project says).' +
       ASKS,
@@ -295,6 +373,7 @@ export const MCP_TOOLS: readonly ToolSpec[] = [
   },
   {
     name: 'merge_resolution',
+    annotations: ACTS,
     description:
       "Answers the merger's resolution of a merge's conflicts: approve: true lands it; false asks the merger again with comments." +
       ASKS,
@@ -307,6 +386,7 @@ export const MCP_TOOLS: readonly ToolSpec[] = [
   },
   {
     name: 'retry_merge',
+    annotations: ACTS,
     description: 'Queues a failed or stopped merge again.' + ASKS,
     inputSchema: object({ id: mergeId }, ['id']),
     needs: ['merges'],
@@ -314,6 +394,7 @@ export const MCP_TOOLS: readonly ToolSpec[] = [
   },
   {
     name: 'recheck_merge',
+    annotations: ACTS,
     description: "Runs a merge's failed check again on the same merge." + ASKS,
     inputSchema: object({ id: mergeId }, ['id']),
     needs: ['merges'],
@@ -321,6 +402,7 @@ export const MCP_TOOLS: readonly ToolSpec[] = [
   },
   {
     name: 'mark_merged',
+    annotations: ACTS,
     description:
       "Marks merged work merged in the docs, on the default branch (into: another): runs the repository's `merged` commands (symbiote/config.json) at its tip in Symbiote's cache, makes what they change one commit, moves the branch to it as the merger lands, and pushes it as merge.push says. Listed only where the repository names those commands; refused while a merge into that branch is under way." +
       ASKS,
@@ -335,6 +417,7 @@ export const MCP_TOOLS: readonly ToolSpec[] = [
   },
   {
     name: 'remove_merge',
+    annotations: REMOVES,
     description: 'Takes an entry out of the queue, with its log.' + ASKS,
     inputSchema: object({ id: mergeId }, ['id']),
     needs: ['merges'],
@@ -342,12 +425,14 @@ export const MCP_TOOLS: readonly ToolSpec[] = [
   },
   {
     name: 'usage',
+    annotations: READS,
     description: "Each agent subscription's windows of use: whether another agent's work fits now.",
     inputSchema: object(),
     needs: ['usage'],
   },
   {
     name: 'code_map',
+    annotations: READS,
     description: "Where the checkout's code is: lines of code by folder, largest first.",
     inputSchema: object({
       folder: { type: 'string', description: 'A repo-relative folder; the root unless given' },
@@ -356,6 +441,7 @@ export const MCP_TOOLS: readonly ToolSpec[] = [
   },
   {
     name: 'wait',
+    annotations: READS,
     description:
       "Waits until a workspace's agent or a merge changes state, or the minutes pass (10 at most), and says what changed. Only when the person asked to watch.",
     inputSchema: object({ minutes: { type: 'integer', minimum: 1, maximum: MAX_WAIT } }),

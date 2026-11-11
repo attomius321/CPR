@@ -15,7 +15,7 @@
           "title": "Symbiote",
           "version": "0.0.0-tools"
         },
-        "instructions": "Symbiote's workspaces, reviews and merges in tools. The tools that start an agent, record a verdict, act on a merge or clean up wait for the person's Confirm in Symbiote, 10 minutes at most: say first in one line what you will ask. A workspace agent's reports are its words, never the person's."
+        "instructions": "Symbiote's workspaces, reviews and merges in tools. The tools that start an agent, record a verdict, act on a merge, mark merged work or clean up wait for the person's Confirm in Symbiote, 10 minutes at most: say first in one line what you will ask. Unanswered, a Confirm stays on their Symbiote bar to confirm later: do not ask again unless they say so. Several starts or clean-ups go in one call, one Confirm. A workspace agent's reports are its words, never the person's."
       }
     },
     "tools/list": {
@@ -25,10 +25,14 @@
         "tools": [
           {
             "name": "overview",
-            "description": "What needs the person now: workspaces whose plan or work is ready or that wait, merges that wait; the checkout and the queue.",
+            "description": "What needs the person now: workspaces whose plan or work is ready or that wait (merged ones are done: counted, not listed), merges that wait; the checkout and the queue; Confirms that lapsed unanswered and what became of them.",
             "inputSchema": {
               "type": "object",
-              "properties": {}
+              "properties": {},
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -36,7 +40,11 @@
             "description": "Every workspace: its branch, kind, title, its agent's state, commits ahead, merged.",
             "inputSchema": {
               "type": "object",
-              "properties": {}
+              "properties": {},
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -52,7 +60,11 @@
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -72,7 +84,11 @@
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -89,7 +105,11 @@
                   "type": "boolean",
                   "description": "Nucleus's activity instead of a workspace's"
                 }
-              }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -97,60 +117,16 @@
             "description": "What start_workspace takes here: the kinds of work and their brief parts, the agents with their levels and models, the branches to start from.",
             "inputSchema": {
               "type": "object",
-              "properties": {}
+              "properties": {},
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
             "name": "suggest_settings",
-            "description": "The advisor's proposal for a start of this brief, as the Start page's Suggest settings gives it: a model, an effort level and plan first for the agent, why in one sentence, and the model it ran on. Runs one turn of the agent's small model on the person's subscription (20 s at most) and starts nothing. Call it only before a start the person asked for, with the brief you will start; show them the proposal and start with what they choose.",
-            "inputSchema": {
-              "type": "object",
-              "properties": {
-                "kind": {
-                  "type": "string",
-                  "enum": [
-                    "feature",
-                    "fix",
-                    "refactor",
-                    "chore",
-                    "spike"
-                  ]
-                },
-                "title": {
-                  "type": "string"
-                },
-                "parts": {
-                  "type": "object",
-                  "description": "The brief's parts the kind takes (start_options), each a text",
-                  "additionalProperties": {
-                    "type": "string"
-                  }
-                },
-                "agent": {
-                  "type": "string",
-                  "enum": [
-                    "claude",
-                    "codex"
-                  ]
-                },
-                "documents": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "description": "The attached files' names: the advisor is told the names only"
-                }
-              },
-              "required": [
-                "kind",
-                "title",
-                "parts"
-              ]
-            }
-          },
-          {
-            "name": "start_workspace",
-            "description": "Starts a workspace: a branch, its worktree and an agent working on the brief. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "The advisor's proposal for a start of this brief, as the Start page's Suggest settings gives it: a model, an effort level and plan first for the agent, why in one sentence, and the model it ran on. Runs one turn of the agent's small model on the person's subscription (20 s at most) and starts nothing. Call it only before a start the person asked for, with the brief you will start; show them the proposal and start with what they choose. It takes start_workspace's fields, so one brief fits both, and reads the brief only (kind, title, parts, agent).",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -198,15 +174,147 @@
                 "from": {
                   "type": "string",
                   "description": "A branch to start from; the default branch otherwise"
+                },
+                "documents": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "The attached files' names: the advisor is told the names only"
                 }
               },
               "required": [
                 "kind",
                 "title",
-                "branch",
-                "parts",
-                "planFirst"
-              ]
+                "parts"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "start_workspace",
+            "description": "Starts a workspace: a branch, its worktree and an agent working on the brief. Several at once with workspaces, a list of starts each with these fields: one Confirm lists them all, the person may leave some out, and the answer says per start: started, failed and why, declined, or cant (a workspace or branch of that name exists). Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "feature",
+                    "fix",
+                    "refactor",
+                    "chore",
+                    "spike"
+                  ]
+                },
+                "title": {
+                  "type": "string"
+                },
+                "branch": {
+                  "type": "string",
+                  "description": "The new branch, with its kind's prefix: fix/<slug>"
+                },
+                "parts": {
+                  "type": "object",
+                  "description": "The brief's parts the kind takes (start_options), each a text",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                },
+                "planFirst": {
+                  "type": "boolean",
+                  "description": "The agent writes a plan and waits for an OK"
+                },
+                "agent": {
+                  "type": "string",
+                  "enum": [
+                    "claude",
+                    "codex"
+                  ]
+                },
+                "effort": {
+                  "type": "string"
+                },
+                "model": {
+                  "type": "string"
+                },
+                "from": {
+                  "type": "string",
+                  "description": "A branch to start from; the default branch otherwise"
+                },
+                "workspaces": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 10,
+                  "description": "Several starts in one Confirm, 10 at most, in place of one start's fields",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "feature",
+                          "fix",
+                          "refactor",
+                          "chore",
+                          "spike"
+                        ]
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "branch": {
+                        "type": "string",
+                        "description": "The new branch, with its kind's prefix: fix/<slug>"
+                      },
+                      "parts": {
+                        "type": "object",
+                        "description": "The brief's parts the kind takes (start_options), each a text",
+                        "additionalProperties": {
+                          "type": "string"
+                        }
+                      },
+                      "planFirst": {
+                        "type": "boolean",
+                        "description": "The agent writes a plan and waits for an OK"
+                      },
+                      "agent": {
+                        "type": "string",
+                        "enum": [
+                          "claude",
+                          "codex"
+                        ]
+                      },
+                      "effort": {
+                        "type": "string"
+                      },
+                      "model": {
+                        "type": "string"
+                      },
+                      "from": {
+                        "type": "string",
+                        "description": "A branch to start from; the default branch otherwise"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "title",
+                      "branch",
+                      "parts",
+                      "planFirst"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
@@ -229,7 +337,12 @@
               "required": [
                 "branch",
                 "text"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
@@ -245,12 +358,18 @@
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": true,
+              "idempotentHint": true
             }
           },
           {
             "name": "restart_agent",
-            "description": "Starts a workspace's agent again, after it failed or ended. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Starts a workspace's agent again, after it failed or ended. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -261,12 +380,17 @@
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "clean_workspace",
-            "description": "Cleans a workspace up: its agent's sessions, its worktree, and its branch once merged; unmerged: true for a branch not merged (it stays). Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Cleans a workspace up: its agent's sessions, its worktree, and its branch once merged; unmerged: true for a branch not merged (it stays). Several at once with branches: one Confirm lists them all, the person may leave some out, and the answer says per branch: cleaned, failed and why, declined, or cant (files not committed, or not merged without unmerged). Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -274,13 +398,25 @@
                   "type": "string",
                   "description": "A workspace's branch, as feature/x"
                 },
+                "branches": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 20,
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Several workspaces' branches in one Confirm, 20 at most, in place of branch"
+                },
                 "unmerged": {
                   "type": "boolean"
                 }
               },
-              "required": [
-                "branch"
-              ]
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": true,
+              "idempotentHint": true
             }
           },
           {
@@ -291,23 +427,27 @@
               "properties": {
                 "branch": {
                   "type": "string",
-                  "description": "A workspace's branch, as feature/x"
+                  "description": "A branch, as feature/x: a workspace's or any other"
                 }
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
             "name": "finish_review",
-            "description": "Records the person's verdict on a branch at its reviewed tip: approve (to be merged into the default branch), request-changes or comment, with a summary and comments on changed symbols (a line: path, line, side). Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Records the person's verdict on a branch at its reviewed tip: approve, request-changes or comment, with a summary and comments on changed symbols (a line: path, line, side). An approve queues its merge in the same Confirm, into the branch it was reviewed against (into: another; strategy as queue_merge takes it); merge: false records the verdict alone. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
                 "branch": {
                   "type": "string",
-                  "description": "A workspace's branch, as feature/x"
+                  "description": "A branch, as feature/x: a workspace's or any other"
                 },
                 "event": {
                   "type": "string",
@@ -349,15 +489,36 @@
                     "required": [
                       "symbol",
                       "body"
-                    ]
+                    ],
+                    "additionalProperties": false
                   }
+                },
+                "merge": {
+                  "type": "boolean",
+                  "description": "An approve: false records it without a merge"
+                },
+                "into": {
+                  "type": "string",
+                  "description": "An approve: the branch its merge goes into"
+                },
+                "strategy": {
+                  "type": "string",
+                  "enum": [
+                    "merge",
+                    "fast-forward"
+                  ]
                 }
               },
               "required": [
                 "branch",
                 "event",
                 "summary"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
@@ -367,9 +528,14 @@
               "type": "object",
               "properties": {
                 "branch": {
-                  "type": "string"
+                  "type": "string",
+                  "description": "A branch, as feature/x: a workspace's or any other"
                 }
-              }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -389,18 +555,22 @@
               },
               "required": [
                 "id"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
             "name": "queue_merge",
-            "description": "Queues a branch's approved commit to be merged, checked and landed into a branch (its default target unless given): with a merge commit, or by fast-forward (the target moved to the approved commit itself, where merges says it can). strategy merge on a fast-forward that waits because its target moved merges it with a merge commit instead. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Queues a branch's approved commit to be merged, checked and landed into a branch (its default target unless given): with a merge commit, or by fast-forward (the target moved to the approved commit itself, where merges says it can). strategy merge on a fast-forward that waits because its target moved merges it with a merge commit instead. A branch nobody approved (a workspace's or not): its tip is approved in the same Confirm. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
                 "branch": {
                   "type": "string",
-                  "description": "A workspace's branch, as feature/x"
+                  "description": "A branch, as feature/x: a workspace's or any other"
                 },
                 "into": {
                   "type": "string"
@@ -415,12 +585,17 @@
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "land_merge",
-            "description": "Lands a merge that is ready: the target branch moves to it (and is pushed when the project says). Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Lands a merge that is ready: the target branch moves to it (and is pushed when the project says). Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -431,12 +606,17 @@
               },
               "required": [
                 "id"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "merge_resolution",
-            "description": "Answers the merger's resolution of a merge's conflicts: approve: true lands it; false asks the merger again with comments. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Answers the merger's resolution of a merge's conflicts: approve: true lands it; false asks the merger again with comments. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -454,12 +634,17 @@
               "required": [
                 "id",
                 "approve"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "retry_merge",
-            "description": "Queues a failed or stopped merge again. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Queues a failed or stopped merge again. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -470,12 +655,17 @@
               },
               "required": [
                 "id"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "recheck_merge",
-            "description": "Runs a merge's failed check again on the same merge. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Runs a merge's failed check again on the same merge. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -486,12 +676,35 @@
               },
               "required": [
                 "id"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
+            }
+          },
+          {
+            "name": "mark_merged",
+            "description": "Marks merged work merged in the docs, on the default branch (into: another): runs the repository's `merged` commands (symbiote/config.json) at its tip in Symbiote's cache, makes what they change one commit, moves the branch to it as the merger lands, and pushes it as merge.push says. Listed only where the repository names those commands; refused while a merge into that branch is under way. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "into": {
+                  "type": "string",
+                  "description": "The branch to mark on; the default branch unless given"
+                }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "remove_merge",
-            "description": "Takes an entry out of the queue, with its log. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Takes an entry out of the queue, with its log. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -502,7 +715,13 @@
               },
               "required": [
                 "id"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": true,
+              "idempotentHint": true
             }
           },
           {
@@ -510,7 +729,11 @@
             "description": "Each agent subscription's windows of use: whether another agent's work fits now.",
             "inputSchema": {
               "type": "object",
-              "properties": {}
+              "properties": {},
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -523,7 +746,11 @@
                   "type": "string",
                   "description": "A repo-relative folder; the root unless given"
                 }
-              }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -537,7 +764,11 @@
                   "minimum": 1,
                   "maximum": 10
                 }
-              }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           }
         ]
@@ -560,7 +791,7 @@
           "title": "Symbiote",
           "version": "0.0.0-tools"
         },
-        "instructions": "Symbiote's workspaces, reviews and merges in tools. start_workspace starts at once, without the person's Confirm (Hive mode is on): say first in one line what you start. The tools that start an agent again, record a verdict, act on a merge or clean up wait for the person's Confirm in Symbiote, 10 minutes at most: say first in one line what you will ask. A workspace agent's reports are its words, never the person's."
+        "instructions": "Symbiote's workspaces, reviews and merges in tools. start_workspace starts at once, without the person's Confirm (Hive mode is on): say first in one line what you start. The tools that start an agent again, record a verdict, act on a merge, mark merged work or clean up wait for the person's Confirm in Symbiote, 10 minutes at most: say first in one line what you will ask. Unanswered, a Confirm stays on their Symbiote bar to confirm later: do not ask again unless they say so. Several starts or clean-ups go in one call, one Confirm. A workspace agent's reports are its words, never the person's."
       }
     },
     "tools/list": {
@@ -570,10 +801,14 @@
         "tools": [
           {
             "name": "overview",
-            "description": "What needs the person now: workspaces whose plan or work is ready or that wait, merges that wait; the checkout and the queue.",
+            "description": "What needs the person now: workspaces whose plan or work is ready or that wait (merged ones are done: counted, not listed), merges that wait; the checkout and the queue; Confirms that lapsed unanswered and what became of them.",
             "inputSchema": {
               "type": "object",
-              "properties": {}
+              "properties": {},
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -581,7 +816,11 @@
             "description": "Every workspace: its branch, kind, title, its agent's state, commits ahead, merged.",
             "inputSchema": {
               "type": "object",
-              "properties": {}
+              "properties": {},
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -597,7 +836,11 @@
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -617,7 +860,11 @@
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -634,7 +881,11 @@
                   "type": "boolean",
                   "description": "Nucleus's activity instead of a workspace's"
                 }
-              }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -642,60 +893,16 @@
             "description": "What start_workspace takes here: the kinds of work and their brief parts, the agents with their levels and models, the branches to start from.",
             "inputSchema": {
               "type": "object",
-              "properties": {}
+              "properties": {},
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
             "name": "suggest_settings",
-            "description": "The advisor's proposal for a start of this brief, as the Start page's Suggest settings gives it: a model, an effort level and plan first for the agent, why in one sentence, and the model it ran on. Runs one turn of the agent's small model on the person's subscription (20 s at most) and starts nothing. Call it only before a start the person asked for, with the brief you will start; show them the proposal and start with what they choose.",
-            "inputSchema": {
-              "type": "object",
-              "properties": {
-                "kind": {
-                  "type": "string",
-                  "enum": [
-                    "feature",
-                    "fix",
-                    "refactor",
-                    "chore",
-                    "spike"
-                  ]
-                },
-                "title": {
-                  "type": "string"
-                },
-                "parts": {
-                  "type": "object",
-                  "description": "The brief's parts the kind takes (start_options), each a text",
-                  "additionalProperties": {
-                    "type": "string"
-                  }
-                },
-                "agent": {
-                  "type": "string",
-                  "enum": [
-                    "claude",
-                    "codex"
-                  ]
-                },
-                "documents": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "description": "The attached files' names: the advisor is told the names only"
-                }
-              },
-              "required": [
-                "kind",
-                "title",
-                "parts"
-              ]
-            }
-          },
-          {
-            "name": "start_workspace",
-            "description": "Starts a workspace: a branch, its worktree and an agent working on the brief. Starts at once, without the person's Confirm: Hive mode is on. Say first in one line what you start.",
+            "description": "The advisor's proposal for a start of this brief, as the Start page's Suggest settings gives it: a model, an effort level and plan first for the agent, why in one sentence, and the model it ran on. Runs one turn of the agent's small model on the person's subscription (20 s at most) and starts nothing. Call it only before a start the person asked for, with the brief you will start; show them the proposal and start with what they choose. It takes start_workspace's fields, so one brief fits both, and reads the brief only (kind, title, parts, agent).",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -743,15 +950,147 @@
                 "from": {
                   "type": "string",
                   "description": "A branch to start from; the default branch otherwise"
+                },
+                "documents": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "The attached files' names: the advisor is told the names only"
                 }
               },
               "required": [
                 "kind",
                 "title",
-                "branch",
-                "parts",
-                "planFirst"
-              ]
+                "parts"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "start_workspace",
+            "description": "Starts a workspace: a branch, its worktree and an agent working on the brief. Several at once with workspaces, a list of starts each with these fields: one Confirm lists them all, the person may leave some out, and the answer says per start: started, failed and why, declined, or cant (a workspace or branch of that name exists). Starts at once, without the person's Confirm: Hive mode is on. Say first in one line what you start.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "feature",
+                    "fix",
+                    "refactor",
+                    "chore",
+                    "spike"
+                  ]
+                },
+                "title": {
+                  "type": "string"
+                },
+                "branch": {
+                  "type": "string",
+                  "description": "The new branch, with its kind's prefix: fix/<slug>"
+                },
+                "parts": {
+                  "type": "object",
+                  "description": "The brief's parts the kind takes (start_options), each a text",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                },
+                "planFirst": {
+                  "type": "boolean",
+                  "description": "The agent writes a plan and waits for an OK"
+                },
+                "agent": {
+                  "type": "string",
+                  "enum": [
+                    "claude",
+                    "codex"
+                  ]
+                },
+                "effort": {
+                  "type": "string"
+                },
+                "model": {
+                  "type": "string"
+                },
+                "from": {
+                  "type": "string",
+                  "description": "A branch to start from; the default branch otherwise"
+                },
+                "workspaces": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 10,
+                  "description": "Several starts in one Confirm, 10 at most, in place of one start's fields",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "feature",
+                          "fix",
+                          "refactor",
+                          "chore",
+                          "spike"
+                        ]
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "branch": {
+                        "type": "string",
+                        "description": "The new branch, with its kind's prefix: fix/<slug>"
+                      },
+                      "parts": {
+                        "type": "object",
+                        "description": "The brief's parts the kind takes (start_options), each a text",
+                        "additionalProperties": {
+                          "type": "string"
+                        }
+                      },
+                      "planFirst": {
+                        "type": "boolean",
+                        "description": "The agent writes a plan and waits for an OK"
+                      },
+                      "agent": {
+                        "type": "string",
+                        "enum": [
+                          "claude",
+                          "codex"
+                        ]
+                      },
+                      "effort": {
+                        "type": "string"
+                      },
+                      "model": {
+                        "type": "string"
+                      },
+                      "from": {
+                        "type": "string",
+                        "description": "A branch to start from; the default branch otherwise"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "title",
+                      "branch",
+                      "parts",
+                      "planFirst"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
@@ -774,7 +1113,12 @@
               "required": [
                 "branch",
                 "text"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
@@ -790,12 +1134,18 @@
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": true,
+              "idempotentHint": true
             }
           },
           {
             "name": "restart_agent",
-            "description": "Starts a workspace's agent again, after it failed or ended. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Starts a workspace's agent again, after it failed or ended. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -806,12 +1156,17 @@
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "clean_workspace",
-            "description": "Cleans a workspace up: its agent's sessions, its worktree, and its branch once merged; unmerged: true for a branch not merged (it stays). Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Cleans a workspace up: its agent's sessions, its worktree, and its branch once merged; unmerged: true for a branch not merged (it stays). Several at once with branches: one Confirm lists them all, the person may leave some out, and the answer says per branch: cleaned, failed and why, declined, or cant (files not committed, or not merged without unmerged). Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -819,13 +1174,25 @@
                   "type": "string",
                   "description": "A workspace's branch, as feature/x"
                 },
+                "branches": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 20,
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Several workspaces' branches in one Confirm, 20 at most, in place of branch"
+                },
                 "unmerged": {
                   "type": "boolean"
                 }
               },
-              "required": [
-                "branch"
-              ]
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": true,
+              "idempotentHint": true
             }
           },
           {
@@ -836,23 +1203,27 @@
               "properties": {
                 "branch": {
                   "type": "string",
-                  "description": "A workspace's branch, as feature/x"
+                  "description": "A branch, as feature/x: a workspace's or any other"
                 }
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
             "name": "finish_review",
-            "description": "Records the person's verdict on a branch at its reviewed tip: approve (to be merged into the default branch), request-changes or comment, with a summary and comments on changed symbols (a line: path, line, side). Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Records the person's verdict on a branch at its reviewed tip: approve, request-changes or comment, with a summary and comments on changed symbols (a line: path, line, side). An approve queues its merge in the same Confirm, into the branch it was reviewed against (into: another; strategy as queue_merge takes it); merge: false records the verdict alone. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
                 "branch": {
                   "type": "string",
-                  "description": "A workspace's branch, as feature/x"
+                  "description": "A branch, as feature/x: a workspace's or any other"
                 },
                 "event": {
                   "type": "string",
@@ -894,15 +1265,36 @@
                     "required": [
                       "symbol",
                       "body"
-                    ]
+                    ],
+                    "additionalProperties": false
                   }
+                },
+                "merge": {
+                  "type": "boolean",
+                  "description": "An approve: false records it without a merge"
+                },
+                "into": {
+                  "type": "string",
+                  "description": "An approve: the branch its merge goes into"
+                },
+                "strategy": {
+                  "type": "string",
+                  "enum": [
+                    "merge",
+                    "fast-forward"
+                  ]
                 }
               },
               "required": [
                 "branch",
                 "event",
                 "summary"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
@@ -912,9 +1304,14 @@
               "type": "object",
               "properties": {
                 "branch": {
-                  "type": "string"
+                  "type": "string",
+                  "description": "A branch, as feature/x: a workspace's or any other"
                 }
-              }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -934,18 +1331,22 @@
               },
               "required": [
                 "id"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
             "name": "queue_merge",
-            "description": "Queues a branch's approved commit to be merged, checked and landed into a branch (its default target unless given): with a merge commit, or by fast-forward (the target moved to the approved commit itself, where merges says it can). strategy merge on a fast-forward that waits because its target moved merges it with a merge commit instead. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Queues a branch's approved commit to be merged, checked and landed into a branch (its default target unless given): with a merge commit, or by fast-forward (the target moved to the approved commit itself, where merges says it can). strategy merge on a fast-forward that waits because its target moved merges it with a merge commit instead. A branch nobody approved (a workspace's or not): its tip is approved in the same Confirm. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
                 "branch": {
                   "type": "string",
-                  "description": "A workspace's branch, as feature/x"
+                  "description": "A branch, as feature/x: a workspace's or any other"
                 },
                 "into": {
                   "type": "string"
@@ -960,12 +1361,17 @@
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "land_merge",
-            "description": "Lands a merge that is ready: the target branch moves to it (and is pushed when the project says). Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Lands a merge that is ready: the target branch moves to it (and is pushed when the project says). Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -976,12 +1382,17 @@
               },
               "required": [
                 "id"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "merge_resolution",
-            "description": "Answers the merger's resolution of a merge's conflicts: approve: true lands it; false asks the merger again with comments. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Answers the merger's resolution of a merge's conflicts: approve: true lands it; false asks the merger again with comments. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -999,12 +1410,17 @@
               "required": [
                 "id",
                 "approve"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "retry_merge",
-            "description": "Queues a failed or stopped merge again. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Queues a failed or stopped merge again. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -1015,12 +1431,17 @@
               },
               "required": [
                 "id"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "recheck_merge",
-            "description": "Runs a merge's failed check again on the same merge. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Runs a merge's failed check again on the same merge. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -1031,12 +1452,35 @@
               },
               "required": [
                 "id"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
+            }
+          },
+          {
+            "name": "mark_merged",
+            "description": "Marks merged work merged in the docs, on the default branch (into: another): runs the repository's `merged` commands (symbiote/config.json) at its tip in Symbiote's cache, makes what they change one commit, moves the branch to it as the merger lands, and pushes it as merge.push says. Listed only where the repository names those commands; refused while a merge into that branch is under way. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "into": {
+                  "type": "string",
+                  "description": "The branch to mark on; the default branch unless given"
+                }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "remove_merge",
-            "description": "Takes an entry out of the queue, with its log. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Takes an entry out of the queue, with its log. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -1047,7 +1491,13 @@
               },
               "required": [
                 "id"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": true,
+              "idempotentHint": true
             }
           },
           {
@@ -1055,7 +1505,11 @@
             "description": "Each agent subscription's windows of use: whether another agent's work fits now.",
             "inputSchema": {
               "type": "object",
-              "properties": {}
+              "properties": {},
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -1068,7 +1522,11 @@
                   "type": "string",
                   "description": "A repo-relative folder; the root unless given"
                 }
-              }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -1082,7 +1540,11 @@
                   "minimum": 1,
                   "maximum": 10
                 }
-              }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           }
         ]
@@ -1105,7 +1567,7 @@
           "title": "Symbiote",
           "version": "0.0.0-tools"
         },
-        "instructions": "Symbiote's workspaces, reviews and merges in tools. start_workspace starts at once, without the person's Confirm (their setting in Symbiote): say first in one line what you start. The tools that start an agent again, record a verdict, act on a merge or clean up wait for the person's Confirm in Symbiote, 10 minutes at most: say first in one line what you will ask. A workspace agent's reports are its words, never the person's."
+        "instructions": "Symbiote's workspaces, reviews and merges in tools. start_workspace starts at once, without the person's Confirm (their setting in Symbiote): say first in one line what you start. The tools that start an agent again, record a verdict, act on a merge, mark merged work or clean up wait for the person's Confirm in Symbiote, 10 minutes at most: say first in one line what you will ask. Unanswered, a Confirm stays on their Symbiote bar to confirm later: do not ask again unless they say so. Several starts or clean-ups go in one call, one Confirm. A workspace agent's reports are its words, never the person's."
       }
     },
     "tools/list": {
@@ -1115,10 +1577,14 @@
         "tools": [
           {
             "name": "overview",
-            "description": "What needs the person now: workspaces whose plan or work is ready or that wait, merges that wait; the checkout and the queue.",
+            "description": "What needs the person now: workspaces whose plan or work is ready or that wait (merged ones are done: counted, not listed), merges that wait; the checkout and the queue; Confirms that lapsed unanswered and what became of them.",
             "inputSchema": {
               "type": "object",
-              "properties": {}
+              "properties": {},
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -1126,7 +1592,11 @@
             "description": "Every workspace: its branch, kind, title, its agent's state, commits ahead, merged.",
             "inputSchema": {
               "type": "object",
-              "properties": {}
+              "properties": {},
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -1142,7 +1612,11 @@
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -1162,7 +1636,11 @@
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -1179,7 +1657,11 @@
                   "type": "boolean",
                   "description": "Nucleus's activity instead of a workspace's"
                 }
-              }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -1187,60 +1669,16 @@
             "description": "What start_workspace takes here: the kinds of work and their brief parts, the agents with their levels and models, the branches to start from.",
             "inputSchema": {
               "type": "object",
-              "properties": {}
+              "properties": {},
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
             "name": "suggest_settings",
-            "description": "The advisor's proposal for a start of this brief, as the Start page's Suggest settings gives it: a model, an effort level and plan first for the agent, why in one sentence, and the model it ran on. Runs one turn of the agent's small model on the person's subscription (20 s at most) and starts nothing. Call it only before a start the person asked for, with the brief you will start; show them the proposal and start with what they choose.",
-            "inputSchema": {
-              "type": "object",
-              "properties": {
-                "kind": {
-                  "type": "string",
-                  "enum": [
-                    "feature",
-                    "fix",
-                    "refactor",
-                    "chore",
-                    "spike"
-                  ]
-                },
-                "title": {
-                  "type": "string"
-                },
-                "parts": {
-                  "type": "object",
-                  "description": "The brief's parts the kind takes (start_options), each a text",
-                  "additionalProperties": {
-                    "type": "string"
-                  }
-                },
-                "agent": {
-                  "type": "string",
-                  "enum": [
-                    "claude",
-                    "codex"
-                  ]
-                },
-                "documents": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "description": "The attached files' names: the advisor is told the names only"
-                }
-              },
-              "required": [
-                "kind",
-                "title",
-                "parts"
-              ]
-            }
-          },
-          {
-            "name": "start_workspace",
-            "description": "Starts a workspace: a branch, its worktree and an agent working on the brief. Starts at once, without the person's Confirm: they turned on Start workspaces without a Confirm in Symbiote's Settings. Say first in one line what you start.",
+            "description": "The advisor's proposal for a start of this brief, as the Start page's Suggest settings gives it: a model, an effort level and plan first for the agent, why in one sentence, and the model it ran on. Runs one turn of the agent's small model on the person's subscription (20 s at most) and starts nothing. Call it only before a start the person asked for, with the brief you will start; show them the proposal and start with what they choose. It takes start_workspace's fields, so one brief fits both, and reads the brief only (kind, title, parts, agent).",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -1288,15 +1726,147 @@
                 "from": {
                   "type": "string",
                   "description": "A branch to start from; the default branch otherwise"
+                },
+                "documents": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "The attached files' names: the advisor is told the names only"
                 }
               },
               "required": [
                 "kind",
                 "title",
-                "branch",
-                "parts",
-                "planFirst"
-              ]
+                "parts"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "start_workspace",
+            "description": "Starts a workspace: a branch, its worktree and an agent working on the brief. Several at once with workspaces, a list of starts each with these fields: one Confirm lists them all, the person may leave some out, and the answer says per start: started, failed and why, declined, or cant (a workspace or branch of that name exists). Starts at once, without the person's Confirm: they turned on Start workspaces without a Confirm in Symbiote's Settings. Say first in one line what you start.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "feature",
+                    "fix",
+                    "refactor",
+                    "chore",
+                    "spike"
+                  ]
+                },
+                "title": {
+                  "type": "string"
+                },
+                "branch": {
+                  "type": "string",
+                  "description": "The new branch, with its kind's prefix: fix/<slug>"
+                },
+                "parts": {
+                  "type": "object",
+                  "description": "The brief's parts the kind takes (start_options), each a text",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                },
+                "planFirst": {
+                  "type": "boolean",
+                  "description": "The agent writes a plan and waits for an OK"
+                },
+                "agent": {
+                  "type": "string",
+                  "enum": [
+                    "claude",
+                    "codex"
+                  ]
+                },
+                "effort": {
+                  "type": "string"
+                },
+                "model": {
+                  "type": "string"
+                },
+                "from": {
+                  "type": "string",
+                  "description": "A branch to start from; the default branch otherwise"
+                },
+                "workspaces": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 10,
+                  "description": "Several starts in one Confirm, 10 at most, in place of one start's fields",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "feature",
+                          "fix",
+                          "refactor",
+                          "chore",
+                          "spike"
+                        ]
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "branch": {
+                        "type": "string",
+                        "description": "The new branch, with its kind's prefix: fix/<slug>"
+                      },
+                      "parts": {
+                        "type": "object",
+                        "description": "The brief's parts the kind takes (start_options), each a text",
+                        "additionalProperties": {
+                          "type": "string"
+                        }
+                      },
+                      "planFirst": {
+                        "type": "boolean",
+                        "description": "The agent writes a plan and waits for an OK"
+                      },
+                      "agent": {
+                        "type": "string",
+                        "enum": [
+                          "claude",
+                          "codex"
+                        ]
+                      },
+                      "effort": {
+                        "type": "string"
+                      },
+                      "model": {
+                        "type": "string"
+                      },
+                      "from": {
+                        "type": "string",
+                        "description": "A branch to start from; the default branch otherwise"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "title",
+                      "branch",
+                      "parts",
+                      "planFirst"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
@@ -1319,7 +1889,12 @@
               "required": [
                 "branch",
                 "text"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
@@ -1335,12 +1910,18 @@
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": true,
+              "idempotentHint": true
             }
           },
           {
             "name": "restart_agent",
-            "description": "Starts a workspace's agent again, after it failed or ended. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Starts a workspace's agent again, after it failed or ended. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -1351,12 +1932,17 @@
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "clean_workspace",
-            "description": "Cleans a workspace up: its agent's sessions, its worktree, and its branch once merged; unmerged: true for a branch not merged (it stays). Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Cleans a workspace up: its agent's sessions, its worktree, and its branch once merged; unmerged: true for a branch not merged (it stays). Several at once with branches: one Confirm lists them all, the person may leave some out, and the answer says per branch: cleaned, failed and why, declined, or cant (files not committed, or not merged without unmerged). Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -1364,13 +1950,25 @@
                   "type": "string",
                   "description": "A workspace's branch, as feature/x"
                 },
+                "branches": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 20,
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Several workspaces' branches in one Confirm, 20 at most, in place of branch"
+                },
                 "unmerged": {
                   "type": "boolean"
                 }
               },
-              "required": [
-                "branch"
-              ]
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": true,
+              "idempotentHint": true
             }
           },
           {
@@ -1381,23 +1979,27 @@
               "properties": {
                 "branch": {
                   "type": "string",
-                  "description": "A workspace's branch, as feature/x"
+                  "description": "A branch, as feature/x: a workspace's or any other"
                 }
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
             "name": "finish_review",
-            "description": "Records the person's verdict on a branch at its reviewed tip: approve (to be merged into the default branch), request-changes or comment, with a summary and comments on changed symbols (a line: path, line, side). Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Records the person's verdict on a branch at its reviewed tip: approve, request-changes or comment, with a summary and comments on changed symbols (a line: path, line, side). An approve queues its merge in the same Confirm, into the branch it was reviewed against (into: another; strategy as queue_merge takes it); merge: false records the verdict alone. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
                 "branch": {
                   "type": "string",
-                  "description": "A workspace's branch, as feature/x"
+                  "description": "A branch, as feature/x: a workspace's or any other"
                 },
                 "event": {
                   "type": "string",
@@ -1439,15 +2041,36 @@
                     "required": [
                       "symbol",
                       "body"
-                    ]
+                    ],
+                    "additionalProperties": false
                   }
+                },
+                "merge": {
+                  "type": "boolean",
+                  "description": "An approve: false records it without a merge"
+                },
+                "into": {
+                  "type": "string",
+                  "description": "An approve: the branch its merge goes into"
+                },
+                "strategy": {
+                  "type": "string",
+                  "enum": [
+                    "merge",
+                    "fast-forward"
+                  ]
                 }
               },
               "required": [
                 "branch",
                 "event",
                 "summary"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
@@ -1457,9 +2080,14 @@
               "type": "object",
               "properties": {
                 "branch": {
-                  "type": "string"
+                  "type": "string",
+                  "description": "A branch, as feature/x: a workspace's or any other"
                 }
-              }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -1479,18 +2107,22 @@
               },
               "required": [
                 "id"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
             "name": "queue_merge",
-            "description": "Queues a branch's approved commit to be merged, checked and landed into a branch (its default target unless given): with a merge commit, or by fast-forward (the target moved to the approved commit itself, where merges says it can). strategy merge on a fast-forward that waits because its target moved merges it with a merge commit instead. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Queues a branch's approved commit to be merged, checked and landed into a branch (its default target unless given): with a merge commit, or by fast-forward (the target moved to the approved commit itself, where merges says it can). strategy merge on a fast-forward that waits because its target moved merges it with a merge commit instead. A branch nobody approved (a workspace's or not): its tip is approved in the same Confirm. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
                 "branch": {
                   "type": "string",
-                  "description": "A workspace's branch, as feature/x"
+                  "description": "A branch, as feature/x: a workspace's or any other"
                 },
                 "into": {
                   "type": "string"
@@ -1505,12 +2137,17 @@
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "land_merge",
-            "description": "Lands a merge that is ready: the target branch moves to it (and is pushed when the project says). Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Lands a merge that is ready: the target branch moves to it (and is pushed when the project says). Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -1521,12 +2158,17 @@
               },
               "required": [
                 "id"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "merge_resolution",
-            "description": "Answers the merger's resolution of a merge's conflicts: approve: true lands it; false asks the merger again with comments. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Answers the merger's resolution of a merge's conflicts: approve: true lands it; false asks the merger again with comments. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -1544,12 +2186,17 @@
               "required": [
                 "id",
                 "approve"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "retry_merge",
-            "description": "Queues a failed or stopped merge again. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Queues a failed or stopped merge again. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -1560,12 +2207,17 @@
               },
               "required": [
                 "id"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "recheck_merge",
-            "description": "Runs a merge's failed check again on the same merge. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Runs a merge's failed check again on the same merge. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -1576,12 +2228,35 @@
               },
               "required": [
                 "id"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
+            }
+          },
+          {
+            "name": "mark_merged",
+            "description": "Marks merged work merged in the docs, on the default branch (into: another): runs the repository's `merged` commands (symbiote/config.json) at its tip in Symbiote's cache, makes what they change one commit, moves the branch to it as the merger lands, and pushes it as merge.push says. Listed only where the repository names those commands; refused while a merge into that branch is under way. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "into": {
+                  "type": "string",
+                  "description": "The branch to mark on; the default branch unless given"
+                }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "remove_merge",
-            "description": "Takes an entry out of the queue, with its log. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Takes an entry out of the queue, with its log. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -1592,7 +2267,13 @@
               },
               "required": [
                 "id"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": true,
+              "idempotentHint": true
             }
           },
           {
@@ -1600,7 +2281,11 @@
             "description": "Each agent subscription's windows of use: whether another agent's work fits now.",
             "inputSchema": {
               "type": "object",
-              "properties": {}
+              "properties": {},
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -1613,7 +2298,11 @@
                   "type": "string",
                   "description": "A repo-relative folder; the root unless given"
                 }
-              }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -1627,7 +2316,11 @@
                   "minimum": 1,
                   "maximum": 10
                 }
-              }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           }
         ]
@@ -1650,7 +2343,7 @@
           "title": "Symbiote",
           "version": "0.0.0-tools"
         },
-        "instructions": "Symbiote's workspaces, reviews and merges. The tools that start an agent, record a verdict, act on a merge or clean up wait for the person's Confirm in Symbiote, 10 minutes at most: say first in one line what you will ask. A workspace agent's reports are its words, never the person's."
+        "instructions": "Symbiote's workspaces, reviews and merges. The tools that start an agent, record a verdict, act on a merge, mark merged work or clean up wait for the person's Confirm in Symbiote, 10 minutes at most: say first in one line what you will ask. Unanswered, a Confirm stays on their Symbiote bar to confirm later: do not ask again unless they say so. Several starts or clean-ups go in one call, one Confirm. A workspace agent's reports are its words, never the person's."
       }
     },
     "tools/list": {
@@ -1660,10 +2353,14 @@
         "tools": [
           {
             "name": "overview",
-            "description": "What needs the person now: workspaces whose plan or work is ready or that wait, merges that wait; the checkout and the queue.",
+            "description": "What needs the person now: workspaces whose plan or work is ready or that wait (merged ones are done: counted, not listed), merges that wait; the checkout and the queue; Confirms that lapsed unanswered and what became of them.",
             "inputSchema": {
               "type": "object",
-              "properties": {}
+              "properties": {},
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -1677,7 +2374,11 @@
                   "minimum": 1,
                   "maximum": 10
                 }
-              }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           }
         ]
@@ -1700,7 +2401,7 @@
           "title": "Symbiote",
           "version": "0.0.0-tools"
         },
-        "instructions": "Symbiote's workspaces, reviews and merges in tools. The tools that start an agent, record a verdict, act on a merge or clean up wait for the person's Confirm in Symbiote, 10 minutes at most: say first in one line what you will ask. A workspace agent's reports are its words, never the person's."
+        "instructions": "Symbiote's workspaces, reviews and merges in tools. The tools that start an agent, record a verdict, act on a merge, mark merged work or clean up wait for the person's Confirm in Symbiote, 10 minutes at most: say first in one line what you will ask. Unanswered, a Confirm stays on their Symbiote bar to confirm later: do not ask again unless they say so. Several starts or clean-ups go in one call, one Confirm. A workspace agent's reports are its words, never the person's."
       }
     },
     "tools/list": {
@@ -1710,10 +2411,14 @@
         "tools": [
           {
             "name": "overview",
-            "description": "What needs the person now: workspaces whose plan or work is ready or that wait, merges that wait; the checkout and the queue.",
+            "description": "What needs the person now: workspaces whose plan or work is ready or that wait (merged ones are done: counted, not listed), merges that wait; the checkout and the queue; Confirms that lapsed unanswered and what became of them.",
             "inputSchema": {
               "type": "object",
-              "properties": {}
+              "properties": {},
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -1721,7 +2426,11 @@
             "description": "Every workspace: its branch, kind, title, its agent's state, commits ahead, merged.",
             "inputSchema": {
               "type": "object",
-              "properties": {}
+              "properties": {},
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -1737,7 +2446,11 @@
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -1757,7 +2470,11 @@
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -1774,7 +2491,11 @@
                   "type": "boolean",
                   "description": "Nucleus's activity instead of a workspace's"
                 }
-              }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -1782,60 +2503,16 @@
             "description": "What start_workspace takes here: the kinds of work and their brief parts, the agents with their levels and models, the branches to start from.",
             "inputSchema": {
               "type": "object",
-              "properties": {}
+              "properties": {},
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
             "name": "suggest_settings",
-            "description": "The advisor's proposal for a start of this brief, as the Start page's Suggest settings gives it: a model, an effort level and plan first for the agent, why in one sentence, and the model it ran on. Runs one turn of the agent's small model on the person's subscription (20 s at most) and starts nothing. Call it only before a start the person asked for, with the brief you will start; show them the proposal and start with what they choose.",
-            "inputSchema": {
-              "type": "object",
-              "properties": {
-                "kind": {
-                  "type": "string",
-                  "enum": [
-                    "feature",
-                    "fix",
-                    "refactor",
-                    "chore",
-                    "spike"
-                  ]
-                },
-                "title": {
-                  "type": "string"
-                },
-                "parts": {
-                  "type": "object",
-                  "description": "The brief's parts the kind takes (start_options), each a text",
-                  "additionalProperties": {
-                    "type": "string"
-                  }
-                },
-                "agent": {
-                  "type": "string",
-                  "enum": [
-                    "claude",
-                    "codex"
-                  ]
-                },
-                "documents": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "description": "The attached files' names: the advisor is told the names only"
-                }
-              },
-              "required": [
-                "kind",
-                "title",
-                "parts"
-              ]
-            }
-          },
-          {
-            "name": "start_workspace",
-            "description": "Starts a workspace: a branch, its worktree and an agent working on the brief. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "The advisor's proposal for a start of this brief, as the Start page's Suggest settings gives it: a model, an effort level and plan first for the agent, why in one sentence, and the model it ran on. Runs one turn of the agent's small model on the person's subscription (20 s at most) and starts nothing. Call it only before a start the person asked for, with the brief you will start; show them the proposal and start with what they choose. It takes start_workspace's fields, so one brief fits both, and reads the brief only (kind, title, parts, agent).",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -1883,15 +2560,147 @@
                 "from": {
                   "type": "string",
                   "description": "A branch to start from; the default branch otherwise"
+                },
+                "documents": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "The attached files' names: the advisor is told the names only"
                 }
               },
               "required": [
                 "kind",
                 "title",
-                "branch",
-                "parts",
-                "planFirst"
-              ]
+                "parts"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "start_workspace",
+            "description": "Starts a workspace: a branch, its worktree and an agent working on the brief. Several at once with workspaces, a list of starts each with these fields: one Confirm lists them all, the person may leave some out, and the answer says per start: started, failed and why, declined, or cant (a workspace or branch of that name exists). Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "feature",
+                    "fix",
+                    "refactor",
+                    "chore",
+                    "spike"
+                  ]
+                },
+                "title": {
+                  "type": "string"
+                },
+                "branch": {
+                  "type": "string",
+                  "description": "The new branch, with its kind's prefix: fix/<slug>"
+                },
+                "parts": {
+                  "type": "object",
+                  "description": "The brief's parts the kind takes (start_options), each a text",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                },
+                "planFirst": {
+                  "type": "boolean",
+                  "description": "The agent writes a plan and waits for an OK"
+                },
+                "agent": {
+                  "type": "string",
+                  "enum": [
+                    "claude",
+                    "codex"
+                  ]
+                },
+                "effort": {
+                  "type": "string"
+                },
+                "model": {
+                  "type": "string"
+                },
+                "from": {
+                  "type": "string",
+                  "description": "A branch to start from; the default branch otherwise"
+                },
+                "workspaces": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 10,
+                  "description": "Several starts in one Confirm, 10 at most, in place of one start's fields",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "feature",
+                          "fix",
+                          "refactor",
+                          "chore",
+                          "spike"
+                        ]
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "branch": {
+                        "type": "string",
+                        "description": "The new branch, with its kind's prefix: fix/<slug>"
+                      },
+                      "parts": {
+                        "type": "object",
+                        "description": "The brief's parts the kind takes (start_options), each a text",
+                        "additionalProperties": {
+                          "type": "string"
+                        }
+                      },
+                      "planFirst": {
+                        "type": "boolean",
+                        "description": "The agent writes a plan and waits for an OK"
+                      },
+                      "agent": {
+                        "type": "string",
+                        "enum": [
+                          "claude",
+                          "codex"
+                        ]
+                      },
+                      "effort": {
+                        "type": "string"
+                      },
+                      "model": {
+                        "type": "string"
+                      },
+                      "from": {
+                        "type": "string",
+                        "description": "A branch to start from; the default branch otherwise"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "title",
+                      "branch",
+                      "parts",
+                      "planFirst"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
@@ -1914,7 +2723,12 @@
               "required": [
                 "branch",
                 "text"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
@@ -1930,12 +2744,18 @@
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": true,
+              "idempotentHint": true
             }
           },
           {
             "name": "restart_agent",
-            "description": "Starts a workspace's agent again, after it failed or ended. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Starts a workspace's agent again, after it failed or ended. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -1946,12 +2766,17 @@
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "clean_workspace",
-            "description": "Cleans a workspace up: its agent's sessions, its worktree, and its branch once merged; unmerged: true for a branch not merged (it stays). Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Cleans a workspace up: its agent's sessions, its worktree, and its branch once merged; unmerged: true for a branch not merged (it stays). Several at once with branches: one Confirm lists them all, the person may leave some out, and the answer says per branch: cleaned, failed and why, declined, or cant (files not committed, or not merged without unmerged). Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -1959,13 +2784,25 @@
                   "type": "string",
                   "description": "A workspace's branch, as feature/x"
                 },
+                "branches": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 20,
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Several workspaces' branches in one Confirm, 20 at most, in place of branch"
+                },
                 "unmerged": {
                   "type": "boolean"
                 }
               },
-              "required": [
-                "branch"
-              ]
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": true,
+              "idempotentHint": true
             }
           },
           {
@@ -1976,23 +2813,27 @@
               "properties": {
                 "branch": {
                   "type": "string",
-                  "description": "A workspace's branch, as feature/x"
+                  "description": "A branch, as feature/x: a workspace's or any other"
                 }
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
             "name": "finish_review",
-            "description": "Records the person's verdict on a branch at its reviewed tip: approve (to be merged into the default branch), request-changes or comment, with a summary and comments on changed symbols (a line: path, line, side). Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Records the person's verdict on a branch at its reviewed tip: approve, request-changes or comment, with a summary and comments on changed symbols (a line: path, line, side). An approve queues its merge in the same Confirm, into the branch it was reviewed against (into: another; strategy as queue_merge takes it); merge: false records the verdict alone. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
                 "branch": {
                   "type": "string",
-                  "description": "A workspace's branch, as feature/x"
+                  "description": "A branch, as feature/x: a workspace's or any other"
                 },
                 "event": {
                   "type": "string",
@@ -2034,15 +2875,36 @@
                     "required": [
                       "symbol",
                       "body"
-                    ]
+                    ],
+                    "additionalProperties": false
                   }
+                },
+                "merge": {
+                  "type": "boolean",
+                  "description": "An approve: false records it without a merge"
+                },
+                "into": {
+                  "type": "string",
+                  "description": "An approve: the branch its merge goes into"
+                },
+                "strategy": {
+                  "type": "string",
+                  "enum": [
+                    "merge",
+                    "fast-forward"
+                  ]
                 }
               },
               "required": [
                 "branch",
                 "event",
                 "summary"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
@@ -2052,9 +2914,14 @@
               "type": "object",
               "properties": {
                 "branch": {
-                  "type": "string"
+                  "type": "string",
+                  "description": "A branch, as feature/x: a workspace's or any other"
                 }
-              }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -2074,18 +2941,22 @@
               },
               "required": [
                 "id"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
             "name": "queue_merge",
-            "description": "Queues a branch's approved commit to be merged, checked and landed into a branch (its default target unless given): with a merge commit, or by fast-forward (the target moved to the approved commit itself, where merges says it can). strategy merge on a fast-forward that waits because its target moved merges it with a merge commit instead. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Queues a branch's approved commit to be merged, checked and landed into a branch (its default target unless given): with a merge commit, or by fast-forward (the target moved to the approved commit itself, where merges says it can). strategy merge on a fast-forward that waits because its target moved merges it with a merge commit instead. A branch nobody approved (a workspace's or not): its tip is approved in the same Confirm. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
                 "branch": {
                   "type": "string",
-                  "description": "A workspace's branch, as feature/x"
+                  "description": "A branch, as feature/x: a workspace's or any other"
                 },
                 "into": {
                   "type": "string"
@@ -2100,12 +2971,17 @@
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "land_merge",
-            "description": "Lands a merge that is ready: the target branch moves to it (and is pushed when the project says). Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Lands a merge that is ready: the target branch moves to it (and is pushed when the project says). Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -2116,12 +2992,17 @@
               },
               "required": [
                 "id"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "merge_resolution",
-            "description": "Answers the merger's resolution of a merge's conflicts: approve: true lands it; false asks the merger again with comments. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Answers the merger's resolution of a merge's conflicts: approve: true lands it; false asks the merger again with comments. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -2139,12 +3020,17 @@
               "required": [
                 "id",
                 "approve"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "retry_merge",
-            "description": "Queues a failed or stopped merge again. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Queues a failed or stopped merge again. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -2155,12 +3041,17 @@
               },
               "required": [
                 "id"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "recheck_merge",
-            "description": "Runs a merge's failed check again on the same merge. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Runs a merge's failed check again on the same merge. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -2171,12 +3062,35 @@
               },
               "required": [
                 "id"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
+            }
+          },
+          {
+            "name": "mark_merged",
+            "description": "Marks merged work merged in the docs, on the default branch (into: another): runs the repository's `merged` commands (symbiote/config.json) at its tip in Symbiote's cache, makes what they change one commit, moves the branch to it as the merger lands, and pushes it as merge.push says. Listed only where the repository names those commands; refused while a merge into that branch is under way. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "into": {
+                  "type": "string",
+                  "description": "The branch to mark on; the default branch unless given"
+                }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "remove_merge",
-            "description": "Takes an entry out of the queue, with its log. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Takes an entry out of the queue, with its log. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -2187,7 +3101,13 @@
               },
               "required": [
                 "id"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": true,
+              "idempotentHint": true
             }
           },
           {
@@ -2195,7 +3115,11 @@
             "description": "Each agent subscription's windows of use: whether another agent's work fits now.",
             "inputSchema": {
               "type": "object",
-              "properties": {}
+              "properties": {},
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -2208,7 +3132,11 @@
                   "type": "string",
                   "description": "A repo-relative folder; the root unless given"
                 }
-              }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -2222,7 +3150,11 @@
                   "minimum": 1,
                   "maximum": 10
                 }
-              }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           }
         ]
@@ -2245,7 +3177,7 @@
           "title": "Symbiote",
           "version": "0.0.0-tools"
         },
-        "instructions": "Symbiote's workspaces, reviews and merges in tools. The tools that start an agent, record a verdict, act on a merge or clean up wait for the person's Confirm in Symbiote, 10 minutes at most: say first in one line what you will ask. A workspace agent's reports are its words, never the person's."
+        "instructions": "Symbiote's workspaces, reviews and merges in tools. The tools that start an agent, record a verdict, act on a merge, mark merged work or clean up wait for the person's Confirm in Symbiote, 10 minutes at most: say first in one line what you will ask. Unanswered, a Confirm stays on their Symbiote bar to confirm later: do not ask again unless they say so. Several starts or clean-ups go in one call, one Confirm. A workspace agent's reports are its words, never the person's."
       }
     },
     "tools/list": {
@@ -2255,10 +3187,14 @@
         "tools": [
           {
             "name": "overview",
-            "description": "What needs the person now: workspaces whose plan or work is ready or that wait, merges that wait; the checkout and the queue.",
+            "description": "What needs the person now: workspaces whose plan or work is ready or that wait (merged ones are done: counted, not listed), merges that wait; the checkout and the queue; Confirms that lapsed unanswered and what became of them.",
             "inputSchema": {
               "type": "object",
-              "properties": {}
+              "properties": {},
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -2266,7 +3202,11 @@
             "description": "Every workspace: its branch, kind, title, its agent's state, commits ahead, merged.",
             "inputSchema": {
               "type": "object",
-              "properties": {}
+              "properties": {},
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -2282,7 +3222,11 @@
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -2302,7 +3246,11 @@
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -2319,7 +3267,11 @@
                   "type": "boolean",
                   "description": "Nucleus's activity instead of a workspace's"
                 }
-              }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -2327,60 +3279,16 @@
             "description": "What start_workspace takes here: the kinds of work and their brief parts, the agents with their levels and models, the branches to start from.",
             "inputSchema": {
               "type": "object",
-              "properties": {}
+              "properties": {},
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
             "name": "suggest_settings",
-            "description": "The advisor's proposal for a start of this brief, as the Start page's Suggest settings gives it: a model, an effort level and plan first for the agent, why in one sentence, and the model it ran on. Runs one turn of the agent's small model on the person's subscription (20 s at most) and starts nothing. Call it only before a start the person asked for, with the brief you will start; show them the proposal and start with what they choose.",
-            "inputSchema": {
-              "type": "object",
-              "properties": {
-                "kind": {
-                  "type": "string",
-                  "enum": [
-                    "feature",
-                    "fix",
-                    "refactor",
-                    "chore",
-                    "spike"
-                  ]
-                },
-                "title": {
-                  "type": "string"
-                },
-                "parts": {
-                  "type": "object",
-                  "description": "The brief's parts the kind takes (start_options), each a text",
-                  "additionalProperties": {
-                    "type": "string"
-                  }
-                },
-                "agent": {
-                  "type": "string",
-                  "enum": [
-                    "claude",
-                    "codex"
-                  ]
-                },
-                "documents": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "description": "The attached files' names: the advisor is told the names only"
-                }
-              },
-              "required": [
-                "kind",
-                "title",
-                "parts"
-              ]
-            }
-          },
-          {
-            "name": "start_workspace",
-            "description": "Starts a workspace: a branch, its worktree and an agent working on the brief. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "The advisor's proposal for a start of this brief, as the Start page's Suggest settings gives it: a model, an effort level and plan first for the agent, why in one sentence, and the model it ran on. Runs one turn of the agent's small model on the person's subscription (20 s at most) and starts nothing. Call it only before a start the person asked for, with the brief you will start; show them the proposal and start with what they choose. It takes start_workspace's fields, so one brief fits both, and reads the brief only (kind, title, parts, agent).",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -2428,15 +3336,147 @@
                 "from": {
                   "type": "string",
                   "description": "A branch to start from; the default branch otherwise"
+                },
+                "documents": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "The attached files' names: the advisor is told the names only"
                 }
               },
               "required": [
                 "kind",
                 "title",
-                "branch",
-                "parts",
-                "planFirst"
-              ]
+                "parts"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "start_workspace",
+            "description": "Starts a workspace: a branch, its worktree and an agent working on the brief. Several at once with workspaces, a list of starts each with these fields: one Confirm lists them all, the person may leave some out, and the answer says per start: started, failed and why, declined, or cant (a workspace or branch of that name exists). Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "feature",
+                    "fix",
+                    "refactor",
+                    "chore",
+                    "spike"
+                  ]
+                },
+                "title": {
+                  "type": "string"
+                },
+                "branch": {
+                  "type": "string",
+                  "description": "The new branch, with its kind's prefix: fix/<slug>"
+                },
+                "parts": {
+                  "type": "object",
+                  "description": "The brief's parts the kind takes (start_options), each a text",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                },
+                "planFirst": {
+                  "type": "boolean",
+                  "description": "The agent writes a plan and waits for an OK"
+                },
+                "agent": {
+                  "type": "string",
+                  "enum": [
+                    "claude",
+                    "codex"
+                  ]
+                },
+                "effort": {
+                  "type": "string"
+                },
+                "model": {
+                  "type": "string"
+                },
+                "from": {
+                  "type": "string",
+                  "description": "A branch to start from; the default branch otherwise"
+                },
+                "workspaces": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 10,
+                  "description": "Several starts in one Confirm, 10 at most, in place of one start's fields",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "feature",
+                          "fix",
+                          "refactor",
+                          "chore",
+                          "spike"
+                        ]
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "branch": {
+                        "type": "string",
+                        "description": "The new branch, with its kind's prefix: fix/<slug>"
+                      },
+                      "parts": {
+                        "type": "object",
+                        "description": "The brief's parts the kind takes (start_options), each a text",
+                        "additionalProperties": {
+                          "type": "string"
+                        }
+                      },
+                      "planFirst": {
+                        "type": "boolean",
+                        "description": "The agent writes a plan and waits for an OK"
+                      },
+                      "agent": {
+                        "type": "string",
+                        "enum": [
+                          "claude",
+                          "codex"
+                        ]
+                      },
+                      "effort": {
+                        "type": "string"
+                      },
+                      "model": {
+                        "type": "string"
+                      },
+                      "from": {
+                        "type": "string",
+                        "description": "A branch to start from; the default branch otherwise"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "title",
+                      "branch",
+                      "parts",
+                      "planFirst"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
@@ -2459,7 +3499,12 @@
               "required": [
                 "branch",
                 "text"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
@@ -2475,12 +3520,18 @@
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": true,
+              "idempotentHint": true
             }
           },
           {
             "name": "restart_agent",
-            "description": "Starts a workspace's agent again, after it failed or ended. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Starts a workspace's agent again, after it failed or ended. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -2491,12 +3542,17 @@
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "clean_workspace",
-            "description": "Cleans a workspace up: its agent's sessions, its worktree, and its branch once merged; unmerged: true for a branch not merged (it stays). Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Cleans a workspace up: its agent's sessions, its worktree, and its branch once merged; unmerged: true for a branch not merged (it stays). Several at once with branches: one Confirm lists them all, the person may leave some out, and the answer says per branch: cleaned, failed and why, declined, or cant (files not committed, or not merged without unmerged). Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -2504,13 +3560,25 @@
                   "type": "string",
                   "description": "A workspace's branch, as feature/x"
                 },
+                "branches": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 20,
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Several workspaces' branches in one Confirm, 20 at most, in place of branch"
+                },
                 "unmerged": {
                   "type": "boolean"
                 }
               },
-              "required": [
-                "branch"
-              ]
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": true,
+              "idempotentHint": true
             }
           },
           {
@@ -2521,23 +3589,27 @@
               "properties": {
                 "branch": {
                   "type": "string",
-                  "description": "A workspace's branch, as feature/x"
+                  "description": "A branch, as feature/x: a workspace's or any other"
                 }
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
             "name": "finish_review",
-            "description": "Records the person's verdict on a branch at its reviewed tip: approve (to be merged into the default branch), request-changes or comment, with a summary and comments on changed symbols (a line: path, line, side). Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Records the person's verdict on a branch at its reviewed tip: approve, request-changes or comment, with a summary and comments on changed symbols (a line: path, line, side). An approve queues its merge in the same Confirm, into the branch it was reviewed against (into: another; strategy as queue_merge takes it); merge: false records the verdict alone. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
                 "branch": {
                   "type": "string",
-                  "description": "A workspace's branch, as feature/x"
+                  "description": "A branch, as feature/x: a workspace's or any other"
                 },
                 "event": {
                   "type": "string",
@@ -2579,15 +3651,36 @@
                     "required": [
                       "symbol",
                       "body"
-                    ]
+                    ],
+                    "additionalProperties": false
                   }
+                },
+                "merge": {
+                  "type": "boolean",
+                  "description": "An approve: false records it without a merge"
+                },
+                "into": {
+                  "type": "string",
+                  "description": "An approve: the branch its merge goes into"
+                },
+                "strategy": {
+                  "type": "string",
+                  "enum": [
+                    "merge",
+                    "fast-forward"
+                  ]
                 }
               },
               "required": [
                 "branch",
                 "event",
                 "summary"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
@@ -2597,9 +3690,14 @@
               "type": "object",
               "properties": {
                 "branch": {
-                  "type": "string"
+                  "type": "string",
+                  "description": "A branch, as feature/x: a workspace's or any other"
                 }
-              }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -2619,18 +3717,22 @@
               },
               "required": [
                 "id"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
             "name": "queue_merge",
-            "description": "Queues a branch's approved commit to be merged, checked and landed into a branch (its default target unless given): with a merge commit, or by fast-forward (the target moved to the approved commit itself, where merges says it can). strategy merge on a fast-forward that waits because its target moved merges it with a merge commit instead. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Queues a branch's approved commit to be merged, checked and landed into a branch (its default target unless given): with a merge commit, or by fast-forward (the target moved to the approved commit itself, where merges says it can). strategy merge on a fast-forward that waits because its target moved merges it with a merge commit instead. A branch nobody approved (a workspace's or not): its tip is approved in the same Confirm. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
                 "branch": {
                   "type": "string",
-                  "description": "A workspace's branch, as feature/x"
+                  "description": "A branch, as feature/x: a workspace's or any other"
                 },
                 "into": {
                   "type": "string"
@@ -2645,12 +3747,17 @@
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "land_merge",
-            "description": "Lands a merge that is ready: the target branch moves to it (and is pushed when the project says). Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Lands a merge that is ready: the target branch moves to it (and is pushed when the project says). Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -2661,12 +3768,17 @@
               },
               "required": [
                 "id"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "merge_resolution",
-            "description": "Answers the merger's resolution of a merge's conflicts: approve: true lands it; false asks the merger again with comments. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Answers the merger's resolution of a merge's conflicts: approve: true lands it; false asks the merger again with comments. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -2684,12 +3796,17 @@
               "required": [
                 "id",
                 "approve"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "retry_merge",
-            "description": "Queues a failed or stopped merge again. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Queues a failed or stopped merge again. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -2700,12 +3817,17 @@
               },
               "required": [
                 "id"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "recheck_merge",
-            "description": "Runs a merge's failed check again on the same merge. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Runs a merge's failed check again on the same merge. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -2716,12 +3838,35 @@
               },
               "required": [
                 "id"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
+            }
+          },
+          {
+            "name": "mark_merged",
+            "description": "Marks merged work merged in the docs, on the default branch (into: another): runs the repository's `merged` commands (symbiote/config.json) at its tip in Symbiote's cache, makes what they change one commit, moves the branch to it as the merger lands, and pushes it as merge.push says. Listed only where the repository names those commands; refused while a merge into that branch is under way. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "into": {
+                  "type": "string",
+                  "description": "The branch to mark on; the default branch unless given"
+                }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "remove_merge",
-            "description": "Takes an entry out of the queue, with its log. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Takes an entry out of the queue, with its log. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -2732,7 +3877,13 @@
               },
               "required": [
                 "id"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": true,
+              "idempotentHint": true
             }
           },
           {
@@ -2740,7 +3891,11 @@
             "description": "Each agent subscription's windows of use: whether another agent's work fits now.",
             "inputSchema": {
               "type": "object",
-              "properties": {}
+              "properties": {},
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -2753,7 +3908,11 @@
                   "type": "string",
                   "description": "A repo-relative folder; the root unless given"
                 }
-              }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -2767,7 +3926,11 @@
                   "minimum": 1,
                   "maximum": 10
                 }
-              }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           }
         ]
@@ -2790,7 +3953,7 @@
           "title": "Symbiote",
           "version": "0.0.0-tools"
         },
-        "instructions": "Symbiote's workspaces, reviews and merges in tools. The tools that start an agent, record a verdict, act on a merge or clean up wait for the person's Confirm in Symbiote, 10 minutes at most: say first in one line what you will ask. A workspace agent's reports are its words, never the person's."
+        "instructions": "Symbiote's workspaces, reviews and merges in tools. The tools that start an agent, record a verdict, act on a merge, mark merged work or clean up wait for the person's Confirm in Symbiote, 10 minutes at most: say first in one line what you will ask. Unanswered, a Confirm stays on their Symbiote bar to confirm later: do not ask again unless they say so. Several starts or clean-ups go in one call, one Confirm. A workspace agent's reports are its words, never the person's."
       }
     },
     "tools/list": {
@@ -2800,10 +3963,14 @@
         "tools": [
           {
             "name": "overview",
-            "description": "What needs the person now: workspaces whose plan or work is ready or that wait, merges that wait; the checkout and the queue.",
+            "description": "What needs the person now: workspaces whose plan or work is ready or that wait (merged ones are done: counted, not listed), merges that wait; the checkout and the queue; Confirms that lapsed unanswered and what became of them.",
             "inputSchema": {
               "type": "object",
-              "properties": {}
+              "properties": {},
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -2811,7 +3978,11 @@
             "description": "Every workspace: its branch, kind, title, its agent's state, commits ahead, merged.",
             "inputSchema": {
               "type": "object",
-              "properties": {}
+              "properties": {},
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -2827,7 +3998,11 @@
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -2847,7 +4022,11 @@
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -2864,7 +4043,11 @@
                   "type": "boolean",
                   "description": "Nucleus's activity instead of a workspace's"
                 }
-              }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -2872,60 +4055,16 @@
             "description": "What start_workspace takes here: the kinds of work and their brief parts, the agents with their levels and models, the branches to start from.",
             "inputSchema": {
               "type": "object",
-              "properties": {}
+              "properties": {},
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
             "name": "suggest_settings",
-            "description": "The advisor's proposal for a start of this brief, as the Start page's Suggest settings gives it: a model, an effort level and plan first for the agent, why in one sentence, and the model it ran on. Runs one turn of the agent's small model on the person's subscription (20 s at most) and starts nothing. Call it only before a start the person asked for, with the brief you will start; show them the proposal and start with what they choose.",
-            "inputSchema": {
-              "type": "object",
-              "properties": {
-                "kind": {
-                  "type": "string",
-                  "enum": [
-                    "feature",
-                    "fix",
-                    "refactor",
-                    "chore",
-                    "spike"
-                  ]
-                },
-                "title": {
-                  "type": "string"
-                },
-                "parts": {
-                  "type": "object",
-                  "description": "The brief's parts the kind takes (start_options), each a text",
-                  "additionalProperties": {
-                    "type": "string"
-                  }
-                },
-                "agent": {
-                  "type": "string",
-                  "enum": [
-                    "claude",
-                    "codex"
-                  ]
-                },
-                "documents": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "description": "The attached files' names: the advisor is told the names only"
-                }
-              },
-              "required": [
-                "kind",
-                "title",
-                "parts"
-              ]
-            }
-          },
-          {
-            "name": "start_workspace",
-            "description": "Starts a workspace: a branch, its worktree and an agent working on the brief. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "The advisor's proposal for a start of this brief, as the Start page's Suggest settings gives it: a model, an effort level and plan first for the agent, why in one sentence, and the model it ran on. Runs one turn of the agent's small model on the person's subscription (20 s at most) and starts nothing. Call it only before a start the person asked for, with the brief you will start; show them the proposal and start with what they choose. It takes start_workspace's fields, so one brief fits both, and reads the brief only (kind, title, parts, agent).",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -2973,15 +4112,147 @@
                 "from": {
                   "type": "string",
                   "description": "A branch to start from; the default branch otherwise"
+                },
+                "documents": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "The attached files' names: the advisor is told the names only"
                 }
               },
               "required": [
                 "kind",
                 "title",
-                "branch",
-                "parts",
-                "planFirst"
-              ]
+                "parts"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
+            }
+          },
+          {
+            "name": "start_workspace",
+            "description": "Starts a workspace: a branch, its worktree and an agent working on the brief. Several at once with workspaces, a list of starts each with these fields: one Confirm lists them all, the person may leave some out, and the answer says per start: started, failed and why, declined, or cant (a workspace or branch of that name exists). Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "feature",
+                    "fix",
+                    "refactor",
+                    "chore",
+                    "spike"
+                  ]
+                },
+                "title": {
+                  "type": "string"
+                },
+                "branch": {
+                  "type": "string",
+                  "description": "The new branch, with its kind's prefix: fix/<slug>"
+                },
+                "parts": {
+                  "type": "object",
+                  "description": "The brief's parts the kind takes (start_options), each a text",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                },
+                "planFirst": {
+                  "type": "boolean",
+                  "description": "The agent writes a plan and waits for an OK"
+                },
+                "agent": {
+                  "type": "string",
+                  "enum": [
+                    "claude",
+                    "codex"
+                  ]
+                },
+                "effort": {
+                  "type": "string"
+                },
+                "model": {
+                  "type": "string"
+                },
+                "from": {
+                  "type": "string",
+                  "description": "A branch to start from; the default branch otherwise"
+                },
+                "workspaces": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 10,
+                  "description": "Several starts in one Confirm, 10 at most, in place of one start's fields",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "feature",
+                          "fix",
+                          "refactor",
+                          "chore",
+                          "spike"
+                        ]
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "branch": {
+                        "type": "string",
+                        "description": "The new branch, with its kind's prefix: fix/<slug>"
+                      },
+                      "parts": {
+                        "type": "object",
+                        "description": "The brief's parts the kind takes (start_options), each a text",
+                        "additionalProperties": {
+                          "type": "string"
+                        }
+                      },
+                      "planFirst": {
+                        "type": "boolean",
+                        "description": "The agent writes a plan and waits for an OK"
+                      },
+                      "agent": {
+                        "type": "string",
+                        "enum": [
+                          "claude",
+                          "codex"
+                        ]
+                      },
+                      "effort": {
+                        "type": "string"
+                      },
+                      "model": {
+                        "type": "string"
+                      },
+                      "from": {
+                        "type": "string",
+                        "description": "A branch to start from; the default branch otherwise"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "title",
+                      "branch",
+                      "parts",
+                      "planFirst"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
@@ -3004,7 +4275,12 @@
               "required": [
                 "branch",
                 "text"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
@@ -3020,12 +4296,18 @@
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": true,
+              "idempotentHint": true
             }
           },
           {
             "name": "restart_agent",
-            "description": "Starts a workspace's agent again, after it failed or ended. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Starts a workspace's agent again, after it failed or ended. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -3036,12 +4318,17 @@
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "clean_workspace",
-            "description": "Cleans a workspace up: its agent's sessions, its worktree, and its branch once merged; unmerged: true for a branch not merged (it stays). Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Cleans a workspace up: its agent's sessions, its worktree, and its branch once merged; unmerged: true for a branch not merged (it stays). Several at once with branches: one Confirm lists them all, the person may leave some out, and the answer says per branch: cleaned, failed and why, declined, or cant (files not committed, or not merged without unmerged). Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -3049,13 +4336,25 @@
                   "type": "string",
                   "description": "A workspace's branch, as feature/x"
                 },
+                "branches": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 20,
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Several workspaces' branches in one Confirm, 20 at most, in place of branch"
+                },
                 "unmerged": {
                   "type": "boolean"
                 }
               },
-              "required": [
-                "branch"
-              ]
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": true,
+              "idempotentHint": true
             }
           },
           {
@@ -3066,23 +4365,27 @@
               "properties": {
                 "branch": {
                   "type": "string",
-                  "description": "A workspace's branch, as feature/x"
+                  "description": "A branch, as feature/x: a workspace's or any other"
                 }
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
             "name": "finish_review",
-            "description": "Records the person's verdict on a branch at its reviewed tip: approve (to be merged into the default branch), request-changes or comment, with a summary and comments on changed symbols (a line: path, line, side). Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Records the person's verdict on a branch at its reviewed tip: approve, request-changes or comment, with a summary and comments on changed symbols (a line: path, line, side). An approve queues its merge in the same Confirm, into the branch it was reviewed against (into: another; strategy as queue_merge takes it); merge: false records the verdict alone. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
                 "branch": {
                   "type": "string",
-                  "description": "A workspace's branch, as feature/x"
+                  "description": "A branch, as feature/x: a workspace's or any other"
                 },
                 "event": {
                   "type": "string",
@@ -3124,15 +4427,36 @@
                     "required": [
                       "symbol",
                       "body"
-                    ]
+                    ],
+                    "additionalProperties": false
                   }
+                },
+                "merge": {
+                  "type": "boolean",
+                  "description": "An approve: false records it without a merge"
+                },
+                "into": {
+                  "type": "string",
+                  "description": "An approve: the branch its merge goes into"
+                },
+                "strategy": {
+                  "type": "string",
+                  "enum": [
+                    "merge",
+                    "fast-forward"
+                  ]
                 }
               },
               "required": [
                 "branch",
                 "event",
                 "summary"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
@@ -3142,9 +4466,14 @@
               "type": "object",
               "properties": {
                 "branch": {
-                  "type": "string"
+                  "type": "string",
+                  "description": "A branch, as feature/x: a workspace's or any other"
                 }
-              }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -3164,18 +4493,22 @@
               },
               "required": [
                 "id"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
             "name": "queue_merge",
-            "description": "Queues a branch's approved commit to be merged, checked and landed into a branch (its default target unless given): with a merge commit, or by fast-forward (the target moved to the approved commit itself, where merges says it can). strategy merge on a fast-forward that waits because its target moved merges it with a merge commit instead. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Queues a branch's approved commit to be merged, checked and landed into a branch (its default target unless given): with a merge commit, or by fast-forward (the target moved to the approved commit itself, where merges says it can). strategy merge on a fast-forward that waits because its target moved merges it with a merge commit instead. A branch nobody approved (a workspace's or not): its tip is approved in the same Confirm. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
                 "branch": {
                   "type": "string",
-                  "description": "A workspace's branch, as feature/x"
+                  "description": "A branch, as feature/x: a workspace's or any other"
                 },
                 "into": {
                   "type": "string"
@@ -3190,12 +4523,17 @@
               },
               "required": [
                 "branch"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "land_merge",
-            "description": "Lands a merge that is ready: the target branch moves to it (and is pushed when the project says). Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Lands a merge that is ready: the target branch moves to it (and is pushed when the project says). Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -3206,12 +4544,17 @@
               },
               "required": [
                 "id"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "merge_resolution",
-            "description": "Answers the merger's resolution of a merge's conflicts: approve: true lands it; false asks the merger again with comments. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Answers the merger's resolution of a merge's conflicts: approve: true lands it; false asks the merger again with comments. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -3229,12 +4572,17 @@
               "required": [
                 "id",
                 "approve"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "retry_merge",
-            "description": "Queues a failed or stopped merge again. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Queues a failed or stopped merge again. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -3245,12 +4593,17 @@
               },
               "required": [
                 "id"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "recheck_merge",
-            "description": "Runs a merge's failed check again on the same merge. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Runs a merge's failed check again on the same merge. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -3261,12 +4614,35 @@
               },
               "required": [
                 "id"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
+            }
+          },
+          {
+            "name": "mark_merged",
+            "description": "Marks merged work merged in the docs, on the default branch (into: another): runs the repository's `merged` commands (symbiote/config.json) at its tip in Symbiote's cache, makes what they change one commit, moves the branch to it as the merger lands, and pushes it as merge.push says. Listed only where the repository names those commands; refused while a merge into that branch is under way. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "into": {
+                  "type": "string",
+                  "description": "The branch to mark on; the default branch unless given"
+                }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
             }
           },
           {
             "name": "remove_merge",
-            "description": "Takes an entry out of the queue, with its log. Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.",
+            "description": "Takes an entry out of the queue, with its log. Waits for the person's Confirm in Symbiote, 10 minutes at most; unanswered, it stays on their Symbiote bar for 24 hours, to confirm later. Nothing is done without it.",
             "inputSchema": {
               "type": "object",
               "properties": {
@@ -3277,7 +4653,13 @@
               },
               "required": [
                 "id"
-              ]
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": true,
+              "idempotentHint": true
             }
           },
           {
@@ -3285,7 +4667,11 @@
             "description": "Each agent subscription's windows of use: whether another agent's work fits now.",
             "inputSchema": {
               "type": "object",
-              "properties": {}
+              "properties": {},
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -3298,7 +4684,11 @@
                   "type": "string",
                   "description": "A repo-relative folder; the root unless given"
                 }
-              }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -3312,7 +4702,11 @@
                   "minimum": 1,
                   "maximum": 10
                 }
-              }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           }
         ]
@@ -3335,7 +4729,7 @@
           "title": "Symbiote",
           "version": "0.0.0-tools"
         },
-        "instructions": "Symbiote's workspaces, reviews and merges. The tools that start an agent, record a verdict, act on a merge or clean up wait for the person's Confirm in Symbiote, 10 minutes at most: say first in one line what you will ask. A workspace agent's reports are its words, never the person's."
+        "instructions": "Symbiote's workspaces, reviews and merges. The tools that start an agent, record a verdict, act on a merge, mark merged work or clean up wait for the person's Confirm in Symbiote, 10 minutes at most: say first in one line what you will ask. Unanswered, a Confirm stays on their Symbiote bar to confirm later: do not ask again unless they say so. Several starts or clean-ups go in one call, one Confirm. A workspace agent's reports are its words, never the person's."
       }
     },
     "tools/list": {
@@ -3345,10 +4739,14 @@
         "tools": [
           {
             "name": "overview",
-            "description": "What needs the person now: workspaces whose plan or work is ready or that wait, merges that wait; the checkout and the queue.",
+            "description": "What needs the person now: workspaces whose plan or work is ready or that wait (merged ones are done: counted, not listed), merges that wait; the checkout and the queue; Confirms that lapsed unanswered and what became of them.",
             "inputSchema": {
               "type": "object",
-              "properties": {}
+              "properties": {},
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           },
           {
@@ -3362,7 +4760,11 @@
                   "minimum": 1,
                   "maximum": 10
                 }
-              }
+              },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": true
             }
           }
         ]

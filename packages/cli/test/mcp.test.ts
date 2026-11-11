@@ -153,13 +153,14 @@ describe("Symbiote's MCP: the protocol (MC1, decision 359)", () => {
     const tool = (name: string) => answer.result.tools.find((t) => t.name === name);
     const suggest = tool('suggest_settings');
     const start = tool('start_workspace');
+    // Every field of a start, so one brief fits both and none is refused (MC3, decision 997);
+    // the advisor reads the brief alone.
+    const one = { ...start?.inputSchema.properties };
+    delete one.workspaces;
     expect(suggest?.inputSchema).toEqual({
       type: 'object',
       properties: {
-        kind: start?.inputSchema.properties.kind,
-        title: start?.inputSchema.properties.title,
-        parts: start?.inputSchema.properties.parts,
-        agent: start?.inputSchema.properties.agent,
+        ...one,
         documents: {
           type: 'array',
           items: { type: 'string' },
@@ -167,6 +168,7 @@ describe("Symbiote's MCP: the protocol (MC1, decision 359)", () => {
         },
       },
       required: ['kind', 'title', 'parts'],
+      additionalProperties: false,
     });
     expect(suggest?.inputSchema.properties.kind).toEqual({
       type: 'string',
@@ -851,26 +853,26 @@ describe("Symbiote's MCP: Nucleus's calls recorded (NU2, decision 607)", () => {
     const { services } = fakes();
     const { lines, record } = recorder();
     const mcp = server(services, { record, now });
-    await call(mcp, 'workspaces', { state: 'all' });
+    await call(mcp, 'merges', { branch: 'fix/a' });
     expect(lines).toEqual([
       {
         at: expect.any(String) as unknown,
         session: 'symbiote',
         id: expect.stringMatching(/^m1-/) as unknown,
-        tool: 'workspaces',
+        tool: 'merges',
         source: 'symbiote',
         phase: 'start',
-        input: '{"state":"all"}',
+        input: '{"branch":"fix/a"}',
       },
       {
         at: expect.any(String) as unknown,
         session: 'symbiote',
         id: (lines[0] as { id?: string } | undefined)?.id,
-        tool: 'workspaces',
+        tool: 'merges',
         source: 'symbiote',
         phase: 'end',
         ms: 1000,
-        output: expect.stringContaining('"workspaces"') as unknown,
+        output: expect.stringContaining('"merges"') as unknown,
       },
     ]);
   });
