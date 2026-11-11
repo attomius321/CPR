@@ -3,8 +3,7 @@ import { useEffect, type Dispatch, type SetStateAction } from 'react';
 import { flushSync } from 'react-dom';
 import type { ReviewFile } from '@symbiote/core';
 import type { DiffView } from '../shell/pages.js';
-import type { FileFocus } from './FilesPage.js';
-import { stepFile } from './file-diff.js';
+import { stepFile, type FileFocus } from './file-diff.js';
 import { nextProject, stepChange, type FileChanges } from './review.js';
 import type { SidebarTab } from './Sidebar.js';
 import type { State } from './useDiffGraph.js';
@@ -15,13 +14,14 @@ type Review = ReturnType<typeof useReview>;
 /**
  * Keyboard review: j/k walk the changes, r marks reviewed, f focuses, p (P) shows the next
  * (previous) project only, c comments, o opens in VS Code, / searches, Esc closes, g switches
- * between the pages. On the Files page, j/k walk the files and c comments on the first change.
+ * between the pages, following the pick (V104). On the Files page, j/k walk the files and c
+ * comments on the first change.
  */
 export function useDiffKeys({
   state,
   served,
   page,
-  showPage,
+  follow,
   files,
   setOpenFile,
   setFileFocus,
@@ -41,7 +41,8 @@ export function useDiffKeys({
   /** The pair's files are served: Files can be shown while it is analyzed. */
   served: boolean;
   page: DiffView;
-  showPage: (next: DiffView) => void;
+  /** The other page, following the pick (V104, decision 977). */
+  follow: (next: DiffView) => void;
   files: ReviewFile[];
   setOpenFile: Dispatch<SetStateAction<string | null>>;
   setFileFocus: Dispatch<SetStateAction<FileFocus | null>>;
@@ -75,7 +76,7 @@ export function useDiffKeys({
         event.key === 'g' &&
         (state.status === 'ready' || (state.status === 'analyzing' && served))
       ) {
-        showPage(page === 'files' ? 'graph' : 'files');
+        follow(page === 'files' ? 'graph' : 'files');
       } else if (page === 'files') {
         if (event.key === 'j' || event.key === 'k') {
           setOpenFile((path) =>
@@ -125,7 +126,7 @@ export function useDiffKeys({
     toggleViewed,
     state.status,
     page,
-    showPage,
+    follow,
     files,
     served,
     forge,

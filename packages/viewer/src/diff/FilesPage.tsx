@@ -27,13 +27,17 @@ import { describeAnchor, type Anchor, type Draft, type Side } from './comments.j
 import type { DiffRow } from './detail.js';
 import { LineNumber } from './DetailPanel.js';
 import {
+  anchorKey,
   changeWords,
   draftsByLine,
+  firstChangedRow,
   foldRows,
+  foldsDrawn,
   lineAnchor,
   parseFileDiff,
   rowKey,
   type FileDiff,
+  type FileFocus,
   type Fold,
 } from './file-diff.js';
 import { fileFindings, riskOrder } from './file-order.js';
@@ -56,12 +60,6 @@ export interface FileComments {
   /** A draft's text written again (V90): Edit on a comment under its line. */
   onEdit: (id: string, body: string) => void;
   onRemove: (id: string) => void;
-}
-
-/** A line to show, from the review tab: its file and its place ({@link rowKey}). */
-export interface FileFocus {
-  path: string;
-  key: string;
 }
 
 /**
@@ -159,7 +157,11 @@ interface Props {
   comments?: FileComments | undefined;
   /** Shows what a comment in the review tab is on. */
   onOpenDraft: (draft: Draft) => void;
+  /** What to show: a comment's line, or a picked symbol's first changed row (V104). */
   focus: FileFocus | null;
+  /** The line last clicked or commented on (V104): `g` picks the symbol holding it. */
+  line?: Anchor | null;
+  onLine?: ((anchor: Anchor) => void) | undefined;
   /** The list's resize handle, drawn between it and the diff. */
   handle: ReactNode;
 }
@@ -183,13 +185,11 @@ export function FilesPage({
   comments,
   onOpenDraft,
   focus,
+  line = null,
+  onLine,
   handle,
 }: Props) {
-  const kept = useKeptOpen(graph, files, open, onOpenFile);
-  const shown =
-    files.find((file) => file.path === open) ??
-    (kept === null ? undefined : files.find((file) => file.path === kept)) ??
-    files[0];
+  const shown = files.find((file) => file.path === open) ?? files[0];
   // Each file's listed findings (V102, decision 974), counted on its row.
   const risks = useMemo(() => (graph ? fileFindings(files, graph) : null), [files, graph]);
   const commented = useMemo(() => {
@@ -286,6 +286,8 @@ export function FilesPage({
           canOpen={canOpen}
           comments={comments}
           focus={focus?.path === shown.path ? focus : null}
+          line={line}
+          onLine={onLine}
         />
       ) : (
         <p className="hint files-none">No file changed.</p>
@@ -296,42 +298,6 @@ export function FilesPage({
 
 /** A severity as a tooltip's tone, as a graph card's count has it. */
 const TIP_TONES = { error: 'bad', warning: 'warn', info: 'info' } as const;
-
-/**
- * The file open while the change is analyzed, kept open when the graph arrives and puts the list
- * in order of risk (V102): null once it is App's again, or when there is none. Meanwhile the page
- * holds it by path, as App would hold one the person picked: the first file is another one in the
- * new order. App starts each new graph at its first file (`open` null), after the page's own
- * effects have run, so the page opens it again on its next run, once.
- */
-function useKeptOpen(
-  graph: Graph | undefined,
-  files: readonly ReviewFile[],
-  open: string | null,
-  onOpenFile: (path: string) => void,
-): string | null {
-  const [kept, setKept] = useState<string | null>(null);
-  /** The graph's first run is over: App's reset has run after it. */
-  const arrived = useRef(false);
-  const shown = (files.find((file) => file.path === open) ?? files[0])?.path;
-  useEffect(() => {
-    if (!graph) {
-      arrived.current = false;
-      if (shown === undefined) return;
-      setKept(shown);
-      if (open === null) onOpenFile(shown);
-      return;
-    }
-    if (kept === null) return;
-    if (!arrived.current) {
-      arrived.current = true;
-      return;
-    }
-    setKept(null);
-    if (open === null) onOpenFile(kept);
-  }, [graph, shown, open, kept, onOpenFile]);
-  return kept;
-}
 
 /** A file's kind of change as a node's tone: its pill's colour (V90). */
 const STATUS_TONES: Record<ReviewFile['status'], string> = {
@@ -393,6 +359,8 @@ function FileView({
   canOpen,
   comments,
   focus,
+  line,
+  onLine,
 }: {
   graph: Graph | undefined;
   head: string;
@@ -407,6 +375,8 @@ function FileView({
   canOpen: boolean;
   comments: FileComments | undefined;
   focus: FileFocus | null;
+  line: Anchor | null;
+  onLine: ((anchor: Anchor) => void) | undefined;
 }) {
   const state = useFileDiff(head, file.path, served);
   const rows = useMemo(
@@ -435,27 +405,32 @@ function FileView({
     () => draftsByLine(comments?.drafts ?? [], file),
     [comments?.drafts, file],
   );
+  // The row asked for: a comment's, or a symbol's first changed one once the rows are read (V104).
+  const asked = useMemo(
+    () => (!focus ? null : 'key' in focus ? focus.key : firstChangedRow(rows, focus.symbol)),
+    [focus, rows],
+  );
+  // The line last clicked, which `g` takes to the graph (V104).
+  const clicked = line ? anchorKey(file, line) : null;
   // Rows with comments, the one written on and the one asked for are drawn, folds or not.
   const pinned = useMemo(() => {
-    const keys = new Set([...byLine.keys(), writing?.key, focus?.key]);
+    const keys = new Set([...byLine.keys(), writing?.key, asked]);
     return new Set(rows.flatMap((row, i) => (keys.has(rowKey(row)) ? [i] : [])));
-  }, [rows, byLine, writing, focus]);
+  }, [rows, byLine, writing, asked]);
   const folds = useMemo(() => foldRows(rows, opened, undefined, pinned), [rows, opened, pinned]);
   // The first MAX_ROWS rows, with their folds, until Show all.
-  const drawn = useMemo(() => {
-    if (all) return folds;
-    let count = 0;
-    const cut = folds.findIndex((fold) => fold.kind === 'row' && ++count > MAX_ROWS);
-    return cut < 0 ? folds : folds.slice(0, cut);
-  }, [folds, all]);
+  const drawn = useMemo(
+    () => (all ? folds : foldsDrawn(folds, MAX_ROWS, asked)),
+    [folds, all, asked],
+  );
   const cutOff = drawn.length < folds.length;
 
   const code = useRef<HTMLDivElement>(null);
-  // A line asked for from the review tab: in view once its rows are drawn.
+  // The row asked for: in view once its rows are drawn.
   useEffect(() => {
-    if (!focus || rows.length === 0) return;
-    code.current?.querySelector(`[data-key="${focus.key}"]`)?.scrollIntoView({ block: 'center' });
-  }, [focus, rows]);
+    if (!asked || rows.length === 0) return;
+    code.current?.querySelector(`[data-key="${asked}"]`)?.scrollIntoView({ block: 'center' });
+  }, [asked, rows]);
 
   const open = (target: OpenTarget | null) => {
     if (!target) return;
@@ -485,6 +460,8 @@ function FileView({
     const anchor = comments ? lineAnchor(file, row, comments.unchanged) : null;
     const onClick = (event: MouseEvent) => {
       if (canOpen && (event.ctrlKey || event.metaKey)) return open(rowOpen(file, row));
+      const at = lineAnchor(file, row, true);
+      if (onLine && at) onLine(at);
       if (anchor && writing?.key !== key) {
         setWriting({ key, anchor });
         setText('');
@@ -495,10 +472,10 @@ function FileView({
     return (
       <Fragment key={fold.index}>
         <div
-          className={`row row-${row.type}${anchor ? ' pickable' : ''}${here || focus?.key === key ? ' anchored' : ''}`}
+          className={`row row-${row.type}${anchor ? ' pickable' : ''}${here || asked === key || clicked === key ? ' anchored' : ''}`}
           role="row"
           data-key={key}
-          {...(anchor || canOpen ? { onClick } : {})}
+          {...(anchor || canOpen || onLine ? { onClick } : {})}
         >
           <LineNumber
             row={row}
@@ -530,6 +507,7 @@ function FileView({
                         aria-label={`Edit comment on line ${draft.anchor?.line ?? ''}`}
                         onClick={() => {
                           if (!draft.anchor) return;
+                          onLine?.(draft.anchor);
                           setWriting({ key, anchor: draft.anchor, editing: draft.id });
                           setText(draft.body);
                         }}

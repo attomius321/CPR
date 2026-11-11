@@ -45,7 +45,8 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   (V8e): view keys, the cache of recent layouts, numbered requests, the main-thread fallback.
   The worker is `new URL('./layout-worker.ts', import.meta.url)`: the two files move together.
 - `src/diff/App.tsx` — state, the page shown (Files first, Graph by `?view=graph`, `g` between
-  them; V60), the view to lay out, toolbar; `Canvas.tsx` the canvas (map mode, reveal/fit; a
+  them; V60; `g` and the page switch follow the pick, `follow`, V104), the view to lay out,
+  toolbar; `Canvas.tsx` the canvas (map mode, reveal/fit; a
   pick's move, `pickView`, and every fit's cap, the reading zoom from Settings' text size,
   `readingZoom` in `graph/mapzoom.ts`, V99),
   `CanvasCard.tsx` its card (the legend and the view's toggles), `DiffHead.tsx` the head's parts;
@@ -56,7 +57,9 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   (`./api/file`: git's, the whole file as context) and comments under their lines. Its pure part
   is `file-diff.ts` (reading git's diff, folding it to 3 lines of context as git's hunks, where a
   line's comment goes); a line's comment names the innermost symbol holding it
-  (`comments.ts`'s `symbolAt`, `newLineDraft`), none outside every symbol. Its order (V102) is
+  (`comments.ts`'s `symbolAt`, `newLineDraft`), none outside every symbol. A picked symbol's
+  lines there (V104) are `symbolFocus` (its file and lines) and `firstChangedRow` (the row, once
+  the file's rows are read), in `file-diff.ts`. Its order (V102) is
   `file-order.ts` (pure: files with listed findings, code, tests, the rest), applied in
   `useReviewFiles` so `j`/`k` walk it. Never `files.ts`: `test/files.test.ts` is the file
   names' guard.

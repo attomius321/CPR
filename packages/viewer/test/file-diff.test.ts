@@ -1,15 +1,19 @@
-import type { ReviewFile } from '@symbiote/core';
+import type { GraphNode, GraphSide, ReviewFile } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import type { Draft } from '../src/diff/comments.js';
 import type { DiffRow } from '../src/diff/detail.js';
 import {
+  anchorKey,
   changeWords,
   draftsByLine,
+  firstChangedRow,
   foldRows,
+  foldsDrawn,
   lineAnchor,
   parseFileDiff,
   rowKey,
   stepFile,
+  symbolFocus,
 } from '../src/diff/file-diff.js';
 
 const header = (path: string) => [
@@ -216,5 +220,165 @@ describe("a file's words (V60)", () => {
     expect(stepFile(files, 'src/b.ts', 1)).toBe('src/b.ts');
     expect(stepFile(files, 'src/b.ts', -1)).toBe('src/a.ts');
     expect(stepFile([], null, 1)).toBeNull();
+  });
+});
+
+/** A side of a symbol: its file and its lines. */
+const at = (file: string, start: number, end: number): GraphSide => ({
+  file,
+  range: { start: { line: start, col: 1 }, end: { line: end, col: 1 } },
+  signature: '',
+  hashes: { signature: '', body: '' },
+});
+const symbol = (
+  status: GraphNode['status'],
+  base: GraphSide | null,
+  head: GraphSide | null,
+  delta?: GraphNode['delta'],
+): GraphNode => ({
+  id: `${(head ?? base)?.file ?? 'pkg'}#f`,
+  kind: 'function',
+  name: 'f',
+  container: null,
+  language: 'typescript',
+  exported: true,
+  status,
+  ...(delta ? { delta } : {}),
+  previousId: null,
+  base,
+  head,
+});
+
+describe("a symbol's lines on the Files page (V104, decision 977)", () => {
+  const added: ReviewFile = { status: 'added', path: 'src/c.ts' };
+  const deleted: ReviewFile = { status: 'deleted', path: 'src/old.ts' };
+  const files = [modified, renamed, added, deleted];
+
+  it('shows an added or a modified symbol in its head file, with its lines on both sides', () => {
+    expect(symbolFocus(symbol('added', null, at('src/c.ts', 3, 9)), files)).toEqual({
+      path: 'src/c.ts',
+      symbol: { head: { start: 3, end: 9 } },
+    });
+    expect(
+      symbolFocus(symbol('modified', at('src/a.ts', 4, 8), at('src/a.ts', 5, 10)), files),
+    ).toEqual({
+      path: 'src/a.ts',
+      symbol: { base: { start: 4, end: 8 }, head: { start: 5, end: 10 } },
+    });
+  });
+
+  it('finds a renamed file by its old path on the base side', () => {
+    // Modified in a file renamed from src/a.ts to src/b.ts: one file, both sides.
+    const both = [renamed];
+    expect(
+      symbolFocus(symbol('modified', at('src/a.ts', 1, 3), at('src/b.ts', 1, 4)), both),
+    ).toEqual({
+      path: 'src/b.ts',
+      symbol: { base: { start: 1, end: 3 }, head: { start: 1, end: 4 } },
+    });
+    // Removed from it: its deleted rows, in the file as the list names it.
+    expect(symbolFocus(symbol('removed', at('src/a.ts', 6, 9), null), both)).toEqual({
+      path: 'src/b.ts',
+      symbol: { base: { start: 6, end: 9 } },
+    });
+  });
+
+  it('shows a removed symbol in the file it was deleted from', () => {
+    expect(symbolFocus(symbol('removed', at('src/old.ts', 2, 5), null), files)).toEqual({
+      path: 'src/old.ts',
+      symbol: { base: { start: 2, end: 5 } },
+    });
+    expect(symbolFocus(symbol('removed', at('src/a.ts', 12, 20), null), [modified])).toEqual({
+      path: 'src/a.ts',
+      symbol: { base: { start: 12, end: 20 } },
+    });
+  });
+
+  it('shows a symbol moved to another file in the file it left, its head file if that is not listed', () => {
+    const moved = symbol('modified', at('src/a.ts', 106, 120), at('src/c.ts', 1, 15), {
+      signature: false,
+      body: false,
+      moved: true,
+    });
+    expect(symbolFocus(moved, files)).toEqual({
+      path: 'src/a.ts',
+      symbol: { base: { start: 106, end: 120 } },
+    });
+    // Moved and changed: the file it left still.
+    expect(
+      symbolFocus({ ...moved, delta: { signature: true, body: true, moved: true } }, files),
+    ).toEqual({ path: 'src/a.ts', symbol: { base: { start: 106, end: 120 } } });
+    expect(symbolFocus(moved, [added])).toEqual({
+      path: 'src/c.ts',
+      symbol: { head: { start: 1, end: 15 } },
+    });
+  });
+
+  it('shows a context symbol in a changed file; none in a file not listed, or without a side', () => {
+    expect(symbolFocus(symbol('unchanged', null, at('src/a.ts', 30, 40)), files)).toEqual({
+      path: 'src/a.ts',
+      symbol: { head: { start: 30, end: 40 } },
+    });
+    expect(symbolFocus(symbol('unchanged', null, at('src/other.ts', 1, 2)), files)).toBeNull();
+    expect(symbolFocus(symbol('unchanged', null, null), files)).toBeNull();
+    // A copy's old path is another file, still there: not the symbol's.
+    const copied: ReviewFile = { status: 'copied', path: 'src/copy.ts', previousPath: 'src/a.ts' };
+    expect(symbolFocus(symbol('removed', at('src/a.ts', 1, 2), null), [copied])).toBeNull();
+  });
+});
+
+describe("a symbol's first changed row (V104, decision 977)", () => {
+  const del = (base: number): DiffRow => ({ type: 'del', text: 'old', base });
+  const kept = (base: number, head: number): DiffRow => ({ type: 'same', text: '', base, head });
+  // Head's line 3 added; base's line 5 replaced by head's line 6.
+  const rows: DiffRow[] = [
+    ...same(1, 2),
+    add(3),
+    kept(3, 4),
+    kept(4, 5),
+    del(5),
+    add(6),
+    kept(6, 7),
+  ];
+
+  it('is its first added row: the code it has now', () => {
+    expect(firstChangedRow(rows, { base: { start: 2, end: 6 }, head: { start: 2, end: 7 } })).toBe(
+      'head:3',
+    );
+    // Not base's line 5, removed before it; not head's line 3, a change before the symbol.
+    expect(firstChangedRow(rows, { base: { start: 3, end: 6 }, head: { start: 4, end: 7 } })).toBe(
+      'head:6',
+    );
+  });
+
+  it('is its first removed row when it has no added one: removed, or lines removed only', () => {
+    expect(firstChangedRow(rows, { base: { start: 3, end: 5 } })).toBe('base:5');
+    expect(firstChangedRow(rows, { base: { start: 4, end: 6 }, head: { start: 4, end: 5 } })).toBe(
+      'base:5',
+    );
+  });
+
+  it('is its first row when none of its lines changed, and none when no row holds it', () => {
+    expect(firstChangedRow(rows, { head: { start: 4, end: 5 } })).toBe('head:4');
+    expect(firstChangedRow(rows, { head: { start: 40, end: 50 } })).toBeNull();
+    expect(firstChangedRow([], { head: { start: 1, end: 2 } })).toBeNull();
+  });
+});
+
+describe('a line asked for on the Files page (V104)', () => {
+  it("names a line clicked by its row's place, in the file it is on", () => {
+    const head = { side: 'head' as const, path: 'src/b.ts', otherPath: 'src/a.ts', line: 3 };
+    const base = { side: 'base' as const, path: 'src/a.ts', otherPath: 'src/b.ts', line: 2 };
+    expect(anchorKey(renamed, head)).toBe('head:3');
+    expect(anchorKey(renamed, base)).toBe('base:2');
+    expect(anchorKey(modified, head)).toBeNull();
+  });
+
+  it('draws every row when the one asked for is past the first ones drawn', () => {
+    const folds = foldRows(same(1, 10), new Set([0]));
+    expect(foldsDrawn(folds, 4, null)).toHaveLength(4);
+    expect(foldsDrawn(folds, 4, 'head:2')).toHaveLength(4);
+    expect(foldsDrawn(folds, 4, 'head:8')).toHaveLength(10);
+    expect(foldsDrawn(folds, 20, 'head:8')).toHaveLength(10);
   });
 });

@@ -105,6 +105,10 @@ for (const size of ['default', 'compact', 'large'] as const) {
     await expect(page.locator('nav.sidebar')).toBeVisible(POLL);
     await expect(page.locator('.react-flow__node').first()).toBeVisible(POLL);
     await expectTargets(page, "A workspace's review, Graph");
+    // A symbol picked: the detail panel, "Show its lines" among its actions (V104).
+    await page.locator('.finding-row').first().click();
+    await expect(page.getByRole('button', { name: 'Show its lines' })).toBeVisible(POLL);
+    await expectTargets(page, "A workspace's review, a symbol picked");
   });
 }
 

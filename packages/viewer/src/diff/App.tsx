@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type CSSProperties,
   type DragEvent,
@@ -22,8 +23,9 @@ import {
 import { DiffShell } from './DiffShell.js';
 import { Shell } from '../shell/Shell.js';
 import { DetailPanel } from './DetailPanel.js';
-import { FilesKeys, FilesPage, useReviewFiles, type FileFocus } from './FilesPage.js';
-import type { Draft } from './comments.js';
+import { FilesKeys, FilesPage, useReviewFiles } from './FilesPage.js';
+import { symbolAt, type Anchor, type Draft } from './comments.js';
+import { anchorKey, symbolFocus, type FileFocus } from './file-diff.js';
 import { decorate, onCanvas } from '../graph/flow.js';
 import {
   changeList,
@@ -73,6 +75,11 @@ export function App() {
   /** The file the Files page shows (null: the first), its tab, and a line to bring into view. */
   const [openFile, setOpenFile] = useState<string | null>(null);
   const [fileFocus, setFileFocus] = useState<FileFocus | null>(null);
+  /**
+   * The line last clicked or commented on Files (V104): `g` picks the symbol holding it, while its
+   * file is shown.
+   */
+  const [fileLine, setFileLine] = useState<Anchor | null>(null);
   const [widths, setWidths] = useState<Widths>(loadWidths);
   /** A panel is being resized: the canvas waits for the drop to centre the selection again. */
   const [resizing, setResizing] = useState(false);
@@ -116,6 +123,7 @@ export function App() {
     : (asked ?? (state.status === 'ready' && !state.files ? 'graph' : 'files'));
   const showPage = useCallback((next: DiffView) => {
     setAsked(next);
+    setFileLine(null);
     window.history.replaceState(window.history.state, '', withDiffView(window.location.href, next));
   }, []);
   /** The findings listed and the settled signature changes folded (V100, decisions 968–969). */
@@ -154,15 +162,25 @@ export function App() {
   useEffect(() => {
     if (graph) document.title = diffTitle(graph, reviewOf);
   }, [graph, reviewOf]);
-  // A new graph starts with every big neighbourhood collapsed, and every project shown; its
-  // Files page at its first file.
+  // A new graph starts with every big neighbourhood collapsed, and every project shown. One that
+  // replaces another (a file dropped) starts its Files page at its first file; the first keeps the
+  // file read while the change was analyzed, held by path below (V102).
+  const shownGraph = useRef<Graph | undefined>(undefined);
   useEffect(() => {
     setExpanded(new Set());
     setProject(null);
     setCollapsed(new Set());
-    setOpenFile(null);
+    if (shownGraph.current) setOpenFile(null);
+    shownGraph.current = graph;
     setFileFocus(null);
+    setFileLine(null);
   }, [graph]);
+  // While the change is analyzed, the Files page's first file is held by path: the graph puts the
+  // list in order of risk (V102), and the file read stays open.
+  const firstFile = files[0]?.path;
+  useEffect(() => {
+    if (analyzing && page === 'files' && openFile === null && firstFile) setOpenFile(firstFile);
+  }, [analyzing, page, openFile, firstFile]);
   const openTheFile = useCallback((path: string) => {
     setOpenFile(path);
     setFileFocus(null);
@@ -189,6 +207,33 @@ export function App() {
     },
     [page, files, showPage],
   );
+  /** Where the picked symbol's lines are on Files (V104): its file and its lines there. */
+  const pickedLines = useMemo(() => {
+    const node = selected === null ? undefined : graph?.nodes.find((n) => n.id === selected);
+    return node ? symbolFocus(node, files) : null;
+  }, [graph, selected, files]);
+  /**
+   * The other page, following the pick (V104, decision 977): Files at the picked symbol's first
+   * changed row; Graph with the symbol holding the line last clicked on Files picked, while that
+   * line's file is shown. Without either, the page as it was left.
+   */
+  const follow = useCallback(
+    (next: DiffView) => {
+      if (next !== page && next === 'files' && pickedLines) {
+        setOpenFile(pickedLines.path);
+        setFileFocus(pickedLines);
+      } else if (next !== page && next === 'graph' && graph && fileLine) {
+        const shown = files.find((file) => file.path === openFile) ?? files[0];
+        const node =
+          shown && anchorKey(shown, fileLine)
+            ? symbolAt(graph, fileLine.side, fileLine.path, fileLine.line)
+            : undefined;
+        if (node) setSelected(node.id);
+      }
+      showPage(next);
+    },
+    [page, pickedLines, graph, fileLine, files, openFile, showPage],
+  );
   const toggleCollapsed = useCallback((folder: string) => {
     setCollapsed((current) => {
       const next = new Set(current);
@@ -201,7 +246,7 @@ export function App() {
     state,
     served,
     page,
-    showPage,
+    follow,
     files,
     setOpenFile,
     setFileFocus,
@@ -408,7 +453,8 @@ export function App() {
                 <FilesKeys review={Boolean(forge)} canOpen={state.open} />
                 <p>
                   Click a file for its changes
-                  {forge ? ', a line of them to comment on it' : ''}; folded lines open on a click.
+                  {forge ? ', a line of them to comment on it' : ''}; folded lines open on a click.{' '}
+                  <kbd>g</kbd> picks the symbol of the line clicked on the graph.
                 </p>
               </Help>
             )}
@@ -421,7 +467,10 @@ export function App() {
                     canOpen={state.open}
                     files
                   />
-                  <p>Click a symbol for its details, a group to show its symbols.</p>
+                  <p>
+                    Click a symbol for its details, a group to show its symbols. With one picked,{' '}
+                    <kbd>g</kbd> shows its lines on Files.
+                  </p>
                 </Help>
               </>
             )}
@@ -434,7 +483,7 @@ export function App() {
           state.status === 'ready' || !inView || (analyzing && served) ? (
             <>
               {(state.status === 'ready' || (analyzing && served)) && (
-                <PageSwitch page={page} onPage={showPage} building={!!analyzing} />
+                <PageSwitch page={page} onPage={follow} building={!!analyzing} />
               )}
               {!inView && <WindowButtons />}
             </>
@@ -483,6 +532,8 @@ export function App() {
             }
             onOpenDraft={openDraft}
             focus={fileFocus}
+            line={fileLine}
+            onLine={setFileLine}
             handle={sidebarHandle}
           />
         </main>
@@ -577,6 +628,8 @@ export function App() {
                   onToggleReviewed={() => toggleReviewed(selected)}
                   onSelect={setSelected}
                   onClose={() => setSelected(null)}
+                  // Its lines on Files (V104, decision 978): where its file's diff is served.
+                  {...(pickedLines && served ? { onShowLines: () => follow('files') } : {})}
                   // Focus draws every neighbour, but unchanged ones while Context is off.
                   canvas={shownOnCanvas && { shown: shownOnCanvas, focusShows: !focus && context }}
                   comments={
