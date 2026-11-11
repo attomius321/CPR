@@ -113,6 +113,11 @@ interface Props {
   onToggleReviewed: () => void;
   onSelect: (id: string) => void;
   onClose: () => void;
+  /**
+   * The symbols on the canvas (V101, decision 972): a neighbour that is not is marked. `focusShows`:
+   * Focus would draw every one of them, so the panel says to press `f`.
+   */
+  canvas?: { shown: ReadonlySet<string>; focusShows: boolean } | undefined;
   /** Present when the review can be posted to the forge (`symbiote pr`). */
   comments?: Comments | undefined;
 }
@@ -137,6 +142,7 @@ export function DetailPanel({
   onToggleReviewed,
   onSelect,
   onClose,
+  canvas,
   comments,
 }: Props) {
   const detail = useMemo(() => symbolDetail(graph, id), [graph, id]);
@@ -157,6 +163,13 @@ export function DetailPanel({
   if (!detail) return null;
   const { node, findings, mentions } = detail;
   const groups = neighbourGroups(detail);
+  const away = new Set(
+    canvas
+      ? groups
+          .flatMap((g) => g.items.filter((i) => i.node && !canvas.shown.has(i.id)))
+          .map((i) => i.id)
+      : [],
+  );
   const rows = diff.status === 'ready' ? diff.rows : [];
   const anchor = picked !== undefined ? picked : defaultAnchor(graph, node, rows);
   const members = graph.nodes.filter((n) => n.container === node.id && n.status !== 'unchanged');
@@ -265,10 +278,16 @@ export function DetailPanel({
             <Neighbours
               key={group.title}
               group={group}
+              away={away}
               onSelect={onSelect}
               {...(canOpen ? { onOpen: (target: OpenTarget | null) => open(target) } : {})}
             />
           ))}
+          {away.size > 0 && canvas?.focusShows && (
+            <p className="neighbours-hint">
+              Press <kbd>f</kbd> to see the {away.size === 1 ? 'one' : away.size} not on the canvas.
+            </p>
+          )}
         </section>
       )}
 
@@ -613,14 +632,18 @@ function FindingItem({
 
 /**
  * A group of neighbours (V90, decision 841): still used by (red), used before by (green, no
- * longer), used by and uses; each its name, its file and line.
+ * longer), used by and uses; each its name, its file and line, and whether it is not on the
+ * canvas (V101).
  */
 function Neighbours({
   group,
+  away,
   onSelect,
   onOpen,
 }: {
   group: NeighbourGroup;
+  /** Those not on the canvas (V101). */
+  away: ReadonlySet<string>;
   onSelect: (id: string) => void;
   /** Opens a use in VS Code (V93, decision 888: proof 03's Open ↗ beside each). */
   onOpen?: (target: OpenTarget | null) => void;
@@ -644,6 +667,7 @@ function Neighbours({
               <button className="link" onClick={() => onSelect(item.id)} disabled={!item.node}>
                 {item.node ? label(item.node) : item.id}
               </button>
+              {away.has(item.id) && <span className="neighbour-away">not on the canvas</span>}
               <span className="muted">
                 {/* Where it is, then how it is used when not a call; the kind alone without a place. */}
                 {decl ? `${decl.file}:${decl.range.start.line}` : item.kind}

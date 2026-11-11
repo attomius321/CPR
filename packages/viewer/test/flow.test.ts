@@ -14,6 +14,7 @@ import {
   MOVING_EDGE_LIMIT,
   NEIGHBOUR_LIMIT,
   NODE_HEIGHT,
+  onCanvas,
   summaryId,
   toFlow,
   tone,
@@ -24,6 +25,7 @@ import {
   type SummaryFlowNode,
   type SymbolFlowNode,
 } from '../src/graph/flow.js';
+import { changeList, layoutView } from '../src/diff/review.js';
 
 /** The engine's golden graphs double as viewer fixtures. */
 const golden = (name: string) =>
@@ -773,6 +775,149 @@ describe('edgesToDraw', () => {
     );
     // Few enough to keep while moving: the limit counts what would be drawn.
     expect(edgesToDraw(large, { map: true, moving: true, selected: A0 })).toEqual(map);
+  });
+});
+
+describe('the links a finding is about (V101, decisions 971–972)', () => {
+  // `Shape`, an interface whose signature changed, is linked to its four users only by type
+  // references: `area` and `Canvas.draw` unchanged, `perimeter` and `volume` added.
+  const graph = golden('detectors');
+  const SHAPE = 'src/shapes.ts#Shape';
+  const USERS = [
+    'src/shapes.ts#Canvas.draw',
+    'src/shapes.ts#area',
+    'src/shapes.ts#perimeter',
+    'src/shapes.ts#volume',
+  ];
+  const pairs = (edges: readonly FlowEdge[]) =>
+    edges.map((e) => `${e.source} → ${e.target}`).sort();
+  const typeReferences = (edges: readonly FlowEdge[]) =>
+    edges.filter((e) => e.className.includes('edge-type-reference'));
+  const plain = layoutFlow(graph);
+
+  it('Focus draws every user and its edge, the toggle off', () => {
+    const focused = layoutFlow(
+      graph,
+      layoutView(graph, changeList(graph), {
+        typeReferences: false,
+        context: true,
+        expanded: new Set(),
+        focusOn: SHAPE,
+        project: null,
+      }),
+    );
+    expect(
+      symbols(focused.nodes)
+        .map((n) => n.id)
+        .sort(),
+    ).toEqual([...USERS, SHAPE].sort());
+    expect(pairs(typeReferences(focused.edges))).toEqual(USERS.map((u) => `${u} → ${SHAPE}`));
+  });
+
+  it('outside Focus, carries the type references between drawn symbols, placing nothing by them', () => {
+    expect(typeReferences(plain.edges)).toEqual([]);
+    // Only between symbols drawn: `area` and `Canvas.draw` are not.
+    expect(pairs(plain.hiddenEdges)).toEqual([
+      `src/shapes.ts#perimeter → ${SHAPE}`,
+      `src/shapes.ts#volume → ${SHAPE}`,
+    ]);
+    expect(plain.hiddenEdges.every((e) => e.className.includes('edge-type-reference'))).toBe(true);
+    // The same layout as a graph without type references: they move nothing.
+    const without = layoutFlow({
+      ...graph,
+      edges: graph.edges.filter((e) => e.kind !== 'type-reference'),
+    });
+    expect(plain.nodes).toEqual(without.nodes);
+    expect(plain.edges).toEqual(without.edges);
+    expect(plain.fileEdges).toEqual(without.fileEdges);
+    // Shown by the toggle, none is left to carry.
+    expect(layoutFlow(graph, { typeReferences: true }).hiddenEdges).toEqual([]);
+  });
+
+  it("a pick raises its own type references, and nobody else's", () => {
+    const still = edgesToDraw(plain, { map: false, moving: false, selected: SHAPE });
+    const raised = typeReferences(still);
+    expect(pairs(raised)).toEqual(pairs(plain.hiddenEdges));
+    for (const e of raised) {
+      expect(e.zIndex).toBe(RAISED_EDGE_Z);
+      expect(e.className).toContain('edge-raised');
+    }
+    expect(still).toHaveLength(plain.edges.length + 2);
+    // `perimeter`'s one; none for a symbol without, nor with no pick.
+    expect(
+      pairs(
+        typeReferences(edgesToDraw(plain, { map: false, moving: false, selected: USERS[2] ?? '' })),
+      ),
+    ).toEqual([`src/shapes.ts#perimeter → ${SHAPE}`]);
+    expect(
+      typeReferences(
+        edgesToDraw(plain, { map: false, moving: false, selected: 'src/shapes.ts#tools' }),
+      ),
+    ).toEqual([]);
+    expect(edgesToDraw(plain, { map: false, moving: false, selected: null })).toEqual(plain.edges);
+    // On the map and while a small graph moves, as its other edges are.
+    expect(
+      pairs(typeReferences(edgesToDraw(plain, { map: true, moving: false, selected: SHAPE }))),
+    ).toEqual(pairs(plain.hiddenEdges));
+    expect(edgesToDraw(plain, { map: false, moving: true, selected: SHAPE })).toEqual(still);
+  });
+
+  it("while a large graph moves, hands over the pick's own edges only, as before", () => {
+    // 21 × 20 calls between two files, and type references among the `b`s and to `a0`.
+    const a = Array.from({ length: 21 }, (_, i) => `src/a.ts#a${i}`);
+    const b = Array.from({ length: 20 }, (_, i) => `src/b.ts#b${i}`);
+    const large = synthetic(
+      [...a, ...b].map((id) => `${id}!`),
+      [
+        ...a.flatMap((from) => b.map((to) => `${from}>${to}`)),
+        ...b.slice(1).map((from) => `${from}>src/b.ts#b0`),
+        'src/b.ts#b0>src/a.ts#a0',
+      ],
+    );
+    const calls = a.length * b.length;
+    large.edges.forEach((e, i) => {
+      if (i >= calls) e.kind = 'type-reference';
+    });
+    const layout = layoutFlow(large);
+    expect(layout.edges.length).toBeGreaterThan(MOVING_EDGE_LIMIT);
+    expect(layout.hiddenEdges).toHaveLength(20);
+    // No pick: nothing while moving, as before.
+    expect(edgesToDraw(layout, { map: false, moving: true, selected: null })).toEqual([]);
+    // `a0`'s 20 calls and its one type reference; none of the other 19.
+    const moving = edgesToDraw(layout, { map: false, moving: true, selected: 'src/a.ts#a0' });
+    expect(moving).toHaveLength(21);
+    expect(pairs(typeReferences(moving))).toEqual(['src/b.ts#b0 → src/a.ts#a0']);
+    // Still, every call and the pick's type reference.
+    expect(
+      edgesToDraw(layout, { map: false, moving: false, selected: 'src/a.ts#a0' }),
+    ).toHaveLength(calls + 1);
+  });
+
+  it("knows a pick's neighbours on the canvas: drawn, or in its own group", () => {
+    const shown = onCanvas(plain, SHAPE);
+    expect(shown.has(SHAPE)).toBe(true);
+    expect(shown.has('src/shapes.ts#perimeter')).toBe(true);
+    expect(shown.has('src/shapes.ts#area')).toBe(false);
+    expect(shown.has('src/shapes.ts#Canvas.draw')).toBe(false);
+    // `typed` names the type of `caller3`, one of `hub`'s 30 users grouped in its summary.
+    const HUB = 'src/hub.ts#hub';
+    const TYPED = 'src/typed.ts#typed';
+    const graph = hubGraph();
+    graph.nodes.push({ ...(graph.nodes[0] as GraphNode), id: TYPED, name: 'typed' });
+    graph.edges.push({
+      ...(graph.edges[0] as GraphEdge),
+      id: 'typed',
+      from: TYPED,
+      to: 'src/user3.ts#caller3',
+      kind: 'type-reference',
+    });
+    const layout = layoutFlow(graph);
+    expect(layout.hidden.get('src/user3.ts#caller3')).toBe(summaryId('users', HUB));
+    // In `hub`'s group, linked to it: picking it opens the group.
+    expect(onCanvas(layout, HUB).has('src/user3.ts#caller3')).toBe(true);
+    // In another symbol's group, with no line to `typed`: not on the canvas for it.
+    expect(onCanvas(layout, TYPED).has('src/user3.ts#caller3')).toBe(false);
+    expect(onCanvas(layout, TYPED).has(summaryId('users', HUB))).toBe(false);
   });
 });
 

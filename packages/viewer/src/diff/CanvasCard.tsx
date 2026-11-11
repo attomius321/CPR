@@ -126,6 +126,7 @@ export function CanvasCard({
           nodes={flowNodes}
           edges={layout.edges}
           fileEdges={layout.fileEdges}
+          hiddenEdges={layout.hiddenEdges}
           layoutNodes={layout.nodes}
           pending={pending}
           selected={selected}
@@ -179,7 +180,9 @@ export function CanvasCard({
               checked={typeReferences}
               onChange={(e) => setTypeReferences(e.target.checked)}
             />
-            Type references
+            {/* Its line, as the legend's (V101): Focus and a pick draw them whatever the toggle.
+                Beside the toggle, not an entry of its own, which wrapped the legend at 1920 px. */}
+            <span className="legend-edge edge-type-reference">Type references</span>
           </label>
         </Legend>
       )}

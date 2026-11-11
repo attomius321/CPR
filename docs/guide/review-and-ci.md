@@ -74,16 +74,20 @@ changed:
 A legend under the graph repeats these colours.
 
 Lines between symbols are calls and other uses. A dashed red line is a use that the change
-removed. A symbol's chips say what changed in it, such as `signature` or `body`. Its badge counts
-its findings.
+removed. A dotted line is a *type reference*: one symbol names another's type, as a parameter's
+type or a constructor's service. The graph hides type references unless **Type references** is
+on, but it draws the selected symbol's to the symbols it shows. A symbol's chips say what changed
+in it, such as `signature` or `body`. Its badge counts its findings.
 
 Click a symbol, or press `j` and `k` to walk the change list. The detail panel opens beside the
 graph with the symbol's findings, its signature, a diff of only that symbol, and the
-symbols that use it and that it uses, each with **Open ↗** to open it in VS Code. If the symbol's
-name would be drawn under 11 px, the graph zooms in until its names are at your text size: 15 px,
-or 14 and 16 with Settings' Compact and Large. Otherwise the graph moves only to bring the symbol
-into view, at your zoom. The graph opens fitted whole, and no closer than that zoom. To open the
-symbol in VS Code, press `o`. To open one line, Ctrl+click it.
+symbols that use it and that it uses, each with **Open ↗** to open it in VS Code. A user or use
+that the graph does not draw is marked "not on the canvas". Press `f` (**Focus**) to show only
+the symbol and every symbol it links to, type references included; press `f` again to leave. If
+the symbol's name would be drawn under 11 px, the graph zooms in until its names are at your text
+size: 15 px, or 14 and 16 with Settings' Compact and Large. Otherwise the graph moves only to
+bring the symbol into view, at your zoom. The graph opens fitted whole, and no closer than that
+zoom. To open the symbol in VS Code, press `o`. To open one line, Ctrl+click it.
 
 A changed signature shows once: the words the change removed are struck through, and the words it
 added are marked. If more than half of it changed, the old and new signatures show whole, one

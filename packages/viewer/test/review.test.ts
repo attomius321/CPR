@@ -10,6 +10,7 @@ import {
   findingPills,
   fingerprint,
   foldFindings,
+  layoutView,
   neighbourhood,
   nextProject,
   onlyProject,
@@ -206,6 +207,44 @@ describe('neighbourhood', () => {
         .map((n) => n.id)
         .sort(),
     ).toEqual(['src/app.ts#old', 'src/math.ts#add', 'src/math.ts#legacy']);
+  });
+});
+
+describe('layoutView (V101, decision 971)', () => {
+  const choice = {
+    typeReferences: false,
+    context: true,
+    expanded: new Set<string>(),
+    focusOn: null,
+    project: null,
+  };
+
+  it("lays out Focus's neighbourhood with type references, whatever the toggle", () => {
+    const graph = golden('detectors');
+    const view = layoutView(graph, changeList(graph), {
+      ...choice,
+      focusOn: 'src/shapes.ts#Shape',
+    });
+    expect(view.typeReferences).toBe(true);
+    expect([...(view.focus ?? [])].sort()).toEqual(
+      [...neighbourhood(graph, 'src/shapes.ts#Shape')].sort(),
+    );
+    expect(view.context).toBe(true);
+  });
+
+  it('keeps the toggle without Focus, on the whole change or one project', () => {
+    const graph = golden('detectors');
+    expect(layoutView(graph, changeList(graph), choice)).toEqual({
+      typeReferences: false,
+      context: true,
+      expanded: new Set(),
+    });
+    const acme = golden('projects');
+    const acmeList = changeList(acme);
+    const project = layoutView(acme, acmeList, { ...choice, project: 'libs/ui' });
+    expect(project.typeReferences).toBe(false);
+    expect(project.focus).toEqual(projectNeighbourhood(acme, acmeList, 'libs/ui'));
+    expect(layoutView(graph, [], { ...choice, typeReferences: true }).typeReferences).toBe(true);
   });
 });
 

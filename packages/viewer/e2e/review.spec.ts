@@ -80,3 +80,50 @@ test('focus shows only the neighbourhood of the selection', async ({ page }) => 
   await page.keyboard.press('f');
   await expect(drawn).toHaveCount(all);
 });
+
+// V101: `Shape`, whose signature changed, is linked to its four users only by type references,
+// which the canvas hides by default: `perimeter` and `volume` (added) are drawn, `area` and
+// `Canvas.draw` (unchanged) are not.
+const typeReferences = (page: Page) => page.locator('.react-flow__edge.edge-type-reference');
+
+test('a pick raises its type references; the panel marks the users not on the canvas', async ({
+  page,
+}) => {
+  await expect(typeReferences(page)).toHaveCount(0);
+  await symbol(page, 'Shape').click();
+  await expect(typeReferences(page)).toHaveCount(2);
+  await expect(page.locator('.react-flow__edge.edge-type-reference.edge-raised')).toHaveCount(2);
+  const panel = page.getByRole('complementary', { name: 'Symbol detail' });
+  const away = panel.locator('.neighbours li', { has: page.locator('.neighbour-away') });
+  await expect(away).toHaveCount(2);
+  await expect(away.filter({ hasText: 'area' })).toHaveCount(1);
+  await expect(away.filter({ hasText: 'Canvas.draw' })).toHaveCount(1);
+  await expect(panel.locator('.neighbour-away').first()).toHaveText('not on the canvas');
+  await expect(panel.locator('.neighbours-hint')).toHaveText(
+    'Press f to see the 2 not on the canvas.',
+  );
+  // Another pick raises its own: `perimeter` has one; with no pick, none is drawn.
+  await panel.getByRole('button', { name: 'perimeter', exact: true }).click();
+  await expect(panel.locator('.panel-title')).toHaveText('perimeter');
+  await expect(typeReferences(page)).toHaveCount(1);
+  await page.keyboard.press('Escape');
+  await expect(typeReferences(page)).toHaveCount(0);
+});
+
+test('focus draws every link of the pick, type references included', async ({ page }) => {
+  await symbol(page, 'Shape').click();
+  await page.keyboard.press('f');
+  // Shape and its four users, each linked to it.
+  await expect(page.locator('.react-flow__node-symbol')).toHaveCount(5);
+  await expect(symbol(page, 'area')).toBeVisible();
+  await expect(symbol(page, 'Canvas.draw')).toBeVisible();
+  await expect(typeReferences(page)).toHaveCount(4);
+  const panel = page.getByRole('complementary', { name: 'Symbol detail' });
+  await expect(panel.locator('.neighbour-away')).toHaveCount(0);
+  await expect(panel.locator('.neighbours-hint')).toHaveCount(0);
+  // The toggle is left as it was.
+  await expect(page.getByLabel('Type references')).not.toBeChecked();
+  await page.keyboard.press('f');
+  await expect(symbol(page, 'area')).toHaveCount(0);
+  await expect(typeReferences(page)).toHaveCount(2);
+});
