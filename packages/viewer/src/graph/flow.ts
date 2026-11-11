@@ -410,12 +410,18 @@ export function edgesToDraw(
 }
 
 /**
- * The symbols on the canvas: drawn, or inside a collapsed summary, which picking one opens. The
- * detail panel marks a neighbour that is neither (V101, decision 972).
+ * The symbols on the canvas for a pick: drawn, or grouped in one of its own summaries, which is
+ * linked to it. One grouped in another symbol's summary is not: nothing on the canvas links it to
+ * the pick. The detail panel marks a neighbour that is neither (V101, decision 972).
  */
-export function onCanvas(layout: Pick<FlowLayout, 'nodes' | 'hidden'>): Set<string> {
-  const ids = new Set(layout.hidden.keys());
-  for (const node of layout.nodes) if (node.type === 'symbol') ids.add(node.id);
+export function onCanvas(layout: Pick<FlowLayout, 'nodes' | 'members'>, pick: string): Set<string> {
+  const ids = new Set<string>();
+  for (const node of layout.nodes) {
+    if (node.type === 'symbol') ids.add(node.id);
+    else if (node.type === 'summary' && node.data.of === pick) {
+      for (const member of layout.members.get(node.id) ?? []) ids.add(member);
+    }
+  }
   return ids;
 }
 

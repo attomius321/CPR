@@ -265,7 +265,10 @@ export function App() {
     [layout, reviewed, onlySince, selected],
   );
   /** For the detail panel's marks: the symbols on the canvas (V101, decision 972). */
-  const shownOnCanvas = useMemo(() => (layout ? onCanvas(layout) : undefined), [layout]);
+  const shownOnCanvas = useMemo(
+    () => (layout && selected ? onCanvas(layout, selected) : undefined),
+    [layout, selected],
+  );
 
   // Selecting a symbol that sits inside a collapsed summary (from the detail panel) shows it.
   useEffect(() => {

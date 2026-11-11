@@ -893,16 +893,31 @@ describe('the links a finding is about (V101, decisions 971–972)', () => {
     ).toHaveLength(calls + 1);
   });
 
-  it('knows which symbols are on the canvas: drawn, or in a summary that shows them', () => {
-    const shown = onCanvas(plain);
+  it("knows a pick's neighbours on the canvas: drawn, or in its own group", () => {
+    const shown = onCanvas(plain, SHAPE);
     expect(shown.has(SHAPE)).toBe(true);
     expect(shown.has('src/shapes.ts#perimeter')).toBe(true);
     expect(shown.has('src/shapes.ts#area')).toBe(false);
     expect(shown.has('src/shapes.ts#Canvas.draw')).toBe(false);
-    // A neighbour inside a collapsed summary: picking it opens the summary.
-    const hub = onCanvas(layoutFlow(hubGraph()));
-    expect(hub.has('src/user3.ts#caller3')).toBe(true);
-    expect(hub.has(summaryId('users', 'src/hub.ts#hub'))).toBe(false);
+    // `typed` names the type of `caller3`, one of `hub`'s 30 users grouped in its summary.
+    const HUB = 'src/hub.ts#hub';
+    const TYPED = 'src/typed.ts#typed';
+    const graph = hubGraph();
+    graph.nodes.push({ ...(graph.nodes[0] as GraphNode), id: TYPED, name: 'typed' });
+    graph.edges.push({
+      ...(graph.edges[0] as GraphEdge),
+      id: 'typed',
+      from: TYPED,
+      to: 'src/user3.ts#caller3',
+      kind: 'type-reference',
+    });
+    const layout = layoutFlow(graph);
+    expect(layout.hidden.get('src/user3.ts#caller3')).toBe(summaryId('users', HUB));
+    // In `hub`'s group, linked to it: picking it opens the group.
+    expect(onCanvas(layout, HUB).has('src/user3.ts#caller3')).toBe(true);
+    // In another symbol's group, with no line to `typed`: not on the canvas for it.
+    expect(onCanvas(layout, TYPED).has('src/user3.ts#caller3')).toBe(false);
+    expect(onCanvas(layout, TYPED).has(summaryId('users', HUB))).toBe(false);
   });
 });
 

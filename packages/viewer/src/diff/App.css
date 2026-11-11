@@ -205,6 +205,11 @@
   border-top: 3px solid var(--context);
 }
 
+/* Dotted, as canvas.css draws a type reference. */
+.legend-edge.edge-type-reference::before {
+  border-top: 2px dotted var(--context);
+}
+
 /* The view's toggles at the legend's end (V90, decision 838). */
 .legend-toggles {
   display: inline-flex;
