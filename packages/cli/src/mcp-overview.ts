@@ -27,8 +27,13 @@ export function mcpOverview(
       ]);
       const workspaces = list?.workspaces ?? [];
       const merges = (queue?.merges ?? []).filter((e) => e.state !== 'landed');
+      // A merged workspace is done, as the page's Done group has it (MC3, decision 993): counted as
+      // merged, never among what needs the person.
       const counts: Record<string, number> = {};
-      for (const w of workspaces) counts[w.agent.state] = (counts[w.agent.state] ?? 0) + 1;
+      for (const w of workspaces) {
+        const state = w.merged ? 'merged' : w.agent.state;
+        counts[state] = (counts[state] ?? 0) + 1;
+      }
       const open = [...held.values()].map((h) => h.ask.words);
       return {
         ...(services.name ? { repository: services.name } : {}),
@@ -40,7 +45,7 @@ export function mcpOverview(
         },
         needsYou: [
           ...workspaces
-            .filter((w) => WORKSPACE_NEEDS.has(w.agent.state))
+            .filter((w) => !w.merged && WORKSPACE_NEEDS.has(w.agent.state))
             .map((w) => ({
               workspace: w.branch,
               state: w.agent.state,

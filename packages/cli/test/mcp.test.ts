@@ -591,6 +591,28 @@ describe("Symbiote's MCP: what it reads", () => {
     });
   });
 
+  it('leaves merged workspaces out of what needs the person, counted as merged (MC3, decision 993)', async () => {
+    // Measured 2026-11-11: all 9 entries of needsYou were merged workspaces, each `ready`.
+    const { services } = fakes({
+      workspaces: [
+        workspace('feature/v99', 'ready', { merged: true }),
+        workspace('feature/v100', 'ready', { merged: true }),
+        workspace('fix/a', 'ready'),
+        workspace('chore/c', 'needs-you', {
+          agent: { state: 'needs-you', waitingFor: 'a permission' },
+        }),
+        workspace('feature/b', 'working'),
+      ],
+      merges: [],
+    });
+    const { value } = await call(server(services), 'overview');
+    expect(value.needsYou).toEqual([
+      { workspace: 'fix/a', state: 'ready' },
+      { workspace: 'chore/c', state: 'needs-you', waitingFor: 'a permission' },
+    ]);
+    expect(value.workspaces).toEqual({ merged: 2, ready: 1, 'needs-you': 1, working: 1 });
+  });
+
   it('lists workspaces without their briefs; one workspace with its brief, changes, merge check', async () => {
     const mcp = server(fakes().services);
     const listed = await call(mcp, 'workspaces');

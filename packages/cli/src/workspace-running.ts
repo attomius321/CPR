@@ -66,6 +66,32 @@ export function runsOnIn(lines: string): AgentRunsOn | null {
 }
 
 /**
+ * Whether a transcript's main session was stopped by the person's Esc (MC3, decision 995): its
+ * newest message is Claude Code's "[Request interrupted by user…]", the entry that carries
+ * `interruptedMessageId`. A prompt, an answer or a tool's result after it is a turn again; a
+ * subagent's (`isSidechain`) and lines that are not messages are passed over. Null with no
+ * message in `lines`.
+ */
+export function interruptedIn(lines: string): boolean | null {
+  const all = lines.split('\n');
+  for (let i = all.length - 1; i >= 0; i--) {
+    const line = all[i] ?? '';
+    if (!line.includes('"user"') && !line.includes('"assistant"')) continue;
+    let v: Record<string, unknown>;
+    try {
+      const parsed = JSON.parse(line) as unknown;
+      if (!parsed || typeof parsed !== 'object') continue;
+      v = parsed as Record<string, unknown>;
+    } catch {
+      continue;
+    }
+    if ((v.type !== 'user' && v.type !== 'assistant') || v.isSidechain === true) continue;
+    return v.type === 'user' && text(v.interruptedMessageId) !== undefined;
+  }
+  return null;
+}
+
+/**
  * The transcript of a thread's newest session (V83): its newest start or prompt that names one,
  * as Claude Code's hooks gave it. None for a thread written before V83, or for a path that is not
  * an absolute `.jsonl` (a thread is a file in the repository: it names nothing else to read).
@@ -80,40 +106,47 @@ export function transcriptOf(entries: readonly ThreadEntry[]): string | undefine
   return undefined;
 }
 
+/** What a transcript says: what its agent runs on (V83), and whether an Esc stopped it (MC3). */
+export interface TranscriptRead {
+  runsOn: AgentRunsOn | null;
+  interrupted: boolean;
+}
+
 /** What a transcript said when it was last read, and the file as it was then. */
-interface Read {
+interface Read extends TranscriptRead {
   size: number;
   mtimeMs: number;
-  runsOn: AgentRunsOn | null;
 }
 
 /**
- * Reads what transcripts say an agent runs on, for the workspaces list (decision 660), which asks
- * every 5 s: a transcript is read again only when its size or time changed, then its last 64 KB;
- * an end with no answer in it (a tool's long result) keeps what was read before; one never read is
- * read 2 MB from its end. Null for a transcript gone, or with no answer yet.
+ * Reads what transcripts say an agent runs on (decision 660) and whether an Esc stopped it
+ * (decision 995), for the workspaces list, which asks every 5 s: a transcript is read again only
+ * when its size or time changed, then its last 64 KB; an end with no answer or no message in it (a
+ * tool's long result) keeps what was read before; one never read is read 2 MB from its end. Null
+ * and not stopped for a transcript gone, or with no answer yet.
  */
 export function transcriptReader({ window = fileWindow }: { window?: typeof fileWindow } = {}): {
+  read(path: string): Promise<TranscriptRead>;
   runsOn(path: string): Promise<AgentRunsOn | null>;
 } {
   const reads = new Map<string, Read>();
-  return {
-    async runsOn(path) {
-      const file = await stat(path).catch(() => null);
-      if (!file) {
-        reads.delete(path);
-        return null;
-      }
-      const before = reads.get(path);
-      if (before && before.size === file.size && before.mtimeMs === file.mtimeMs) {
-        return before.runsOn;
-      }
-      const { text: end } = await window(path, before ? TRANSCRIPT_END : TRANSCRIPT_FIRST);
-      const runsOn = runsOnIn(end) ?? before?.runsOn ?? null;
-      reads.set(path, { size: file.size, mtimeMs: file.mtimeMs, runsOn });
-      return runsOn;
-    },
-  };
+  async function read(path: string): Promise<TranscriptRead> {
+    const file = await stat(path).catch(() => null);
+    if (!file) {
+      reads.delete(path);
+      return { runsOn: null, interrupted: false };
+    }
+    const before = reads.get(path);
+    if (before && before.size === file.size && before.mtimeMs === file.mtimeMs) {
+      return { runsOn: before.runsOn, interrupted: before.interrupted };
+    }
+    const { text: end } = await window(path, before ? TRANSCRIPT_END : TRANSCRIPT_FIRST);
+    const runsOn = runsOnIn(end) ?? before?.runsOn ?? null;
+    const interrupted = interruptedIn(end) ?? before?.interrupted ?? false;
+    reads.set(path, { size: file.size, mtimeMs: file.mtimeMs, runsOn, interrupted });
+    return { runsOn, interrupted };
+  }
+  return { read, runsOn: async (path) => (await read(path)).runsOn };
 }
 
 /**

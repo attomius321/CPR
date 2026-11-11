@@ -227,10 +227,13 @@ export function workspaceSummary(
       const idle = session && (isBlocked(session) || session.status === 'idle');
       const ended = idle && !session.waitingFor ? turnEnded(thread) : false;
       acted = workspace.agent ? (lastAction(thread) ?? workspace.agent.started) : undefined;
+      // What Claude Code's transcript says: what it runs on (V83), and an Esc it recorded (MC3).
+      const transcript = workspace.agent?.kind === 'codex' ? undefined : transcriptOf(thread);
+      const said = transcript ? await transcripts.read(transcript) : null;
       agent =
         workspace.agent?.kind === 'codex'
           ? codexState(workspace, thread, await viaCodex.alive(workspace), ahead)
-          : agentState(workspace, sessions, ahead, real, ended);
+          : agentState(workspace, sessions, ahead, real, ended, said?.interrupted ?? false);
       // Its record written, its session not listed yet: being started (fix/e2e-flakes).
       if (
         (agent.state === 'no-agent' || agent.state === 'not-running') &&
@@ -245,8 +248,7 @@ export function workspaceSummary(
           : null;
       activity = activityOf(thread, agent, tools);
       // What it runs on (V83): Claude Code's newest answer, in the transcript its hooks named.
-      const transcript = workspace.agent?.kind === 'codex' ? undefined : transcriptOf(thread);
-      if (transcript) runsOn = await transcripts.runsOn(transcript);
+      if (said) runsOn = said.runsOn;
     }
     if (workspace.agent?.effort) agent = { ...agent, effort: workspace.agent.effort };
     if (workspace.agent?.model) agent = { ...agent, model: workspace.agent.model };
