@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { serveAgentBranch, servePullRequest, type RunningAgent } from './symbiote.js';
+import { serveAgentBranch, servePullRequest, wholeFirst, type RunningAgent } from './symbiote.js';
 
 // The Files page (V60): a review opens on the changed files; a click shows a file's diff, and a
 // click on one of its lines writes a comment there, one of the review's. Each test gets its own
@@ -200,6 +200,9 @@ test("the Files and Graph switch stays put between the two pages, at the head's 
       end: Math.round(all.x + all.width - pad),
     };
   };
+  // The whole change first (V109): this spec starts from it, not from the riskiest finding. With a pick, the panel narrows
+  // the head at 820 and moves the switch 100 px, on main too.
+  await wholeFirst(page);
   await page.goto(`${symbiote.url}review/agent/`);
   // The switch is there while the change is analyzed too (V90): measured once it is.
   await expect(page.locator('.file-path')).toBeVisible();

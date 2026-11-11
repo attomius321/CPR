@@ -1,7 +1,13 @@
 import { basename } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { expect, test, type Page } from '@playwright/test';
-import { graphPage, serveFixture, serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
+import {
+  graphPage,
+  serveFixture,
+  serveWorkspaces,
+  wholeFirst,
+  type RunningWorkspaces,
+} from './symbiote.js';
 import { noStream } from './overview-data.js';
 
 // The shell (V29a): no Workspaces page; a sidenav with the pages and, under them, the workspaces;
@@ -487,6 +493,8 @@ test('a diff of symbiote view: the sidenav as a rail beside its canvas, [ opens 
 }) => {
   const diff = await serveFixture('callers');
   running.push(diff);
+  // The whole change first (V109): this spec starts from it, not from the riskiest finding.
+  await wholeFirst(page);
   await page.goto(graphPage(diff.url));
   await expect(page.locator('.react-flow__node').first()).toBeVisible({ timeout: 20_000 });
   await expect(sidenav(page)).toHaveClass(/rail/);

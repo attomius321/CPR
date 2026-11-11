@@ -93,8 +93,15 @@ that the graph does not draw is marked "not on the canvas". Press `f` (**Focus**
 the symbol and every symbol it links to, type references included; press `f` again to leave. If
 the symbol's name would be drawn under 11 px, the graph zooms in until its names are at your text
 size: 15 px, or 14 and 16 with Settings' Compact and Large. Otherwise the graph moves only to
-bring the symbol into view, at your zoom. The graph opens fitted whole, and no closer than that
-zoom. To open the symbol in VS Code, press `o`. To open one line, Ctrl+click it.
+bring the symbol into view, at your zoom. To open the symbol in VS Code, press `o`. To open one
+line, Ctrl+click it.
+
+If the change has an error or a warning, **Graph** opens on the worst one: the first in the
+**Findings** tab, its symbol selected and focused, its detail panel open. If the focused symbols
+do not fit with names of 11 px or more, the graph zooms to your text size around the symbol.
+Press `F` (Shift+F) to see the whole change, and `F` again to come back. This browser keeps your
+last choice, and the next change opens on it. A change with only notes, or no findings, opens
+fitted whole, no closer than the zoom of your text size.
 
 A changed signature shows once: the words the change removed are struck through, and the words it
 added are marked. If more than half of it changed, the old and new signatures show whole, one

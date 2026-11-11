@@ -471,3 +471,4 @@ merge commit.
 - 2026-11-11 [V106 — the change louder than its context](journal/v106-change-louder-than-context.md)
 - 2026-11-11 [V96 — project names as tabs, file names under them faint](journal/v96-map-labels.md)
 - 2026-11-11 [V108 — one review progress](journal/v108-one-review-progress.md)
+- 2026-11-11 [V109 — the Graph page opens on the riskiest finding](journal/v109-open-on-the-risk.md)

@@ -138,7 +138,7 @@ loop steadier, from what the graph runs of 2026-11-02 found (Agents, below).
 | [V105](plan/v105-stylesheet-cards.md) | A stylesheet's changed rules as one card, one row of the change list and one item of the review | built, ready for review | 979–980 | [journal](journal/v105-stylesheet-cards.md) |
 | [V106](plan/v106-change-louder-than-context.md) | The change louder than its context on the canvas: a summary card's text no larger or bolder than a changed name | built, ready for review | 981 | [journal](journal/v106-change-louder-than-context.md) |
 | [V107](plan/v107-back-in-the-panel.md) | Back after following a link in the detail panel | planned | 982 | [journal](journal/v107-back-in-the-panel.md) |
-| [V109](plan/v109-open-on-the-risk.md) | The Graph page opens on the riskiest finding (after V99–V101, if the person still zooms first) | planned | 986 | [journal](journal/v109-open-on-the-risk.md) |
+| [V109](plan/v109-open-on-the-risk.md) | The Graph page opens on the riskiest finding, focused and readable; `F` the whole change, the choice kept | built, ready for review | 986 | [journal](journal/v109-open-on-the-risk.md) |
 
 ### History
 

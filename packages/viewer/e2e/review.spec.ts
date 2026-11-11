@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { graphPage, serveFixture, type Running } from './symbiote.js';
+import { graphPage, serveFixture, wholeFirst, type Running } from './symbiote.js';
 
 // The detectors fixture: a removed method still called (error), two orphans (warnings), a
 // compatible interface change and public API (info).
@@ -13,6 +13,8 @@ test.beforeAll(async () => {
 test.afterAll(() => symbiote.stop());
 
 test.beforeEach(async ({ page }) => {
+  // The whole change first (V109): this spec starts from it, not from the riskiest finding.
+  await wholeFirst(page);
   errors.length = 0;
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto(graphPage(symbiote.url));

@@ -155,6 +155,18 @@ in view moves nothing, and one out of view is panned to at the person's zoom (96
 `pickView`). The first layout is fitted whole once drawn (886), and no fit comes closer than the
 reading zoom: the first, Focus, a group's reveal, a file or a frame clicked on the map.
 
+Since V109 the Graph page opens on the riskiest finding (986, amending 886's first fit and 966).
+A change with an error or a warning opens on its first error in the Findings tab, else its first
+warning: the symbol picked, Focus on (its links and type references, V101), its panel open. The
+first time the page shows a graph, nothing picked yet, `useFirstView` sets the pick and Focus
+while App renders, so the worker lays out the focused view first. A pick carried from Files
+(V104's `g` on a line) is kept instead. The first fit and Focus's fit come to the reading zoom
+around the pick when the whole fit would draw its name under 11 px (`unreadablePick` in
+`Canvas.tsx`). `F` (Shift+f) goes to the whole change from any pick, fitted as the first layout is
+(`framing`), and from the whole change back to the riskiest finding; the choice is kept in the
+browser (`first-view` in `stored.ts`), and the page opens on it next time. A change with only
+infos, or none, opens as before, and `F` does nothing there.
+
 Since V100 the head counts what the Findings tab lists: a pill per severity, infos as "notes"
 (968, amending 839). A pill is a button: on either page it opens the Graph page's Findings tab
 and focuses the first finding of its severity. A `signature-changed` info whose change is
@@ -229,6 +241,7 @@ shown, and the first graph does not reset it (V104, in place of V102's `useKeptO
 | The Review tab | `packages/viewer/src/diff/ReviewTab.tsx` |
 | The marks, the drafts and the verdict picked, for both pages | `packages/viewer/src/diff/useReview.ts` |
 | The Files page and its diff | `packages/viewer/src/diff/FilesPage.tsx`, `packages/viewer/src/diff/file-diff.ts` |
+| The Graph page's first view: the riskiest finding, `F`, the kept choice | `riskiest`, `viewAfterF` in `packages/viewer/src/diff/first-view.ts`; `useFirstView.ts`; `framing` and `unreadablePick` in `Canvas.tsx` |
 | Graph and Files following the pick: `g`, the page switch, **Show its lines** | `follow` and `pickedLines` in `packages/viewer/src/diff/App.tsx`; `symbolFocus`, `firstChangedRow`, `anchorKey`, `foldsDrawn` in `diff/file-diff.ts`; the button in `DetailPanel.tsx` |
 | The Files page's order and each file's findings | `riskOrder`, `fileFindings`, `fileKind` in `packages/viewer/src/diff/file-order.ts`; applied in `useReviewFiles` (`FilesPage.tsx`) |
 | The head's findings pills; the Findings tab's fold | `FindingPills` in `packages/viewer/src/diff/DiffHead.tsx`; `foldFindings`, `findingPills` in `diff/review.ts`; `Sidebar.tsx` |
@@ -277,6 +290,7 @@ when a later decision or a fix changed it.
 | 973–974 | The Files page in order of risk: files with listed findings (worst severity, then the most of each), other code, tests, then every other file, git's order inside each and until the graph arrives (amends 431's first file); a file's listed findings counted on its row in the worst severity's colour | [V102](../plan/v102-files-by-risk.md) |
 | 975–976 | The panel's code wraps under its own code, at its indent (keeps 887); a changed signature is one, removed words struck and added words marked, folded past 400 characters; core cuts a signature at 2,000 | [V103](../plan/v103-panel-code-whole.md) |
 | 983–985 | A file viewed at its current blob reviews its changed symbols, and a file whose changed symbols are all reviewed reads viewed: derived when read, the store keeping the person's own marks (amends 843). One progress line on both pages: files viewed, symbols reviewed, findings left on symbols not reviewed, a bar, Next (amends 840's row). `R` marks every changed symbol of the picked symbol's file | [V108](../plan/v108-one-review-progress.md) |
+| 986 | The Graph page's first view: with an error or a warning, the first such finding's symbol, focused, its panel open, readable (the first fit and Focus's come to the reading zoom around the pick when the whole fit would draw it under 11 px); otherwise, or once the person chose it with `F`, the whole change fitted; `F` between the two, kept in the browser (amends 886's first fit and 966) | [V109](../plan/v109-open-on-the-risk.md) |
 | 977–978 | `g` follows the pick: from Graph, the symbol's first changed row on Files (its removed rows, in the file it left, for a removed or moved symbol); from Files, the symbol holding the line last clicked or commented, picked; the panel's **Show its lines** does the same | [V104](../plan/v104-graph-files-follow.md) |
 
 These no longer hold:
@@ -295,6 +309,11 @@ These no longer hold:
 - **V90's zoom to a picked symbol**: since V93 (886) a pick only brings it into view.
 - **886's "no zoom to the symbol" and its 1×**: since V99 (966–967) a pick whose name is under
   11 px comes to the reading zoom (1.25 by default), and the first fit stops there, not at 1×.
+- **886's first fit whole, for every change**: since V109 (986) a change with an error or a
+  warning opens on that finding, focused. On the spike's 26 merges with code, the whole fit drew
+  names under 11 px on 24.
+- **966's Focus fitting its neighbourhood whatever the zoom**: since V109 (986) a pick that
+  Focus's fit would draw under 11 px comes to the reading zoom, its neighbours around it.
 - **80, Approve pushes the reviewed commit**: replaced by 82 a day later. In 4 approvals out of
   4, the agent had already pushed the commit, so the push did nothing.
 - **82's "the agent merges the approved commit when asked"**: [the merger](merger.md) merges it
@@ -333,6 +352,17 @@ These no longer hold:
   five walked first views, so the box draws the counts (`FileData.counts`, V100). A frame's node
   is drawn above its files' (2001), so in a frame its name hid a count; there the frame draws
   them (`ProjectData.counts`, V96).
+
+- **React Flow's first fit lands after a move made in the first frame.** Its `fitView` prop is
+  queued until the nodes are measured, and it read the options it was given at mount: a
+  `setCenter` to the risk at 1.25 was undone at once, back to 0.838. A `fitView` call replaces the
+  queued options, so a pick's first move is a fit of its node, clamped to the reading zoom (V109).
+- **A first view set in an effect is laid out twice.** The worker would lay out the whole change,
+  and the canvas fit and draw it, before the focused view. `useFirstView` sets the pick and Focus
+  while App renders, once per graph (React's "state from the previous render" pattern) (V109).
+- **Esc then `f` pressed before the whole change is laid out fits nothing.** Focus is off and
+  nothing is picked when the layout arrives, so no branch of the canvas's effect fits it. A
+  person is slower than the worker; `F` fits whatever the timing (V109, as on `main`).
 
 - **Claude Code loads a folder's `AGENTS.md` by itself**, git-ignored folders included. A
   `symbiote/CLAUDE.md` would load the rules twice ([V17](../journal/v17-approve-means-merge.md)).

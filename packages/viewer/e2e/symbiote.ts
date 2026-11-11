@@ -79,6 +79,15 @@ export function graphPage(url: string): string {
   return at.toString();
 }
 
+/**
+ * The Graph page opens on the whole change, as a person keeps it with F (V109, decision 986): a
+ * change with an error or a warning would open on that finding, focused. For a spec of anything
+ * but the first view; call it before the page is opened.
+ */
+export async function wholeFirst(page: Page): Promise<void> {
+  await page.addInitScript(() => localStorage.setItem('symbiote.viewer.first-view', 'whole'));
+}
+
 /** On a diff's page (V60): its Graph page, by the switch at the top. */
 export async function showGraph(page: Page): Promise<void> {
   await page.locator('.page-switch').getByRole('tab', { name: 'Graph' }).click();

@@ -84,7 +84,9 @@ JavaScript.
 1. In the repository, run `symbiote view main`. The app opens on the change's **Files**: each
    changed file and its diff.
 2. Press `g` to switch to the **Graph**. Each box is a changed file, and in it are the functions,
-   classes and types that changed. Click one to see its diff and the code that uses it.
+   classes and types that changed. Click one to see its diff and the code that uses it. If the
+   change has an error or a warning, the Graph opens on the worst one and what links to it;
+   `F` shows the whole change.
 
 On a change's page, `g` switches between Files and Graph. On the other pages, `g` opens Git. To
 print the same comparison in your terminal instead, run `symbiote diff main`.

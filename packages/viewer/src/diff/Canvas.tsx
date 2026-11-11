@@ -75,6 +75,11 @@ interface CanvasProps {
   onToggleSummary: (id: string) => void;
   /** Symbols to bring into view: a group just shown or hidden. */
   reveal: string[] | null;
+  /**
+   * Bumped by F (V109): the view is framed anew as the first layout is, the whole change or the
+   * riskiest finding.
+   */
+  framing: number;
 }
 
 /** How long after React Flow's end of a move the edges come back, unless it moves again. */
@@ -108,6 +113,7 @@ export function Canvas({
   onSelect,
   onToggleSummary,
   reveal,
+  framing,
 }: CanvasProps) {
   const { fitView, screenToFlowPosition, getNodesBounds, getViewport, setCenter } = useReactFlow();
   // The reading zoom (V99, decision 967): names at the person's body size. A fit comes no closer
@@ -182,20 +188,25 @@ export function Canvas({
   // The first layout drawn is fitted whole (V93, decision 886): the canvas as proof 03 frames it,
   // a pick then moving it only when the symbol is out of view or unreadable (V99).
   const framed = useRef(false);
+  // F (V109) asks for a first view again: the whole change, or the riskiest finding focused.
+  const framedFor = useRef(framing);
   useEffect(() => {
     // Fit once the layout asked for is drawn, not the one it replaces: the view moves once.
     if (resizing || pending) return;
     // Wait a frame so React Flow has measured nodes that just appeared.
     const frame = requestAnimationFrame(() => {
+      const [width = 0, height = 0] = size.split('x').map(Number);
+      // Not measured yet: a fit to no size would frame nothing. The canvas's size comes next.
+      if (width === 0 || height === 0) return;
       const rescoped = fitted.current !== scope;
       fitted.current = scope;
-      const first = !framed.current && layoutNodes.length > 0;
+      const again = framedFor.current !== framing;
+      framedFor.current = framing;
+      const first = (again || !framed.current) && layoutNodes.length > 0;
       if (first) framed.current = true;
-      if (first && !reveal) {
-        // Only when React Flow's own first fit framed another layout: a second fit of the same
-        // one would only move the view again.
-        const [width = 0, height = 0] = size.split('x').map(Number);
-        const want = getViewportForBounds(
+      /** The layout fitted whole, at most at the reading zoom: where `fitView` puts it. */
+      const wholeFit = () =>
+        getViewportForBounds(
           getNodesBounds(layoutNodes.map((node) => node.id)),
           width,
           height,
@@ -203,23 +214,48 @@ export function Canvas({
           fitOptions.maxZoom,
           0.1,
         );
+      /**
+       * The pick at the centre of a view fitted whole at `zoom`, when its name would be drawn
+       * under 11 px there (V109, decision 986): the first view's (the riskiest finding, or a pick
+       * carried from Files) and Focus's. It comes to the reading zoom instead (966), its
+       * neighbours around it. A pick in a closed stylesheet card is its card (V105).
+       */
+      const unreadablePick = (zoom: number) => {
+        if (!selected || pickView(zoom, true) !== 'zoom') return undefined;
+        const pick = drawnAs(layoutNodes, selected);
+        return layoutNodes.some((node) => node.id === pick) ? pick : undefined;
+      };
+      // A fit, not `setCenter`: React Flow's own first fit waits for the nodes to be measured and
+      // would land after a move made now; a fit asked for now replaces it.
+      const toReading = (pick: string, duration: number) =>
+        void fitView({ nodes: [{ id: pick }], minZoom: reading, maxZoom: reading, duration });
+      if (first && !reveal) {
+        // Asked by F, the view moves there; the page's first view is drawn there at once.
+        const duration = again ? 300 : 0;
+        const want = wholeFit();
+        const pick = unreadablePick(want.zoom);
+        if (pick) return toReading(pick, duration);
+        // Only when React Flow's own first fit framed another layout: a second fit of the same
+        // one would only move the view again.
         const now = getViewport();
         const off =
           Math.abs(want.zoom - now.zoom) > 0.01 ||
           Math.abs(want.x - now.x) > 2 ||
           Math.abs(want.y - now.y) > 2;
-        if (off) void fitView(fitOptions);
+        if (off) void fitView({ ...fitOptions, duration });
       } else if (reveal)
         void fitView({ nodes: reveal.map((id) => ({ id })), duration: 300, maxZoom: reading });
-      else if (focus || rescoped) void fitView({ duration: 300, maxZoom: reading });
-      else if (selected) {
+      else if (focus || rescoped) {
+        const pick = focus ? unreadablePick(wholeFit().zoom) : undefined;
+        if (pick) toReading(pick, 300);
+        else void fitView({ duration: 300, maxZoom: reading });
+      } else if (selected) {
         // The picked symbol readable and in view (V99, decision 966, amending V93's 886): a name
         // drawn under 11 px comes to the reading zoom; a readable one moves nothing when it is in
         // view (the canvas as proof 03 frames it), and is panned to at the person's zoom when not.
         // A pick in a closed stylesheet card is its card (V105).
         const bounds = getNodesBounds([drawnAs(layoutNodes, selected)]);
         const { x, y, zoom } = getViewport();
-        const [width = 0, height = 0] = size.split('x').map(Number);
         const left = -x / zoom;
         const top = -y / zoom;
         const shown =
@@ -245,6 +281,7 @@ export function Canvas({
     layoutNodes,
     size,
     reveal,
+    framing,
     resizing,
     pending,
     reading,

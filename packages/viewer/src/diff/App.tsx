@@ -49,6 +49,7 @@ import { Loading } from '../ui/Loading.js';
 import { DiffName, FindingPills, HeadFacts, PageSwitch } from './DiffHead.js';
 import { CanvasCard, DropZone } from './CanvasCard.js';
 import { useDiffKeys } from './useDiffKeys.js';
+import { useFirstView } from './useFirstView.js';
 
 export function App() {
   const { state, setState, inView, retry } = useDiffGraph();
@@ -138,6 +139,16 @@ export function App() {
     [showPage],
   );
   const findingShown = useCallback(() => setFindingAt(null), []);
+  // The Graph page's first view (V109, decision 986): with an error or a warning, its riskiest
+  // finding's symbol, focused; F between it and the whole change, the choice kept.
+  const framing = useFirstView({
+    graph,
+    page,
+    shown: findings.shown,
+    selected,
+    setSelected,
+    setFocus,
+  });
   const onlySince = sinceOnly && !!graph?.since;
   const changes = useMemo(
     () => (graph ? changeList(graph, { sinceOnly: onlySince }) : []),
@@ -471,6 +482,11 @@ export function App() {
                     Click a symbol for its details, a group to show its symbols. With one picked,{' '}
                     <kbd>g</kbd> shows its lines on Files.
                   </p>
+                  <p>
+                    A change with an error or a warning opens on the worst one. <kbd>F</kbd> shows
+                    the whole change, and the worst again; the page opens next time on the one you
+                    left.
+                  </p>
                 </Help>
               </>
             )}
@@ -596,6 +612,7 @@ export function App() {
                 resizing={resizing}
                 toggleSummary={toggleSummary}
                 reveal={reveal}
+                framing={framing}
                 sinceOnly={sinceOnly}
                 setSinceOnly={setSinceOnly}
                 context={context}

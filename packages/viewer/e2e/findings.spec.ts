@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { graphPage, serveFixture, type Running } from './symbiote.js';
+import { graphPage, serveFixture, wholeFirst, type Running } from './symbiote.js';
 
 // V100 (decisions 968–970): findings where the reviewer looks. The head counts what the Findings
 // tab lists, one pill per severity, and a pill opens the tab at its severity. Signature changes
@@ -117,6 +117,8 @@ for (const theme of ['dark', 'light'] as const) {
   test(`the map keeps a finding's count, at a name's size, and colours its file (${theme})`, async ({
     page,
   }) => {
+    // The whole change first (V109): this spec starts from it, not from the riskiest finding.
+    await wholeFirst(page);
     await page.addInitScript((kept) => localStorage.setItem('symbiote.viewer.theme', kept), theme);
     await page.goto(graphPage(callers.url));
     const legacy = page.locator('.react-flow__node[data-id="src/math.ts#legacy"]');
