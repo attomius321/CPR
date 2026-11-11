@@ -489,7 +489,7 @@ function SymbolDiff({ state, anchor, onPick, onOpen, path }: SymbolDiffProps) {
             className={`row row-${row.type}${pick ? ' pickable' : ''}${isAnchor(row, anchor) ? ' anchored' : ''}`}
             role="row"
             {...(hang ? { style: { '--hang': `${hang}ch` } as CSSProperties } : {})}
-            {...(pick || onOpen ? { onClick, title } : {})}
+            {...(pick || onOpen ? { onClick, ...tip(title) } : {})}
           >
             <LineNumber row={row} side="base" onOpen={onOpen} />
             <LineNumber row={row} side="head" onOpen={onOpen} />

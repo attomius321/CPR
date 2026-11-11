@@ -43,11 +43,15 @@ describe('tooltips are drawn by Symbiote (V54, decision 397)', () => {
         ) {
           found.push(`${at(node)} <title>`);
         }
-        // `{...(note ? { title: note } : {})}` on an element.
+        // `{...(note ? { title: note } : {})}` on an element, or `{ onClick, title }` (V109: the
+        // detail panel's code rows had one, unseen until the panel opened on the first view).
         if (ts.isJsxSpreadAttribute(node)) {
           const tag = node.parent.parent.tagName.getText();
           const spread = (inner: ts.Node): void => {
-            if (ts.isPropertyAssignment(inner) && inner.name.getText() === 'title')
+            if (
+              (ts.isPropertyAssignment(inner) || ts.isShorthandPropertyAssignment(inner)) &&
+              inner.name.getText() === 'title'
+            )
               found.push(`${at(inner)} <${tag} {...{ title }}>`);
             ts.forEachChild(inner, spread);
           };
