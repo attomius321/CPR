@@ -152,7 +152,7 @@ toolbar.
 | d | Show or fold the commit's details | | |
 | p, P | | | Next or previous project, in a monorepo |
 | o | Open the file shown as a diff in VS Code | Open the file in VS Code at its first change | Open the selected symbol in VS Code |
-| g | | The Graph page | The Files page |
+| g | | The Graph page, the symbol of the line you last clicked selected | The Files page, at the selected symbol's first changed line |
 | Esc | Back to the commits from a file shown; leave compare mode | Close the comment box | Close the detail panel |
 
 These keys work on the Overview, Git, Nucleus, Skills, Monitor, Issues, History, Settings and a

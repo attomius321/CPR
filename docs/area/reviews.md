@@ -160,6 +160,16 @@ draws the two whole when more than half differs. Past 400 characters `foldSignat
 around each change (an unchanged one its first 300), with **Show the whole signature**. Core cuts
 a signature at 2,000 characters (`MAX_DISPLAY`), not 300.
 
+Since V104 `g` follows the pick (977). With a symbol picked, `g` opens its file on Files with
+its first changed row centred and boxed: its first added row, else its first removed one, else
+its first row. A removed symbol, and one whose old lines are in another listed file (moved),
+shows its removed rows in the file it left (`symbolFocus`, `firstChangedRow` in
+`diff/file-diff.ts`). A symbol in no listed file leaves Files as it was. On Files, every row
+takes a click once the graph is there, and the row clicked is boxed. `g` then picks the
+innermost symbol holding that line (`symbolAt`), while its file is shown. The page switch does
+what `g` does. The panel's **Show its lines** (978, beside **Open in VS Code**) does it too,
+where the file's diff is served. A row asked for past the 2,000 rows drawn draws every row.
+
 ## Opening a review
 
 While a review's change is analyzed, its page shows the six steps of the analysis as a timeline
@@ -170,7 +180,8 @@ before the graph exists, and for a workspace's branch the agent's newest report,
 its brief. The commits show only when the workspace's changes start at the review's own base. The
 Files page opens meanwhile, read only: comments wait for the graph, because a comment names the
 symbol holding its line. Its list is in git's order until the graph arrives. Then it takes the
-order of risk, and the file open stays open (`useKeptOpen` in `FilesPage.tsx`, V102).
+order of risk, and the file open stays open: App holds the first file by path while Files is
+shown, and the first graph does not reset it (V104, in place of V102's `useKeptOpen`).
 
 ## Where things are
 
@@ -182,6 +193,7 @@ order of risk, and the file open stays open (`useKeptOpen` in `FilesPage.tsx`, V
 | The Review tab | `packages/viewer/src/diff/ReviewTab.tsx` |
 | The marks, the drafts and the verdict picked, for both pages | `packages/viewer/src/diff/useReview.ts` |
 | The Files page and its diff | `packages/viewer/src/diff/FilesPage.tsx`, `packages/viewer/src/diff/file-diff.ts` |
+| Graph and Files following the pick: `g`, the page switch, **Show its lines** | `follow` and `pickedLines` in `packages/viewer/src/diff/App.tsx`; `symbolFocus`, `firstChangedRow`, `anchorKey`, `foldsDrawn` in `diff/file-diff.ts`; the button in `DetailPanel.tsx` |
 | The Files page's order and each file's findings | `riskOrder`, `fileFindings`, `fileKind` in `packages/viewer/src/diff/file-order.ts`; applied in `useReviewFiles` (`FilesPage.tsx`) |
 | The head's findings pills; the Findings tab's fold | `FindingPills` in `packages/viewer/src/diff/DiffHead.tsx`; `foldFindings`, `findingPills` in `diff/review.ts`; `Sidebar.tsx` |
 | Findings on the map: a file name's colour, the counts | `layoutFlow` in `packages/viewer/src/graph/flow.ts` (`FileData.severity`, `counts`), `FileNode.tsx`, `map.css` |
@@ -224,6 +236,7 @@ when a later decision or a fix changed it.
 | 966–967 | A pick lands readable: a name under 11 px on screen comes to the reading zoom, a readable pick in view moves nothing (amends 886); the reading zoom is the body size over the graph's 12 px names, and no fit comes closer | [V99](../plan/v99-picks-land-readable.md) |
 | 973–974 | The Files page in order of risk: files with listed findings (worst severity, then the most of each), other code, tests, then every other file, git's order inside each and until the graph arrives (amends 431's first file); a file's listed findings counted on its row in the worst severity's colour | [V102](../plan/v102-files-by-risk.md) |
 | 975–976 | The panel's code wraps under its own code, at its indent (keeps 887); a changed signature is one, removed words struck and added words marked, folded past 400 characters; core cuts a signature at 2,000 | [V103](../plan/v103-panel-code-whole.md) |
+| 977–978 | `g` follows the pick: from Graph, the symbol's first changed row on Files (its removed rows, in the file it left, for a removed or moved symbol); from Files, the symbol holding the line last clicked or commented, picked; the panel's **Show its lines** does the same | [V104](../plan/v104-graph-files-follow.md) |
 
 These no longer hold:
 
@@ -245,10 +258,16 @@ These no longer hold:
 
 ## Traps
 
-- **`App.tsx` sets the Files page's open file to none on every new graph**, which means the
-  first file, and its effect runs after the page's. A file opened while the change was analyzed
-  jumped to the riskiest once the graph reordered the list, so `useKeptOpen` opens it again
-  after App's reset (V102).
+- **A new graph reset the Files page's open file to none**, which means the first file. A file
+  read while the change was analyzed jumped to the riskiest once the graph reordered the list
+  (V102). Since V104 only a graph that replaces another resets it, and App holds the first file
+  by path while the change is analyzed.
+- **Git pairs lines by text, not by symbol.** A modified symbol's removed lines can sit far from
+  its added ones: under 84 added lines, `area`'s old lines were the file's first rows. A
+  symbol's row on Files is its first added one, its removed ones only when it has none (V104).
+- **A state cleared in an effect can still be read by the next key.** `g` ran before React had
+  run the effect that forgot the line clicked when the file changed, and picked a symbol of the
+  file left. Check such state where the key reads it, or clear it in the handler (V104's e2e).
 - **`?view=files` is not an address.** `diffView` reads only `?view=graph`. While a change is
   analyzed, the Files page is reached by **Read the files** or the Files tab (V102's e2e).
 - **`fileOf` in `graph/flow.ts` is a node's signature line, not its file.** A symbol's file is

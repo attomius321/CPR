@@ -55,6 +55,13 @@ on a line inside a function, a class or another symbol is about that symbol: the
 shows it in the symbol's detail panel. A comment on a line no symbol holds, such as a line of a
 Markdown file, is about that line only.
 
+To see a line's symbol in the graph, click the line and press `g`: the **Graph** page opens with
+the innermost symbol holding it selected. The other way, select a symbol on **Graph** and press
+`g`, or click **Show its lines** in its detail panel. **Files** opens its file at its first
+changed line. For a removed symbol, or one moved to another file, that is its first deleted line,
+in the file it was deleted from. With nothing selected, `g` goes back to the file you were
+reading.
+
 ## Read the graph
 
 ![A change in Symbiote: the findings, the graph, and the detail panel of a removed function with its finding, signature, diff, users and uses](../images/review-detail.png)
