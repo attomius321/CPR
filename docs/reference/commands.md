@@ -148,7 +148,7 @@ toolbar.
 | c | Check out the commit or one of its branches (asks first) | Comment on the file's first change | Comment on the selected symbol |
 | r | | | Mark the selected symbol reviewed |
 | x | Compare mode: pick two commits | | |
-| f | Find a commit: Enter and Shift+Enter step through what it finds | | Show only the selected symbol and its neighbours |
+| f | Find a commit: Enter and Shift+Enter step through what it finds | | Focus: show only the selected symbol and every symbol it links to, type references included |
 | d | Show or fold the commit's details | | |
 | p, P | | | Next or previous project, in a monorepo |
 | o | Open the file shown as a diff in VS Code | Open the file in VS Code at its first change | Open the selected symbol in VS Code |

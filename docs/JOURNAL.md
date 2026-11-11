@@ -464,3 +464,4 @@ merge commit.
 - 2026-11-11 [V99 — a pick lands readable](journal/v99-picks-land-readable.md)
 - 2026-11-11 [V100 — findings where the reviewer looks](journal/v100-findings-where-you-look.md)
 - 2026-11-11 [V103 — the panel's code shown whole](journal/v103-panel-code-whole.md)
+- 2026-11-11 [V101 — the links a finding is about](journal/v101-links-a-finding-is-about.md)
