@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import type { Graph, GraphEdge, GraphNode } from '@symbiote/core';
-import { graphPage, serveFixture, type Running } from './symbiote.js';
+import { graphPage, serveFixture, wholeFirst, type Running } from './symbiote.js';
 
 // React Flow checks every edge it is given on every frame of a move (V8c). A generated change
 // with more edges than a moving view draws: 21 symbols of `a.ts` call each of 20 in `b.ts`, and
@@ -141,6 +141,8 @@ test('while the view moves, only the selected symbol’s edges are drawn', async
 });
 
 test('a small graph keeps its edges while the view moves', async ({ page }) => {
+  // The whole change first (V109): this spec starts from it, not from the riskiest finding.
+  await wholeFirst(page);
   await open(page);
   await expect(edges(page)).toHaveCount(4);
   await holdDrag(page);

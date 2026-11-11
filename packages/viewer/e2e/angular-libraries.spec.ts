@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { graphPage, servePullRequest, type RunningPullRequest } from './symbiote.js';
+import { graphPage, servePullRequest, wholeFirst, type RunningPullRequest } from './symbiote.js';
 
 // `symbiote pr 7 --plugin angular` on the fixture with fake Angular libraries in its node_modules:
 // library components, directives and pipes are boxes of their package, and a field read only
@@ -17,6 +17,8 @@ test.beforeAll(async () => {
 test.afterAll(() => symbiote.stop());
 
 test.beforeEach(async ({ page }) => {
+  // The whole change first (V109): this spec starts from it, not from the riskiest finding.
+  await wholeFirst(page);
   errors.length = 0;
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto(graphPage(symbiote.url));

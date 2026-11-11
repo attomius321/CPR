@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { hiveMocks, mockOverview, normalMocks } from './overview-data.js';
-import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
+import { serveWorkspaces, wholeFirst, type RunningWorkspaces } from './symbiote.js';
 
 // One page frame (V72, decisions 507–509): every page of the shell and a review takes the whole
 // main area; its head is one box, its title at one x, its cards from one y; the cards 16 px from
@@ -250,6 +250,8 @@ test("a workspace's terminal view, in Split and in Focus: the same frame", async
 });
 
 test("a workspace, its review's two views and its merge: the same frame", async ({ page }) => {
+  // The whole change first (V109): this spec starts from it, not from the riskiest finding.
+  await wholeFirst(page);
   symbiote = await serveWorkspaces({ terminal: false });
   await page.goto(`${symbiote.url}start`);
   const start = page.getByRole('region', { name: 'Start a workspace' });

@@ -2,7 +2,13 @@ import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { graphPage, fixtureFile, serveFixture, type RunningFixture } from './symbiote.js';
+import {
+  graphPage,
+  fixtureFile,
+  serveFixture,
+  wholeFirst,
+  type RunningFixture,
+} from './symbiote.js';
 
 // The callers fixture's src/math.ts: add modified (head lines 1–3), legacy removed (base 5–7),
 // triple added (head 5–7). `SYMBIOTE_CODE` is a stand-in for VS Code that writes what it was given.
@@ -33,6 +39,8 @@ test.beforeEach(async ({ page }) => {
   page.on('pageerror', (error) => errors.push(error.message));
   rmSync(log, { force: true });
   writeFileSync(join(symbiote.repo, 'src/math.ts'), fixtureFile('callers', 'src/math.ts'));
+  // The whole change first (V109): this spec starts from it, not from the riskiest finding.
+  await wholeFirst(page);
   await page.goto(graphPage(symbiote.url));
   await expect(page.locator('.react-flow__node-symbol').first()).toBeVisible();
 });

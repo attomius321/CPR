@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { graphPage, serveFixture, type Running } from './symbiote.js';
+import { graphPage, serveFixture, wholeFirst, type Running } from './symbiote.js';
 
 // `symbiote view` on a monorepo (npm workspaces): two apps call a shared library, and a library is
 // removed. Each project is a frame; on the map their names read first.
@@ -13,6 +13,8 @@ test.beforeAll(async () => {
 test.afterAll(() => symbiote.stop());
 
 test.beforeEach(async ({ page }) => {
+  // The whole change first (V109): this spec starts from it, not from the riskiest finding.
+  await wholeFirst(page);
   errors.length = 0;
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto(graphPage(symbiote.url));

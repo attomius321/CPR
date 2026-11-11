@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { graphPage, serveFixture, type Running } from './symbiote.js';
+import { graphPage, serveFixture, wholeFirst, type Running } from './symbiote.js';
 
 // V99 (decisions 966–967): a pick lands readable. A finding, a row of the change list, j/k or a
 // name in the detail panel whose symbol's name would be drawn under 11 px comes to the reading
@@ -14,7 +14,9 @@ test.beforeAll(async () => {
 
 test.afterAll(() => symbiote.stop());
 
-test.beforeEach(({ page }) => {
+test.beforeEach(async ({ page }) => {
+  // The whole change first (V109): this spec starts from it, not from the riskiest finding.
+  await wholeFirst(page);
   errors.length = 0;
   page.on('pageerror', (error) => errors.push(error.message));
 });

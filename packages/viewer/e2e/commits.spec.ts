@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { showGraph, serveCommits, type RunningCommits } from './symbiote.js';
+import { showGraph, serveCommits, wholeFirst, type RunningCommits } from './symbiote.js';
 
 // `symbiote view` without revisions (V9): the commits page, the history of every branch as a graph
 // (V10); picked pairs are analyzed on demand, each at /diff/<base>..<head>/.
@@ -330,6 +330,8 @@ test('stops an analysis', async ({ page }) => {
 
 test('analyzes a diff URL opened anew', async ({ page }) => {
   const [base, head] = symbiote.shas;
+  // The whole change first (V109): this spec starts from it, not from the riskiest finding.
+  await wholeFirst(page);
   await page.goto(`${symbiote.url}diff/${base}..${head}/`);
   await showGraph(page);
   await expect(symbol(page, 'triple')).toBeVisible();

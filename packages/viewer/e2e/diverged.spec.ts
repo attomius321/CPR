@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { showGraph, serveDiverged, type RunningDiverged } from './symbiote.js';
+import { showGraph, serveDiverged, wholeFirst, type RunningDiverged } from './symbiote.js';
 
 // V10c: two picks on lines that diverged are compared from their fork point, as a pull request
 // shows a branch: what head's side adds, never the other side's work as reverted.
@@ -60,6 +60,8 @@ test.describe('with main checked out', () => {
 
   test("swaps the sides: main's changes since the fork", async ({ page }) => {
     const { fork, main, topic } = symbiote;
+    // The whole change first (V109): this spec starts from it, not from the riskiest finding.
+    await wholeFirst(page);
     await pickBoth(page, `${symbiote.url}git`);
     await page.getByRole('button', { name: 'Swap' }).click();
     await expect(page.locator('.compare-label')).toHaveText(

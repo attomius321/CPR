@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { graphPage, servePullRequest, type RunningPullRequest } from './symbiote.js';
+import { graphPage, servePullRequest, wholeFirst, type RunningPullRequest } from './symbiote.js';
 
 // `symbiote pr 7` on core's markup fixture (L1–L2): a rule and a token are symbols with their own
 // diff, the components that render a class are its users, and a comment on a rule's line goes
@@ -15,6 +15,8 @@ test.beforeAll(async () => {
 test.afterAll(() => symbiote.stop());
 
 test.beforeEach(async ({ page }) => {
+  // The whole change first (V109): this spec starts from it, not from the riskiest finding.
+  await wholeFirst(page);
   errors.length = 0;
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto(graphPage(symbiote.url));
