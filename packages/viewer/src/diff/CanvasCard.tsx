@@ -102,6 +102,7 @@ export function CanvasCard({
   resizing,
   toggleSummary,
   reveal,
+  framing,
   sinceOnly,
   setSinceOnly,
   context,
@@ -124,6 +125,8 @@ export function CanvasCard({
   toggleSummary: (id: string) => void;
   /** What to fit after a group is shown or hidden. */
   reveal: string[] | null;
+  /** Bumped by F (V109): the canvas frames its view anew, as its first. */
+  framing: number;
   sinceOnly: boolean;
   setSinceOnly: (on: boolean) => void;
   context: boolean;
@@ -148,6 +151,7 @@ export function CanvasCard({
           onSelect={setSelected}
           onToggleSummary={toggleSummary}
           reveal={reveal}
+          framing={framing}
         />
       ) : (
         // The first layout: the change list and findings are there meanwhile.
