@@ -136,7 +136,7 @@ loop steadier, from what the graph runs of 2026-11-02 found (Agents, below).
 | [V101](plan/v101-links-a-finding-is-about.md) | Focus and a pick draw the type references a finding is about; the panel marks the links not on the canvas | built, ready for review | 971–972 | [journal](journal/v101-links-a-finding-is-about.md) |
 | [V103](plan/v103-panel-code-whole.md) | The detail panel's code wraps; a signature's change marked word by word | built, ready for review | 975–976 | [journal](journal/v103-panel-code-whole.md) |
 | [V105](plan/v105-stylesheet-cards.md) | A stylesheet's changed rules as one card, one row of the change list and one item of the review | built, ready for review | 979–980 | [journal](journal/v105-stylesheet-cards.md) |
-| [V106](plan/v106-change-louder-than-context.md) | The change louder than its context on the canvas | planned | 981 | [journal](journal/v106-change-louder-than-context.md) |
+| [V106](plan/v106-change-louder-than-context.md) | The change louder than its context on the canvas: a summary card's text no larger or bolder than a changed name | built, ready for review | 981 | [journal](journal/v106-change-louder-than-context.md) |
 | [V107](plan/v107-back-in-the-panel.md) | Back after following a link in the detail panel | planned | 982 | [journal](journal/v107-back-in-the-panel.md) |
 | [V109](plan/v109-open-on-the-risk.md) | The Graph page opens on the riskiest finding (after V99–V101, if the person still zooms first) | planned | 986 | [journal](journal/v109-open-on-the-risk.md) |
 
