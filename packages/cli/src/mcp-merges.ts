@@ -239,6 +239,53 @@ export function mcpMerges(
       };
     },
 
+    // MC3 (decision 990): merged work marked in the docs, where the repository says how.
+    async mark_merged(args) {
+      const marks = services.marks;
+      if (!marks?.configured()) {
+        throw new ToolProblem(
+          'symbiote/config.json names no `merged` commands to mark merged work',
+        );
+      }
+      const into =
+        args.into === undefined ? undefined : words(args, 'into', 'a branch to mark on', 255);
+      /** A merge into the branch under way: moving it would merge that one again. */
+      const busy = async (on: string) => {
+        const queue = await services.merges?.list();
+        const running = queue?.merges.find(
+          (e) => e.into === on && e.state !== 'queued' && e.state !== 'landed',
+        );
+        if (running) {
+          throw new ToolProblem(
+            `${running.branch}'s merge into ${on} is ${running.state}: mark merged work once it lands or leaves the queue`,
+          );
+        }
+      };
+      let plan;
+      try {
+        plan = await marks.preview(into);
+      } catch (error) {
+        throw new ToolProblem((error as Error).message);
+      }
+      await busy(plan.into);
+      if (plan.files.length === 0) {
+        throw new ToolProblem(
+          `Nothing to mark on ${plan.into}: ${plan.output || 'no file changed'}`,
+        );
+      }
+      const shown = plan.files.slice(0, 3).join(', ');
+      const more = plan.files.length > 3 ? ` and ${plural(plan.files.length - 3, 'more')}` : '';
+      return {
+        words: `Mark merged work on ${plan.into}: one commit of ${plural(plan.files.length, 'file')} (${shown}${more})${
+          plan.push ? `, pushed` : ''
+        }`,
+        act: async () => {
+          await busy(plan.into);
+          return marks.mark(plan.into);
+        },
+      };
+    },
+
     async remove_merge(args) {
       const e = await entryOf(idOf(args));
       return {

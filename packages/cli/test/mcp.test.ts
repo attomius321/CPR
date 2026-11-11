@@ -80,7 +80,13 @@ describe("Symbiote's MCP: the protocol (MC1, decision 359)", () => {
   });
 
   it('lists its tools, each with a schema; the asked ones say they ask', async () => {
-    const mcp = server(fakes().services);
+    // mark_merged where the repository names its commands (MC3, decision 990).
+    const marks = {
+      configured: () => true,
+      preview: () => Promise.reject(new Error('unused')),
+      mark: () => Promise.reject(new Error('unused')),
+    };
+    const mcp = server({ ...fakes().services, marks });
     const answer = (await mcp.handle({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, NUCLEUS)) as {
       result: { tools: { name: string; description: string; inputSchema: { type: string } }[] };
     };
@@ -108,6 +114,7 @@ describe("Symbiote's MCP: the protocol (MC1, decision 359)", () => {
       'merge_resolution',
       'retry_merge',
       'recheck_merge',
+      'mark_merged',
       'remove_merge',
       'usage',
       'code_map',
@@ -127,6 +134,7 @@ describe("Symbiote's MCP: the protocol (MC1, decision 359)", () => {
       'merge_resolution',
       'retry_merge',
       'recheck_merge',
+      'mark_merged',
       'remove_merge',
     ]);
   });

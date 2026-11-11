@@ -10,6 +10,7 @@ import type {
 } from '@symbiote/core';
 import type { CodeMap } from '@symbiote/monitor';
 import type { DiffStatus, Pair } from './diffs.js';
+import type { MarkMerged } from './mark-merged.js';
 import type { Merger } from './merges.js';
 import type { BranchReviews } from './reviews.js';
 import type { UsageService } from './usage.js';
@@ -56,6 +57,8 @@ export interface McpServices {
     | 'log'
   >;
   usage?: Pick<UsageService, 'report'>;
+  /** Merged work marked in the docs (MC3, decision 990), where the repository sets `merged`. */
+  marks?: Pick<MarkMerged, 'configured' | 'preview' | 'mark'>;
   monitor?: { map(): Promise<CodeMap> };
   /** Nucleus (NU2): its activity, taken out (V84). */
   nucleus?: Pick<PageAgent, 'exportActivity'>;

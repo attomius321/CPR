@@ -36,7 +36,7 @@ export class ToolProblem extends Error {
 }
 
 /** The services a tool needs; without one it is left out. */
-export type Need = 'workspaces' | 'reviews' | 'merges' | 'usage' | 'monitor';
+export type Need = 'workspaces' | 'reviews' | 'merges' | 'usage' | 'monitor' | 'marks';
 
 export interface ToolSpec {
   name: string;
@@ -317,6 +317,20 @@ export const MCP_TOOLS: readonly ToolSpec[] = [
     description: "Runs a merge's failed check again on the same merge." + ASKS,
     inputSchema: object({ id: mergeId }, ['id']),
     needs: ['merges'],
+    asks: true,
+  },
+  {
+    name: 'mark_merged',
+    description:
+      "Marks merged work merged in the docs, on the default branch (into: another): runs the repository's `merged` commands (symbiote/config.json) at its tip in Symbiote's cache, makes what they change one commit, moves the branch to it as the merger lands, and pushes it as merge.push says. Listed only where the repository names those commands; refused while a merge into that branch is under way." +
+      ASKS,
+    inputSchema: object({
+      into: {
+        type: 'string',
+        description: 'The branch to mark on; the default branch unless given',
+      },
+    }),
+    needs: ['marks'],
     asks: true,
   },
   {

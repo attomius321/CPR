@@ -5,6 +5,12 @@
     "effort": "xhigh",
     "model": "opus"
   },
+  "merged": {
+    "commands": [
+      "node scripts/plan/mark-merged.mjs --write",
+      "node scripts/plan/consolidate.mjs --write"
+    ]
+  },
   "scout": {
     "effort": "xhigh",
     "model": "opus"

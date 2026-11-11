@@ -102,6 +102,9 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
   const closing = new AbortController();
 
   const available = (tool: ToolSpec) => tool.needs.every((need) => services[need] !== undefined);
+  /** A tool listed now: `mark_merged` only while the repository names its commands (MC3). */
+  const listedNow = (tool: ToolSpec) =>
+    tool.name !== 'mark_merged' || services.marks?.configured() === true;
   const tools = MCP_TOOLS.filter(available);
   const ctx: McpContext = {
     services,
@@ -281,7 +284,7 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
       if (method === 'tools/list') {
         const why = await startsAtOnce('start_workspace', caller);
         return reply(id, {
-          tools: tools.map(({ name, description, inputSchema }) => ({
+          tools: tools.filter(listedNow).map(({ name, description, inputSchema }) => ({
             name,
             description:
               why && name === 'start_workspace'
@@ -293,7 +296,7 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
       }
       if (method !== 'tools/call') return failure(id, -32601, `unknown method: ${method}`);
       const name = p.name;
-      if (typeof name !== 'string' || !tools.some((t) => t.name === name)) {
+      if (typeof name !== 'string' || !tools.some((t) => t.name === name && listedNow(t))) {
         return failure(id, -32602, `unknown tool: ${String(name)}`);
       }
       const args = p.arguments ?? {};

@@ -43,6 +43,7 @@ import { vsCodeFolder, vsCodeOpener } from './editor.js';
 import { fileStateStore, stateDir } from './state.js';
 import { branchReviews, reviewPlace } from './reviews.js';
 import { merger } from './merges.js';
+import { markMerged } from './mark-merged.js';
 import { projectCheck } from './merge-config.js';
 import { promptSettingsService } from './prompt-settings.js';
 import { checkSettingService } from './check-setting.js';
@@ -293,6 +294,8 @@ export async function view(argv: string[], ctx: CliContext): Promise<number> {
       }),
       terminals,
       merges: repoMerges,
+      // MC3 (decision 990): merged work marked in the docs, where the repository says how.
+      marks: markMerged(repo, cacheDir),
       hiveWorkspace: hiveWorkspace(repo, cacheDir, { hive }),
       // The Overview's read of the days (V91, decision 852).
       day: workspaceDay(repo, cacheDir),
