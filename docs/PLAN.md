@@ -129,7 +129,7 @@ loop steadier, from what the graph runs of 2026-11-02 found (Agents, below).
 | Fix | `open-pr.spec.ts`: two opens raced to VS Code's log; the spec waits for each | ✅ | | [journal](journal/fix-open-pr-spec-race.md) |
 | Refactor | `layoutFlow` in its phases: 378 lines to 108, each phase a pure function; the same layouts on five real graphs | ✅ | | [journal](journal/refactor-layout-flow.md) |
 | [Fix](plan/fix-graph-file-check.md) | A file that is not a graph says so; an error boundary around each page | planned | | |
-| [V96](plan/v96-map-labels.md) | Project names never cover file names on the map | planned | 938–939 | [journal](journal/v96-map-labels.md) |
+| [V96](plan/v96-map-labels.md) | Project names never cover file names on the map: a tab on the frame's edge, inside its width; a file name under it faint at rest; a frame draws its files' counts | built, ready for review | 938–939, 998 | [journal](journal/v96-map-labels.md) |
 | [Spike](../spikes/graph-usability/README.md) | Spike: the graph for a reviewer — five changes walked, 84 graphs measured; the first view unreadable on 24 of 26 merges, findings out of sight, Files opening on docs; twelve improvements ranked (V99–V109, V96) | measured | | [journal](journal/spike-graph-usability.md) |
 | [V99](plan/v99-picks-land-readable.md) | A picked symbol lands readable, at the person's text size | built, ready for review | 966–967 | [journal](journal/v99-picks-land-readable.md) |
 | [V100](plan/v100-findings-where-you-look.md) | Findings where the reviewer looks: the head counts what the tab counts, settled signature changes folded, findings on the map (includes fix-finding-counts) | built, ready for review | 968–970 | [journal](journal/v100-findings-where-you-look.md) |

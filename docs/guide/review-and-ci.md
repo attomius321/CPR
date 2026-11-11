@@ -119,7 +119,9 @@ Large changes stay readable in three ways:
   type.
 
 In a monorepo, if the change spans several apps or libraries, each one is drawn as a frame
-around its files. Press `p` and `P` to show one project at a time, with everything it links to.
+around its files. On the map, a frame's name sits on its top edge, like a tab. A file name under
+the tab is drawn faint; zoom in to read it. Press `p` and `P` to show one project at a time, with
+everything it links to.
 Symbiote finds the projects from your workspace's packages (npm, Yarn, pnpm), from
 Nx, and from `angular.json` with the Angular plugin. If a repository declares none, each package
 and each folder with its own `tsconfig.json` is a project.

@@ -44,6 +44,13 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
 - `src/graph/layouts.ts`, `layout-worker.ts`, `useLayout.ts` — layouts made in a worker
   (V8e): view keys, the cache of recent layouts, numbered requests, the main-thread fallback.
   The worker is `new URL('./layout-worker.ts', import.meta.url)`: the two files move together.
+  Both make a view's layout with `layoutOf`: `layoutFlow`, then `mapLabels` (V96).
+- `src/graph/map-labels.ts` (V96) — **pure**: the map's labels placed once a layout is made,
+  moving nothing. Each file box gets `cover`, the zoom below which a project's name is over its
+  name (map.css draws it faint below that once the zoom rests); each frame gets its files'
+  findings counts, drawn above its name. It models the boxes map.css draws: `PROJECT_NAME`,
+  `FILE_NAME` and `nameWidth` (Geist's advances, measured): change map.css's sizes and these
+  together (`test/map-labels.test.ts` reads map.css).
 - `src/diff/App.tsx` — state, the page shown (Files first, Graph by `?view=graph`, `g` between
   them; V60; `g` and the page switch follow the pick, `follow`, V104), the view to lay out,
   toolbar; `Canvas.tsx` the canvas (map mode, reveal/fit; a
@@ -274,11 +281,17 @@ symbol glyph. Measure first paint (`/git`) and Bitwarden's graph after any font 
   restyles or re-lays out thousands of elements on every zoom frame. A file name is cut to its
   box at `--symbiote-cut`, the zoom once it rests (`CUT_REST_MS`): a cut is laid out, so never
   on every frame (1.1 ms a frame on Bitwarden's map; fix/hive-turn-end-flaky-tests-verdict).
+  A project's name (V96, decisions 938–939) is a tab on its frame's top edge, half outside,
+  inside the frame's width (a fit, then a cut at rest). A file name it is over is faint once the
+  zoom rests below the file's `cover` (`--cover-zoom`, compared with `--symbiote-cut` in CSS):
+  decided per layout in the worker, nothing on a zoom frame, no class written.
 - Frames (V7b): only when the files drawn span two or more projects; otherwise the layout must
   equal one without `projects` (a unit test compares them). Nodes nest three deep — frame → file
   box → symbol — and parents come first in `nodes`. A frame takes the pointer only on its name
-  band, and not at all on the map (V8b): there its name covers files, which must get their
-  clicks; a canvas click inside a frame zooms into it (`projectAt`). Frames are placed in
+  band, and not at all on the map (V8b): there its name may be over a file's, and files must get
+  their clicks; a canvas click inside a frame zooms into it (`projectAt`). On the map a frame's
+  node is above its files' (z-index 2001 over 2000), so it draws their findings counts, above its
+  name (V96, decision 998); a box in no frame draws its own. Frames are placed in
   rows in dagre's rank order (`packFrames`): dagre's own columns ran 3–8× wider than high. A
   package or the dynamic calls box is drawn in the frame it has most links with (it stays in no
   project: no `edge-cross`): beside the frames, a package with hundreds of users made long fans

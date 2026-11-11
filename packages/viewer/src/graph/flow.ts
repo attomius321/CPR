@@ -79,9 +79,15 @@ export interface FileData extends Record<string, unknown> {
   /**
    * Its symbols' findings counts drawn on the map (V100, decision 970), for the symbols with a
    * finding the head counts: each its card's count, at the card's top-right corner in the box.
-   * The box draws them, not the card: on the map a box and its name are drawn above its cards.
+   * The box draws them, not the card: on the map a box and its name are drawn above its cards. In
+   * a frame, the frame draws them instead, above its name (V96, `mapLabels`).
    */
   counts?: MapCount[];
+  /**
+   * The zoom below which a project's name is drawn over its name on the map (V96, decision 939):
+   * there, once the zoom rests, its name is faint. Set after the layout (`mapLabels`).
+   */
+  cover?: number;
 }
 
 /** A symbol's findings count on the map: its card's, at the card's top-right corner. */
@@ -115,6 +121,11 @@ export interface ProjectData extends Record<string, unknown> {
   kind?: ProjectKind;
   /** Changed symbols drawn in it; none when only neighbours of a change come from it. */
   changed: number;
+  /**
+   * Its files' findings counts on the map, at their cards' corners in the frame: drawn above its
+   * name (V96, keeping V100's). Set after the layout (`mapLabels`).
+   */
+  counts?: MapCount[];
 }
 
 /** A frame around the files of one app or library, when what is drawn spans two or more. */

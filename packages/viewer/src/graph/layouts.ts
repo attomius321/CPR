@@ -1,5 +1,14 @@
 import type { Graph } from '@symbiote/core';
 import { layoutFlow, type FlowLayout, type LayoutOptions } from './flow.js';
+import { mapLabels } from './map-labels.js';
+
+/**
+ * A view's layout as the canvas draws it: `layoutFlow`'s, then the map's labels placed over it
+ * (V96, `mapLabels`), which moves nothing.
+ */
+export function layoutOf(graph: Graph, options: LayoutOptions): FlowLayout {
+  return mapLabels(layoutFlow(graph, options));
+}
 
 /** What the main thread sends the layout worker: the graph once, then views to lay out. */
 export type LayoutMessage =
@@ -84,7 +93,7 @@ export class LayoutCache {
  * are made here, on the main thread.
  */
 export function workerLayouts(graph: Graph, worker: LayoutWorker | null): LayoutRunner {
-  const here = (options: LayoutOptions) => layoutFlow(graph, options);
+  const here = (options: LayoutOptions) => layoutOf(graph, options);
   if (!worker) {
     return { layout: (options) => Promise.resolve().then(() => here(options)), close: () => {} };
   }
