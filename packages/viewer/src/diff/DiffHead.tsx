@@ -162,8 +162,6 @@ function WorkspaceLink({ branch }: { branch: string }) {
   );
 }
 
-const PILL_TONES = { error: 'error', warning: 'warning', info: 'info' } as const;
-
 /**
  * The change's findings in the head (V90; V100, decision 968, amending 839): a pill per severity
  * the Findings tab lists, infos as notes, each its icon and words. The settled signature changes
@@ -188,7 +186,7 @@ export function FindingPills({
           {...tip('Show them in the Findings tab')}
         >
           <StatusLabel
-            tone={PILL_TONES[severity]}
+            tone={severity}
             // A note's icon is its row's in the tab, not a paused state's.
             icon={severity === 'info' ? <HelpIcon /> : undefined}
             className={`finding-pill pill-${severity}`}
