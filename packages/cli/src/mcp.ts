@@ -124,7 +124,7 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
     mcpOverview(ctx, lookup),
     mcpWorkspaces(ctx, lookup),
     mcpReviews(ctx, lookup),
-    mcpMerges(lookup),
+    mcpMerges(ctx, lookup),
   ];
 
   /** A held ask by its ID, while it is held. */

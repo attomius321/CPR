@@ -1,12 +1,28 @@
 // Symbiote's MCP: the merger's tools (MC1): the queue and a log; a merge queued, landed, resolved,
 // retried, rechecked or removed once asked.
 import { MERGE_STRATEGIES, type MergeEntry, type MergeStrategy } from '@symbiote/core';
-import type { McpRead, McpAsking } from './mcp-context.js';
+import { approveAndQueue, type Approved } from './approve-merge.js';
+import type { McpContext, McpRead, McpAsking } from './mcp-context.js';
 import type { McpLookup } from './mcp-lookup.js';
-import { ToolProblem, short, plural, words, branchOf, idOf, count } from './mcp-tools.js';
+import { via, ToolProblem, short, plural, words, branchOf, idOf, count } from './mcp-tools.js';
+
+/** An approval's answer: its queue entry as a row (MC3). */
+export const approvedRow = (approved: Approved) =>
+  approved.merge && 'id' in approved.merge
+    ? { ...approved, merge: mergeRow(approved.merge) }
+    : approved;
+
+/** A merge's `strategy` argument, checked; undefined when absent. */
+export function strategyOf(args: Record<string, unknown>): MergeStrategy | undefined {
+  const { strategy } = args;
+  if (strategy !== undefined && !MERGE_STRATEGIES.includes(strategy as MergeStrategy)) {
+    throw new ToolProblem(`strategy: ${MERGE_STRATEGIES.join(' or ')}`);
+  }
+  return strategy as MergeStrategy | undefined;
+}
 
 /** A queue entry without its resolution's text or the check's whole output. */
-function mergeRow(e: MergeEntry) {
+export function mergeRow(e: MergeEntry) {
   return {
     id: e.id,
     branch: e.branch,
@@ -51,7 +67,22 @@ function mergeRow(e: MergeEntry) {
 }
 
 /** The merges tools: those that run at once, and those that ask. */
-export function mcpMerges({ service, entryOf }: Pick<McpLookup, 'service' | 'entryOf'>) {
+export function mcpMerges(
+  { services }: Pick<McpContext, 'services'>,
+  { service, entryOf }: Pick<McpLookup, 'service' | 'entryOf'>,
+) {
+  /**
+   * A branch nobody approved at its tip, as its review resolves it (MC3, decision 992); null when
+   * there is no such branch, or no reviews here.
+   */
+  async function unapproved(branch: string, approvedAt: string | undefined) {
+    const reviews = services.reviews;
+    if (!reviews) return null;
+    const found = await reviews.resolve(branch).catch(() => null);
+    if (!found || found.info.head === approvedAt) return null;
+    return { reviews, ...found };
+  }
+
   const reads: Record<string, McpRead> = {
     async merges(args) {
       const merger = service('merges');
@@ -86,14 +117,11 @@ export function mcpMerges({ service, entryOf }: Pick<McpLookup, 'service' | 'ent
     },
   };
   const asking: Record<string, McpAsking> = {
-    async queue_merge(args) {
+    async queue_merge(args, caller) {
       const branch = branchOf(args);
       const into =
         args.into === undefined ? undefined : words(args, 'into', 'a branch to merge into', 255);
-      const { strategy } = args;
-      if (strategy !== undefined && !MERGE_STRATEGIES.includes(strategy as MergeStrategy)) {
-        throw new ToolProblem(`strategy: ${MERGE_STRATEGIES.join(' or ')}`);
-      }
+      const strategy = strategyOf(args);
       const merger = service('merges');
       const targets = await merger.targets(branch);
       // A fast-forward its target can no longer take, merged with a merge commit instead (V67).
@@ -104,16 +132,48 @@ export function mcpMerges({ service, entryOf }: Pick<McpLookup, 'service' | 'ent
           act: () => merger.mergeCommit(waiting.id).then(mergeRow),
         };
       }
-      if (targets.blocked) throw new ToolProblem(targets.blocked);
       const target = into ?? targets.into;
+      if (targets.blocked) {
+        // Nobody approved its tip (MC3, decision 992): approved and queued in one Confirm.
+        const found = await unapproved(branch, targets.head);
+        if (!found) throw new ToolProblem(targets.blocked);
+        if (targets.entry) throw new ToolProblem(`${branch} is in the merge queue already`);
+        if (!target) throw new ToolProblem('into: the branch to merge into');
+        if (!targets.branches.includes(target)) {
+          throw new ToolProblem(`into: one of ${targets.branches.join(', ')}`);
+        }
+        const { reviews, info, pair } = found;
+        const fastForward = (strategy ?? targets.strategy) === 'fast-forward';
+        const read = (side: 'base' | 'head', path: string) =>
+          services.readFile(side === 'base' ? pair.base : pair.head, path);
+        return {
+          words: `Approve ${branch} at ${short(info.head)} (not reviewed in Symbiote) and ${
+            fastForward
+              ? `fast-forward ${target} to it: no merge commit`
+              : `merge it into ${target}`
+          }`,
+          act: () =>
+            approveAndQueue(
+              { reviews, merges: merger },
+              info,
+              {
+                event: 'approve',
+                body: 'Approved through queue_merge: merged without a review in Symbiote.',
+                comments: [],
+                via: via(caller),
+              },
+              read,
+              { into: target, ...(strategy ? { strategy } : {}) },
+            ).then(approvedRow),
+        };
+      }
       if (!target) throw new ToolProblem('into: the branch to merge into');
       if (!targets.branches.includes(target)) {
         throw new ToolProblem(`into: one of ${targets.branches.join(', ')}`);
       }
       const head = targets.head;
       if (!head) throw new ToolProblem(`${branch} has no approval to merge`);
-      const fastForward =
-        ((strategy as MergeStrategy | undefined) ?? targets.strategy) === 'fast-forward';
+      const fastForward = (strategy ?? targets.strategy) === 'fast-forward';
       if (fastForward && !targets.fastForward?.includes(target)) {
         throw new ToolProblem(
           `${target} has commits ${branch} does not: it cannot fast-forward (strategy merge: a merge commit)`,
@@ -125,11 +185,7 @@ export function mcpMerges({ service, entryOf }: Pick<McpLookup, 'service' | 'ent
           : `Merge ${branch} at ${short(head)} into ${target}`,
         act: () =>
           merger
-            .enqueue({
-              branch,
-              into: target,
-              ...(strategy ? { strategy: strategy as MergeStrategy } : {}),
-            })
+            .enqueue({ branch, into: target, ...(strategy ? { strategy } : {}) })
             .then(mergeRow),
       };
     },

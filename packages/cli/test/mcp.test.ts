@@ -582,11 +582,13 @@ describe("Symbiote's MCP: asks (decision 361)", () => {
       ],
     });
     const id = await askOf(mcp);
+    // The approval queues its merge in the same Confirm (MC3, decision 991).
     expect(mcp.asks().asks[0]?.words).toBe(
-      `Approve fix/a at ${HEAD.slice(0, 7)}: it is to be merged into main (1 comment)`,
+      `Approve fix/a at ${HEAD.slice(0, 7)} and merge it into main (1 comment)`,
     );
     await mcp.answer({ id, yes: true });
     expect((await pending).isError).toBe(false);
+    expect(calls).toContainEqual(['enqueue', { branch: 'fix/a', into: 'main' }]);
     const finish = calls.find((c) => c[0] === 'finish');
     expect(finish?.[1]).toBe('fix/a');
     expect(finish?.[2]).toMatchObject({
@@ -1021,7 +1023,8 @@ describe("Symbiote's MCP: Nucleus starts without a Confirm (NU8, decisions 782-7
   });
 
   it('still asks for every other asked tool', async () => {
-    const { services } = fakes({ merges: [entry()] });
+    // Its entry another branch's: fix/a's approval queues it (MC3, decision 991).
+    const { services } = fakes({ merges: [entry({ branch: 'fix/z' })] });
     const mcp = server(services, { withoutConfirm: () => Promise.resolve('setting') });
     const asked: [string, Record<string, unknown>][] = [
       ['restart_agent', { branch: 'fix/a' }],

@@ -37,6 +37,8 @@ export const SUGGESTION: WorkspaceSuggestion = {
 };
 export const BASE = 'a'.repeat(40);
 export const HEAD = 'b'.repeat(40);
+/** The tip of a branch nobody approved (MC3). */
+export const TIP = 'c'.repeat(40);
 
 export function workspace(
   branch: string,
@@ -92,8 +94,14 @@ export function fakes(
     diff?: () => DiffStatus | undefined;
     /** The advisor's answer, or its refusal. */
     suggest?: () => Promise<WorkspaceSuggestion>;
-    /** A start or a clean-up the service refuses, by branch: its words (MC3). */
-    refuse?: { start?: Record<string, string>; clean?: Record<string, string> };
+    /** A start, a clean-up or a merge the service refuses, by branch: its words (MC3). */
+    refuse?: {
+      start?: Record<string, string>;
+      clean?: Record<string, string>;
+      enqueue?: Record<string, string>;
+    };
+    /** Branches a review resolves, beside fix/a: none approved, at TIP (MC3). */
+    reviewable?: string[];
   } = {},
 ) {
   const calls: unknown[][] = [];
@@ -239,8 +247,14 @@ export function fakes(
           reviews: [],
         }),
       resolve: (ref: string) => {
-        if (ref !== 'fix/a') return Promise.reject(new ReviewRefused(`no branch ${ref}`));
-        return Promise.resolve({ info, pair: { base: BASE, head: HEAD } });
+        if (ref === 'fix/a') return Promise.resolve({ info, pair: { base: BASE, head: HEAD } });
+        if (!options.reviewable?.includes(ref)) {
+          return Promise.reject(new ReviewRefused(`no branch ${ref}`));
+        }
+        return Promise.resolve({
+          info: { ...info, branch: ref, ref, head: TIP },
+          pair: { base: BASE, head: TIP },
+        });
       },
       finish: async (at, review: LocalReview, read) => {
         calls.push(['finish', at.branch, review, await read('head', 'src/math.ts')]);
@@ -281,6 +295,8 @@ export function fakes(
         ),
       enqueue: (request) => {
         calls.push(['enqueue', request]);
+        const refused = options.refuse?.enqueue?.[request.branch];
+        if (refused) return Promise.reject(new MergeRefused(refused, 409));
         const queued = entry({ branch: request.branch, into: request.into, state: 'queued' });
         queue = [...queue, queued];
         return Promise.resolve(queued);
