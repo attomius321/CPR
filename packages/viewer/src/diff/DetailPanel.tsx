@@ -19,12 +19,14 @@ import {
 import {
   diffRows,
   excerpt,
+  foldSignature,
   hangOf,
   neighbourGroups,
   signatureDiff,
   symbolDetail,
   type DiffRow,
   type NeighbourGroup,
+  type SignatureRun,
 } from './detail.js';
 import { groupOf, label, tone, type Tone } from '../graph/flow.js';
 import {
@@ -351,34 +353,53 @@ const KIND_PILLS: Record<Tone, string> = {
 
 /**
  * A symbol's signature (V103, decision 976): one, its removed words struck and its added words
- * marked when it changed; the two whole when more than half of it differs.
+ * marked when it changed; the two whole when more than half of it differs. A long one is folded
+ * to the words around its changes until "Show the whole signature".
  */
 function Signature({ before, after }: { before?: string | undefined; after?: string | undefined }) {
-  const runs = useMemo(
-    () => (before !== undefined && after !== undefined ? signatureDiff(before, after) : undefined),
-    [before, after],
-  );
-  if (runs === null) {
-    return (
-      <>
-        <code className="sig sig-del">{before}</code>
-        <code className="sig sig-add">{after}</code>
-      </>
-    );
-  }
-  if (!runs) return <code className="sig">{after ?? before}</code>;
+  const [whole, setWhole] = useState(false);
+  const blocks = useMemo((): { className: string; runs: SignatureRun[] }[] => {
+    const as = (text: string): SignatureRun[] => [{ type: 'same', text }];
+    if (before === undefined || after === undefined) {
+      return [{ className: 'sig', runs: as(after ?? before ?? '') }];
+    }
+    const runs = signatureDiff(before, after);
+    if (runs) return [{ className: 'sig', runs }];
+    return [
+      { className: 'sig sig-del', runs: as(before) },
+      { className: 'sig sig-add', runs: as(after) },
+    ];
+  }, [before, after]);
+  const drawn = whole
+    ? blocks
+    : blocks.map((block) => ({ ...block, runs: foldSignature(block.runs) }));
+  const folded = drawn.some((block) => block.runs.some((run) => run.type === 'gap'));
   return (
-    <code className="sig">
-      {runs.map((run, i) =>
-        run.type === 'del' ? (
-          <del key={i}>{run.text}</del>
-        ) : run.type === 'add' ? (
-          <ins key={i}>{run.text}</ins>
-        ) : (
-          run.text
-        ),
+    <>
+      {drawn.map((block, i) => (
+        <code key={i} className={block.className}>
+          {block.runs.map((run, j) =>
+            run.type === 'del' ? (
+              <del key={j}>{run.text}</del>
+            ) : run.type === 'add' ? (
+              <ins key={j}>{run.text}</ins>
+            ) : run.type === 'gap' ? (
+              // The kept words after a gap start without their space: "history … in view".
+              <span key={j} className="sig-gap">
+                {'… '}
+              </span>
+            ) : (
+              run.text
+            ),
+          )}
+        </code>
+      ))}
+      {folded && (
+        <button type="button" className="link sig-whole" onClick={() => setWhole(true)}>
+          Show the whole signature
+        </button>
       )}
-    </code>
+    </>
   );
 }
 

@@ -128,3 +128,20 @@ test('a changed signature shows once, the removed parameter struck', async ({ pa
   await expect(signature.locator('ins')).toHaveCount(0);
   await expect(signature.locator('del')).toHaveCSS('text-decoration-line', 'line-through');
 });
+
+test('a long signature folds to the words around its change, and shows whole on a click', async ({
+  page,
+}) => {
+  const panel = await pick(page, 'Page');
+  const signature = panel.locator('.sig');
+  await expect(signature).toHaveCount(1);
+  await expect(signature.locator('ins')).toHaveText([" | { page: 'p20' }"]);
+  await expect(signature.locator('.sig-gap')).toHaveCount(2);
+  await expect(signature).toContainText("{ page: 'p19' } | { page: 'p20' } | { page: 'p21' }");
+  await expect(signature).not.toContainText("'p10'");
+
+  await panel.getByRole('button', { name: 'Show the whole signature' }).click();
+  await expect(signature.locator('.sig-gap')).toHaveCount(0);
+  await expect(signature).toContainText("'p10'");
+  await expect(panel.getByRole('button', { name: 'Show the whole signature' })).toHaveCount(0);
+});

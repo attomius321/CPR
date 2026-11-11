@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   diffRows,
   excerpt,
+  foldSignature,
   hangOf,
   neighbourGroups,
   signatureDiff,
@@ -102,7 +103,7 @@ describe('diffRows', () => {
 describe('signatureDiff (V103, decision 976)', () => {
   const runs = (before: string, after: string) =>
     signatureDiff(before, after)?.map(
-      (run) => `${{ same: '=', del: '-', add: '+' }[run.type]}${run.text}`,
+      (run) => `${{ same: '=', del: '-', add: '+', gap: '…' }[run.type]}${run.text}`,
     );
 
   it("strikes the parameter Bitwarden's constructor removed", () => {
@@ -149,6 +150,19 @@ describe('signatureDiff (V103, decision 976)', () => {
     ).toEqual(['=draw(', '-x: number, y: number', '+point: Point', '=, color: string): void']);
   });
 
+  it('puts an added member of a union where it reads, its brackets whole', () => {
+    expect(
+      runs(
+        "type Page = | { page: 'git' } | { page: 'skills' }",
+        "type Page = | { page: 'git' } | { page: 'issues' } | { page: 'skills' }",
+      ),
+    ).toEqual([
+      "=type Page = | { page: 'git' }",
+      "+ | { page: 'issues' }",
+      "= | { page: 'skills' }",
+    ]);
+  });
+
   it('gives up when more than half differs: the two signatures are shown whole', () => {
     expect(signatureDiff('const LIMIT: number', 'function limit(n: number): string')).toBeNull();
   });
@@ -164,5 +178,68 @@ describe('hangOf (V103, decision 975)', () => {
 
   it('stops at 8 columns, so a deep line still has room to wrap', () => {
     expect(hangOf(`${' '.repeat(20)}deep();`)).toBe(8);
+  });
+});
+
+describe('foldSignature (V103, decision 976)', () => {
+  const drawn = (runs: ReturnType<typeof foldSignature>) =>
+    runs.map(
+      (run) =>
+        `${{ same: '=', del: '-', add: '+', gap: '…' }[run.type]}${run.type === 'gap' ? '' : run.text}`,
+    );
+  // A union of 40 pages, one added in the middle: 1,000 characters.
+  const pages = (from: number, to: number) =>
+    Array.from({ length: to - from }, (_, i) => ` | { page: 'p${from + i}' }`).join('');
+  const before = `type Route =${pages(0, 20)}${pages(21, 41)}`;
+  const after = `type Route =${pages(0, 21)}${pages(21, 41)}`;
+
+  it('draws a signature of 400 characters or fewer whole', () => {
+    const runs = signatureDiff('getHeroes(): Hero[]', 'getHeroes(limit: number): Hero[]')!;
+    expect(foldSignature(runs)).toEqual(runs);
+  });
+
+  it('keeps 60 characters around a change in a long one, in whole words, and folds the rest', () => {
+    const folded = foldSignature(signatureDiff(before, after)!);
+    expect(drawn(folded)).toEqual([
+      "=type Route = | { page: 'p0' } | { page: 'p1' } | { page: 'p2' ",
+      '…',
+      "='p16' } | { page: 'p17' } | { page: 'p18' } | { page: 'p19' }",
+      "+ | { page: 'p20' }",
+      "= | { page: 'p21' } | { page: 'p22' } | { page: 'p23' } | { page: ",
+      '…',
+      "='p37' } | { page: 'p38' } | { page: 'p39' } | { page: 'p40' }",
+    ]);
+    // Nothing is lost: the folded text is the signature's.
+    expect(folded.map((run) => run.text).join('')).toBe(
+      signatureDiff(before, after)!
+        .map((run) => run.text)
+        .join(''),
+    );
+  });
+
+  it('cuts a long unchanged signature after 300 characters, in whole words', () => {
+    const folded = foldSignature([{ type: 'same', text: before }]);
+    expect(folded.map((run) => run.type)).toEqual(['same', 'gap']);
+    expect(folded[0]!.text.length).toBeGreaterThanOrEqual(300);
+    expect(folded[0]!.text.length).toBeLessThan(320);
+    expect(folded[0]!.text.endsWith(' ')).toBe(true);
+  });
+
+  it('folds only a middle of 20 characters or more', () => {
+    const runs = (middle: number) => [
+      { type: 'del' as const, text: 'x'.repeat(150) },
+      { type: 'same' as const, text: `${'a'.repeat(60)} ${'b'.repeat(middle)} ${'c'.repeat(60)}` },
+      { type: 'add' as const, text: 'y'.repeat(150) },
+    ];
+    // 15 characters and a space between the kept ends: drawn.
+    expect(foldSignature(runs(15))).toEqual(runs(15));
+    // 25 and a space: folded.
+    expect(foldSignature(runs(25)).map((run) => run.type)).toEqual([
+      'del',
+      'same',
+      'gap',
+      'same',
+      'add',
+    ]);
   });
 });
