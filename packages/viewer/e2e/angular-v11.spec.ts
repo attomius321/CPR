@@ -314,11 +314,15 @@ test('zoomed in, each symbol reads as what changed in it', async ({ page }) => {
     .attach('zoomed-in', { body: await page.screenshot(), contentType: 'image/png' });
 });
 
-test('a changed signature reads old against new, with the line diff', async ({ page }) => {
+test('a changed signature reads once, the added parameter marked, with the line diff', async ({
+  page,
+}) => {
   await open(page, 'HeroService.getHeroes');
   const detail = panel(page);
-  await expect(detail.locator('.sig-del')).toHaveText('getHeroes(): Hero[]');
-  await expect(detail.locator('.sig-add')).toHaveText('getHeroes(limit: number): Hero[]');
+  // V103 (decision 976): one signature, its added words marked, nothing struck.
+  await expect(detail.locator('.sig')).toHaveText('getHeroes(limit: number): Hero[]');
+  await expect(detail.locator('.sig ins')).toHaveText(['limit: number']);
+  await expect(detail.locator('.sig del')).toHaveCount(0);
   await expect(detail.locator('.row-del .text')).toHaveText([
     '  getHeroes(): Hero[] {',
     '    return this.heroes;',

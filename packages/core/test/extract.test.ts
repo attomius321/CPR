@@ -63,6 +63,24 @@ describe('typescriptAdapter.extract', () => {
     expect(symbols.map((s) => s.signature)).toEqual(['f(n: number): number', 'g(n): number']);
   });
 
+  it('keeps a long signature whole, cutting it only past 2,000 characters (V103, 976)', async () => {
+    // Bitwarden's AssignCollectionsComponent.constructor was cut at 300, before the one parameter
+    // its change removed.
+    const holder = async (count: number) => {
+      const params = Array.from({ length: count }, (_, i) => `private service${i}: Service${i}`);
+      const classes = params.map((_, i) => `class Service${i} {}`).join('\n');
+      const source = `${classes}\nexport class Holder {\n  constructor(${params.join(', ')}) {}\n}\n`;
+      const symbols = await extractSources({ 'src/a.ts': source });
+      return { params, signature: symbols.get('src/a.ts#Holder.constructor')?.signature ?? '' };
+    };
+    const long = await holder(12);
+    expect(long.signature.length).toBeGreaterThan(300);
+    expect(long.signature).toBe(`constructor(${long.params.join(', ')})`);
+    const huge = await holder(80);
+    expect(huge.signature).toHaveLength(2000);
+    expect(huge.signature.endsWith('…')).toBe(true);
+  });
+
   it('rejects a missing --project file', async () => {
     await expect(
       typescriptAdapter.load(fixture('basics'), { project: 'nope.json' }),

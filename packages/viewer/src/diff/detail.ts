@@ -1,4 +1,4 @@
-import { diffLines } from 'diff';
+import { diffLines, diffWordsWithSpace } from 'diff';
 import type { Finding, Graph, GraphEdge, GraphNode, Range } from '@symbiote/core';
 
 export interface Neighbour {
@@ -126,4 +126,197 @@ export function diffRows(base: Excerpt | undefined, head: Excerpt | undefined): 
 
 function withNewline(text: string | undefined): string {
   return text === undefined ? '' : `${text}\n`;
+}
+
+/** A tab's columns in the panel's code (`.code`'s `tab-size`). */
+const TAB = 2;
+/** The most a wrapped line hangs: past it, a deep line keeps room for its words. */
+const HANG_MAX = 8;
+
+/**
+ * Where a wrapped line of the panel's code goes on (V103, decision 975): under its own code, at
+ * its indent in columns, at most `HANG_MAX`; 0 for a line of spaces only.
+ */
+export function hangOf(text: string): number {
+  const indent = /^[\t ]*/.exec(text)?.[0] ?? '';
+  if (indent.length === text.length) return 0;
+  const columns = [...indent].reduce((sum, c) => sum + (c === '\t' ? TAB : 1), 0);
+  return Math.min(columns, HANG_MAX);
+}
+
+/**
+ * A run of a changed signature's words: kept, removed or added (V103, decision 976); a gap is
+ * kept words folded away (`foldSignature`), its text what it hides.
+ */
+export interface SignatureRun {
+  type: 'same' | 'del' | 'add' | 'gap';
+  text: string;
+}
+
+/** Past this share of the two signatures' characters changed, the panel shows both whole. */
+const MOST_CHANGED = 0.5;
+
+/** A letter or a digit: a word's, unlike spaces and punctuation. */
+const WORD = /[\p{L}\p{N}]/u;
+
+/**
+ * A signature's two versions as one: the words kept, removed and added (a diff of words,
+ * punctuation and spaces). The changes between two kept words are one removed run then one added
+ * run, the spaces and punctuation between them in both; null when more than half differs.
+ */
+export function signatureDiff(before: string, after: string): SignatureRun[] | null {
+  const parts = diffWordsWithSpace(before, after).map((part): SignatureRun => ({
+    type: part.added ? 'add' : part.removed ? 'del' : 'same',
+    text: part.value,
+  }));
+  const runs: SignatureRun[] = [];
+  const push = (type: SignatureRun['type'], text: string) => {
+    const last = runs.at(-1);
+    if (!text) return;
+    if (last?.type === type) last.text += text;
+    else runs.push({ type, text });
+  };
+  let del = '';
+  let add = '';
+  const flush = () => {
+    // Spaces and punctuation both runs start or end with are kept, not changed.
+    const [head, tail] = del && add ? sharedEnds(del, add) : [0, 0];
+    push('same', del.slice(0, head));
+    push('del', del.slice(head, del.length - tail));
+    push('add', add.slice(head, add.length - tail));
+    push('same', del.slice(del.length - tail));
+    del = add = '';
+  };
+  parts.forEach((part, i) => {
+    if (part.type === 'del') del += part.text;
+    else if (part.type === 'add') add += part.text;
+    else if ((del || add) && parts[i + 1] && !WORD.test(part.text)) {
+      // Only spaces or punctuation between two changes: part of both, not a word kept.
+      del += part.text;
+      add += part.text;
+    } else {
+      flush();
+      push('same', part.text);
+    }
+  });
+  flush();
+  // The share is the diff's own: spaces and punctuation drawn in both runs count once.
+  const changed = parts.reduce(
+    (sum, part) => sum + (part.type === 'same' ? 0 : part.text.length),
+    0,
+  );
+  return changed > MOST_CHANGED * (before.length + after.length) ? null : slide(runs);
+}
+
+/**
+ * A lone removed or added run between two kept ones, moved to where it reads best among the
+ * places it can sit with the same text drawn: jsdiff added a page to a union of pages as
+ * `p20' } | { page: '`, not ` | { page: 'p20' }`.
+ */
+function slide(runs: SignatureRun[]): SignatureRun[] {
+  const out = runs.map((run) => ({ ...run }));
+  for (let i = 1; i < out.length - 1; i++) {
+    const [before, run, after] = [out[i - 1]!, out[i]!, out[i + 1]!];
+    if (run.type === 'same' || before.type !== 'same' || after.type !== 'same') continue;
+    const text = before.text + run.text + after.text;
+    const size = run.text.length;
+    const at = before.text.length;
+    let first = at;
+    while (first > 0 && text[first - 1] === text[first - 1 + size]) first--;
+    let last = at;
+    while (last + size < text.length && text[last] === text[last + size]) last++;
+    let best = at;
+    for (let start = first; start <= last; start++) {
+      if (readsBetter(text, start, size, best)) best = start;
+    }
+    before.text = text.slice(0, best);
+    run.text = text.slice(best, best + size);
+    after.text = text.slice(best + size);
+  }
+  return out.filter((run) => run.text !== '');
+}
+
+/** Whether a run at `start` reads better than at `best`: whole words, then its score. */
+function readsBetter(text: string, start: number, size: number, best: number): boolean {
+  const splits = (at: number) => WORD.test(text[at - 1] ?? '') && WORD.test(text[at] ?? '');
+  if (splits(start) || splits(start + size)) return false;
+  return runScore(text.slice(start, start + size)) > runScore(text.slice(best, best + size));
+}
+
+/** Its brackets balanced, a space first, a word or a closing bracket last. */
+function runScore(run: string): number {
+  let depth = 0;
+  let balanced = true;
+  for (const c of run) {
+    if ('([{<'.includes(c)) depth++;
+    else if (')]}>'.includes(c) && --depth < 0) balanced = false;
+  }
+  return (
+    (balanced && depth === 0 ? 4 : 0) +
+    (/^\s/.test(run) ? 2 : 0) +
+    (WORD.test(run.at(-1) ?? '') || /[)\]}>]$/.test(run) ? 1 : 0)
+  );
+}
+
+/** How many spaces and punctuation marks two texts share at their start and at their end. */
+function sharedEnds(a: string, b: string): [number, number] {
+  const same = (i: number, j: number) => a[i] === b[j] && !WORD.test(a[i] ?? '');
+  let head = 0;
+  while (head < Math.min(a.length, b.length) && same(head, head)) head++;
+  let tail = 0;
+  while (
+    tail < Math.min(a.length, b.length) - head &&
+    same(a.length - 1 - tail, b.length - 1 - tail)
+  )
+    tail++;
+  return [head, tail];
+}
+
+/** A signature drawn this long or shorter is drawn whole (core cut them at 300 before V103). */
+const SIGNATURE_WHOLE = 400;
+/** In a longer one, the kept words drawn on each side of a change… */
+const SIGNATURE_CONTEXT = 60;
+/** …and the start of a longer unchanged one. */
+const SIGNATURE_HEAD = 300;
+/** Kept words shorter than this are drawn rather than folded. */
+const SIGNATURE_GAP = 20;
+
+/**
+ * A long signature folded (V103, decision 976): its kept words drawn only 60 characters around
+ * each change, in whole words, the rest a gap; an unchanged one cut after 300. Up to 400
+ * characters, all of it.
+ */
+export function foldSignature(runs: SignatureRun[]): SignatureRun[] {
+  if (runs.reduce((sum, run) => sum + run.text.length, 0) <= SIGNATURE_WHOLE) return runs;
+  if (runs.every((run) => run.type === 'same')) {
+    const text = runs.map((run) => run.text).join('');
+    const head = wordEnd(text, SIGNATURE_HEAD);
+    return [
+      { type: 'same', text: text.slice(0, head) },
+      ...(head < text.length ? [{ type: 'gap' as const, text: text.slice(head) }] : []),
+    ];
+  }
+  return runs.flatMap((run): SignatureRun[] => {
+    if (run.type !== 'same') return [run];
+    const head = wordEnd(run.text, SIGNATURE_CONTEXT);
+    const tail = wordStart(run.text, run.text.length - SIGNATURE_CONTEXT);
+    if (tail - head < SIGNATURE_GAP) return [run];
+    return [
+      { type: 'same', text: run.text.slice(0, head) },
+      { type: 'gap', text: run.text.slice(head, tail) },
+      { type: 'same', text: run.text.slice(tail) },
+    ];
+  });
+}
+
+/** Where a text's first `at` characters end in a whole word: after the next space. */
+function wordEnd(text: string, at: number): number {
+  const space = text.slice(at).search(/\s/);
+  return space < 0 ? text.length : at + space + 1;
+}
+
+/** Where its last characters from `at` start in a whole word: after the space before. */
+function wordStart(text: string, at: number): number {
+  if (at <= 0) return 0;
+  return text.slice(0, at).search(/\s\S*$/) + 1;
 }

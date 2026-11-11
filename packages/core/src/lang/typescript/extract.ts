@@ -38,7 +38,12 @@ const KIND_ORDER: SymbolKind[] = [
  */
 const TYPE_FLAGS = ts.TypeFormatFlags.UseAliasDefinedOutsideCurrentScope;
 
-const MAX_DISPLAY = 300;
+/**
+ * A signature's text is cut past this many characters (`…`). 300 until V103 (decision 976): the
+ * panel showed Bitwarden's constructor without the parameter its change removed. The longest of
+ * Bitwarden's 1,561 signatures is 1,693.
+ */
+const MAX_DISPLAY = 2000;
 
 interface Part {
   kind: SymbolKind;

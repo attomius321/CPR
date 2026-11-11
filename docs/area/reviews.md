@@ -141,6 +141,14 @@ worst listed finding, and its box draws its symbols' counts at their cards' top-
 (`.map-count`), scaled like the names (970). The box draws them because the map draws a box and
 its name above its cards.
 
+Since V103 the detail panel's code wraps at its width (975, keeping 887's 336 px): a wrapped line
+goes on under its own code, at its indent (`hangOf`, at most 8 columns), in its row's colour, its
+line number beside its first line. Its rules are the panel's own, `.symbol-code`. A changed
+signature is one (976): `signatureDiff` strikes the removed words and marks the added ones, and
+draws the two whole when more than half differs. Past 400 characters `foldSignature` keeps 60
+around each change (an unchanged one its first 300), with **Show the whole signature**. Core cuts
+a signature at 2,000 characters (`MAX_DISPLAY`), not 300.
+
 ## Opening a review
 
 While a review's change is analyzed, its page shows the six steps of the analysis as a timeline
@@ -201,6 +209,7 @@ when a later decision or a fix changed it.
 | 886–890 | A review as proof 03: the first fit whole (≤ 1×), no zoom to a pick but from the map; the detail 336 px; Open ↗ per use; syntax colours from our own tokenizer (supersedes 845); a finding's message as its title | [V93](../plan/v93-redesign-finish.md) |
 | 968–970 | The head's pills: each severity the Findings tab lists, infos as notes, a click opening the tab at it (amends 839); settled signature changes folded per project, counted in their fold only; on the map a file's name in its worst listed finding's colour, its box drawing its symbols' counts | [V100](../plan/v100-findings-where-you-look.md) |
 | 966–967 | A pick lands readable: a name under 11 px on screen comes to the reading zoom, a readable pick in view moves nothing (amends 886); the reading zoom is the body size over the graph's 12 px names, and no fit comes closer | [V99](../plan/v99-picks-land-readable.md) |
+| 975–976 | The panel's code wraps under its own code, at its indent (keeps 887); a changed signature is one, removed words struck and added words marked, folded past 400 characters; core cuts a signature at 2,000 | [V103](../plan/v103-panel-code-whole.md) |
 
 These no longer hold:
 
@@ -238,6 +247,14 @@ These no longer hold:
   the Files page draws git's diff ([V60](../journal/v60-files-page.md)).
 - **A select is as wide as its longest option.** **Merge into**'s branch list overflowed the
   panel until the select got `min-width: 0` ([V76](../journal/v76-review-tab-layout.md)).
+- **`.code`, `.row`, `.ln` and `.mark` are four pages' classes**: the detail panel's, the Files
+  page's, Git's diff and its blame. A rule for one page goes under its own class (`.symbol-code`,
+  `.file-code`, `.git-diff`, `.git-blame`) ([V103](../journal/v103-panel-code-whole.md)).
+- **A signature in the graph is cut**, at 2,000 characters since V103 (300 before). At 300,
+  Bitwarden's constructor lost the one parameter its change removed, and two versions of a
+  changed type cut to the same text drew as unchanged (V103).
+- **A button centres its content.** In a row that wraps, a line number that is a button sat in
+  the middle of the row; the panel's is a flex box at the top (V103). The Files page's is not.
 - **Each page draws its own Review tab.** What the tab keeps is lost on `g`: the verdict was, so
   **Finish review** on the other page sent a comment. The review's state lives in `useReview`
   ([the fix](../journal/fix-hive-turn-end-flaky-tests-verdict.md)).

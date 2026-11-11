@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useState, type KeyboardEvent, type MouseEvent } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+  type MouseEvent,
+} from 'react';
 import type { Finding, Graph, GraphNode, Project } from '@symbiote/core';
 import {
   anchorFor,
@@ -12,10 +19,14 @@ import {
 import {
   diffRows,
   excerpt,
+  foldSignature,
+  hangOf,
   neighbourGroups,
+  signatureDiff,
   symbolDetail,
   type DiffRow,
   type NeighbourGroup,
+  type SignatureRun,
 } from './detail.js';
 import { groupOf, label, tone, type Tone } from '../graph/flow.js';
 import {
@@ -264,14 +275,7 @@ export function DetailPanel({
       {signatures.length > 0 && (
         <section className="panel-block">
           <h3>Signature</h3>
-          {node.base && node.head && node.base.signature !== node.head.signature ? (
-            <>
-              <code className="sig sig-del">{node.base.signature}</code>
-              <code className="sig sig-add">{node.head.signature}</code>
-            </>
-          ) : (
-            <code className="sig">{signatures[0]}</code>
-          )}
+          <Signature before={node.base?.signature} after={node.head?.signature} />
         </section>
       )}
 
@@ -347,6 +351,58 @@ const KIND_PILLS: Record<Tone, string> = {
   unknown: 'Dynamic',
 };
 
+/**
+ * A symbol's signature (V103, decision 976): one, its removed words struck and its added words
+ * marked when it changed; the two whole when more than half of it differs. A long one is folded
+ * to the words around its changes until "Show the whole signature".
+ */
+function Signature({ before, after }: { before?: string | undefined; after?: string | undefined }) {
+  const [whole, setWhole] = useState(false);
+  const blocks = useMemo((): { className: string; runs: SignatureRun[] }[] => {
+    const as = (text: string): SignatureRun[] => [{ type: 'same', text }];
+    if (before === undefined || after === undefined) {
+      return [{ className: 'sig', runs: as(after ?? before ?? '') }];
+    }
+    const runs = signatureDiff(before, after);
+    if (runs) return [{ className: 'sig', runs }];
+    return [
+      { className: 'sig sig-del', runs: as(before) },
+      { className: 'sig sig-add', runs: as(after) },
+    ];
+  }, [before, after]);
+  const drawn = whole
+    ? blocks
+    : blocks.map((block) => ({ ...block, runs: foldSignature(block.runs) }));
+  const folded = drawn.some((block) => block.runs.some((run) => run.type === 'gap'));
+  return (
+    <>
+      {drawn.map((block, i) => (
+        <code key={i} className={block.className}>
+          {block.runs.map((run, j) =>
+            run.type === 'del' ? (
+              <del key={j}>{run.text}</del>
+            ) : run.type === 'add' ? (
+              <ins key={j}>{run.text}</ins>
+            ) : run.type === 'gap' ? (
+              // The kept words after a gap start without their space: "history … in view".
+              <span key={j} className="sig-gap">
+                {'… '}
+              </span>
+            ) : (
+              run.text
+            ),
+          )}
+        </code>
+      ))}
+      {folded && (
+        <button type="button" className="link sig-whole" onClick={() => setWhole(true)}>
+          Show the whole signature
+        </button>
+      )}
+    </>
+  );
+}
+
 /** Long symbols show this many rows until expanded. */
 const MAX_ROWS = 300;
 
@@ -375,35 +431,35 @@ function SymbolDiff({ state, anchor, onPick, onOpen, path }: SymbolDiffProps) {
   }
   const rows = all ? state.rows : state.rows.slice(0, MAX_ROWS);
   return (
-    <div className="code" role="table">
-      {/* As wide as the longest line, so every row's colour spans it when the code scrolls. */}
-      <div className="code-rows">
-        {rows.map((row, i) => {
-          const pick = onPick && row.type !== 'same' ? () => onPick(row) : undefined;
-          const title = [pick && 'Comment on this line', onOpen && `${MOD}+click: open in VS Code`]
-            .filter(Boolean)
-            .join(' · ');
-          const onClick = (event: MouseEvent) => {
-            if (onOpen && (event.ctrlKey || event.metaKey)) onOpen(row);
-            else pick?.();
-          };
-          return (
-            <div
-              key={i}
-              className={`row row-${row.type}${pick ? ' pickable' : ''}${isAnchor(row, anchor) ? ' anchored' : ''}`}
-              role="row"
-              {...(pick || onOpen ? { onClick, title } : {})}
-            >
-              <LineNumber row={row} side="base" onOpen={onOpen} />
-              <LineNumber row={row} side="head" onOpen={onOpen} />
-              <span className="mark">
-                {row.type === 'add' ? '+' : row.type === 'del' ? '−' : ' '}
-              </span>
-              <CodeText text={row.text} tokens={tokens?.get(row)} />
-            </div>
-          );
-        })}
-      </div>
+    <div className="code symbol-code" role="table">
+      {rows.map((row, i) => {
+        const pick = onPick && row.type !== 'same' ? () => onPick(row) : undefined;
+        const title = [pick && 'Comment on this line', onOpen && `${MOD}+click: open in VS Code`]
+          .filter(Boolean)
+          .join(' · ');
+        const onClick = (event: MouseEvent) => {
+          if (onOpen && (event.ctrlKey || event.metaKey)) onOpen(row);
+          else pick?.();
+        };
+        // A wrapped line goes on under its own code (V103, decision 975).
+        const hang = hangOf(row.text);
+        return (
+          <div
+            key={i}
+            className={`row row-${row.type}${pick ? ' pickable' : ''}${isAnchor(row, anchor) ? ' anchored' : ''}`}
+            role="row"
+            {...(hang ? { style: { '--hang': `${hang}ch` } as CSSProperties } : {})}
+            {...(pick || onOpen ? { onClick, title } : {})}
+          >
+            <LineNumber row={row} side="base" onOpen={onOpen} />
+            <LineNumber row={row} side="head" onOpen={onOpen} />
+            <span className="mark">
+              {row.type === 'add' ? '+' : row.type === 'del' ? '−' : ' '}
+            </span>
+            <CodeText text={row.text} tokens={tokens?.get(row)} />
+          </div>
+        );
+      })}
       {rows.length < state.rows.length && (
         <button className="more" onClick={() => setAll(true)}>
           Show all {state.rows.length} lines

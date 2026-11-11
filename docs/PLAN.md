@@ -134,7 +134,7 @@ loop steadier, from what the graph runs of 2026-11-02 found (Agents, below).
 | [V99](plan/v99-picks-land-readable.md) | A picked symbol lands readable, at the person's text size | built, ready for review | 966–967 | [journal](journal/v99-picks-land-readable.md) |
 | [V100](plan/v100-findings-where-you-look.md) | Findings where the reviewer looks: the head counts what the tab counts, settled signature changes folded, findings on the map (includes fix-finding-counts) | built, ready for review | 968–970 | [journal](journal/v100-findings-where-you-look.md) |
 | [V101](plan/v101-links-a-finding-is-about.md) | Focus and a pick draw the type references a finding is about | planned | 971–972 | [journal](journal/v101-links-a-finding-is-about.md) |
-| [V103](plan/v103-panel-code-whole.md) | The detail panel's code wraps; a signature's change marked word by word | planned | 975–976 | [journal](journal/v103-panel-code-whole.md) |
+| [V103](plan/v103-panel-code-whole.md) | The detail panel's code wraps; a signature's change marked word by word | built, ready for review | 975–976 | [journal](journal/v103-panel-code-whole.md) |
 | [V105](plan/v105-stylesheet-cards.md) | A stylesheet's changed rules as one card | planned | 979–980 | [journal](journal/v105-stylesheet-cards.md) |
 | [V106](plan/v106-change-louder-than-context.md) | The change louder than its context on the canvas | planned | 981 | [journal](journal/v106-change-louder-than-context.md) |
 | [V107](plan/v107-back-in-the-panel.md) | Back after following a link in the detail panel | planned | 982 | [journal](journal/v107-back-in-the-panel.md) |
