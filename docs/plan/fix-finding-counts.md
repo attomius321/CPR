@@ -4,8 +4,15 @@
 
 > What holds now: [Reviews](../area/reviews.md). This plan is kept as it was written.
 
-**Status:** planned (2026-11-06), to be built on branch `fix/finding-counts` in its own workspace;
-written by the improvement audit (`chore/improvement-audit`). Not started.
+**Status:** built, ready for review (2026-11-11), on branch `feature/v100-findings-where-you-look`:
+[V100](v100-findings-where-you-look.md) built this brief as its part 1 (decision 968). Planned
+(2026-11-06) for its own branch by the improvement audit (`chore/improvement-audit`); that branch
+was never made.
+
+The approach below was not taken. V100 folds the settled signature changes instead, so the head
+and the tab both count what the tab lists: on `callers`, "1 error · 1 warning" and "Findings 2",
+with `add`'s compatible change in a fold. Its infos that are not folded get a pill ("notes"), so
+839's "pills for errors and warnings only" no longer holds.
 
 **Kind** fix · **Branch** `fix/finding-counts` · **Size** S · **Depends on** none · **Plan** P35 of
 51 (the audit's order)

@@ -1,6 +1,7 @@
-import type { Graph, GraphNode, GraphSide, Project } from '@symbiote/core';
-import { label } from '../graph/flow.js';
+import type { Finding, Graph, GraphNode, GraphSide, Project, Severity } from '@symbiote/core';
+import { label, settled } from '../graph/flow.js';
 import { projectOf } from '../graph/projects.js';
+import { plural } from '../ui/plural.js';
 
 export interface FileChanges {
   file: string;
@@ -43,6 +44,56 @@ export function changeList(graph: Graph, { sinceOnly = false } = {}): FileChange
       return project ? { ...f, project } : f;
     })
     .sort((a, b) => (a.project?.folder ?? '').localeCompare(b.project?.folder ?? ''));
+}
+
+const SEVERITY_ORDER: Record<Severity, number> = { error: 0, warning: 1, info: 2 };
+
+/** Settled signature changes of one project, folded into one row of the Findings tab (V100). */
+export interface FindingFold {
+  /** None when the graph names no project for them. */
+  project?: Project;
+  findings: Finding[];
+}
+
+/**
+ * The Findings tab's rows (V100, decision 969): the findings to list, worst severity first, and
+ * the settled signature changes (`settled`: compatible, or every user updated) folded one row per
+ * project, in folder order, below them. The head counts the listed ones (968).
+ */
+export function foldFindings(
+  findings: readonly Finding[],
+  projects: readonly Project[] = [],
+): { shown: Finding[]; folds: FindingFold[] } {
+  const byId = (a: Finding, b: Finding) => a.id.localeCompare(b.id, 'en', { numeric: true });
+  const shown = findings
+    .filter((f) => !settled(f))
+    .sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] || byId(a, b));
+  const folds = new Map<string, FindingFold>();
+  for (const finding of findings.filter(settled).sort(byId)) {
+    const file = finding.symbol.slice(0, finding.symbol.indexOf('#'));
+    const project = projectOf(file, projects);
+    const key = project?.folder ?? '';
+    const fold = folds.get(key) ?? { ...(project ? { project } : {}), findings: [] };
+    fold.findings.push(finding);
+    folds.set(key, fold);
+  }
+  return {
+    shown,
+    folds: [...folds].sort(([a], [b]) => a.localeCompare(b)).map(([, fold]) => fold),
+  };
+}
+
+/** The head's pills (V100, decision 968): each severity listed, its count, infos as "notes". */
+export function findingPills(
+  shown: readonly Finding[],
+): { severity: Severity; count: number; words: string }[] {
+  const words = { error: 'error', warning: 'warning', info: 'note' } as const;
+  return (['error', 'warning', 'info'] as const)
+    .map((severity) => {
+      const count = shown.filter((f) => f.severity === severity).length;
+      return { severity, count, words: plural(count, words[severity]) };
+    })
+    .filter((pill) => pill.count > 0);
 }
 
 /** The list cut where the project changes; one group without a project when not grouped. */

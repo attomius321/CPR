@@ -130,6 +130,7 @@ are calls and other uses. Grey symbols did not change but call or are called by 
 | `exported-api-changed` | A published package's export was removed or broke. | Warning |
 
 An error is most likely a bug, a warning is worth a look, and info is for your attention only.
+The page's head counts them by severity; click a count to list them.
 
 A change has two pages. **Files** lists every changed file with its diff, including files the graph
 does not read, such as Markdown. **Graph** is the picture above. On a change's page, `g` switches

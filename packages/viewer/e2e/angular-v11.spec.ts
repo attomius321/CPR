@@ -157,7 +157,8 @@ test('the header counts the change and its findings', async ({ page }) => {
   // git's files and lines (V90, decision 839).
   await expect(summary.locator('.summary-files')).toHaveText('3 files');
   await expect(summary.locator('.file-totals')).toHaveText(/^\+\d+ −\d+$/);
-  // The info finding has no pill of its own.
+  // The info, a signature change whose only user was updated, is folded in the Findings tab:
+  // no pill (V100, decisions 968–969).
   await expect(page.locator('.bar .finding-pill')).toHaveText(['1 error', '1 warning']);
 });
 
@@ -166,10 +167,11 @@ test('findings open first, worst first, and lead to their symbol', async ({ page
     'aria-selected',
     'true',
   );
-  await expect(page.getByRole('tab', { name: /Findings/ })).toContainText('3');
+  // What it lists; the settled signature change in a fold below (V100, decision 969).
+  await expect(page.getByRole('tab', { name: /Findings/ })).toContainText('2');
   const rows = page.locator('.finding-row');
   // Each severity an icon, named for a reader (V90).
-  for (const [i, severity] of ['error', 'warning', 'info'].entries()) {
+  for (const [i, severity] of ['error', 'warning'].entries()) {
     await expect(rows.nth(i).locator('.finding-icon')).toHaveAttribute('aria-label', severity);
   }
   await expect(rows.locator('.finding-row-rule')).toHaveText([
@@ -180,8 +182,13 @@ test('findings open first, worst first, and lead to their symbol', async ({ page
   await expect(rows.locator('.finding-row-message')).toHaveText([
     'HeroesComponent.onSelect was removed but is still used by 1 symbol: heroes.component.html',
     'HeroesComponent.select is new and nothing references it',
-    'HeroService.getHeroes changed its signature; its only user was updated',
+    '1 signature change, nothing left to update',
   ]);
+  await page.locator('.finding-fold').click();
+  await expect(rows.nth(3).locator('.finding-icon')).toHaveAttribute('aria-label', 'info');
+  await expect(rows.nth(3).locator('.finding-row-message')).toHaveText(
+    'HeroService.getHeroes changed its signature; its only user was updated',
+  );
 
   // The error opens the removed method: the template that still calls it is its user.
   await rows.first().click();

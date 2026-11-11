@@ -370,6 +370,21 @@
   line-height: 1.45;
 }
 
+/* Settled signature changes, a row per project under the rest (V100, decision 969): quieter
+   than a finding, its caret where a finding's icon is. */
+.finding-fold {
+  border-style: dashed;
+}
+
+.finding-fold .finding-row-message {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.finding-fold .finding-icon {
+  color: var(--muted);
+}
+
 /* The foot (V90): the comments drafted and Finish review, which opens the Review tab. */
 .sidebar-foot {
   display: flex;

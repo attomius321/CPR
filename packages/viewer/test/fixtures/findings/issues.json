@@ -1,0 +1,180 @@
+{
+ "about": "The findings (without related) and projects of symbiote diff on Symbiote, feature/issues-page merge 11610c73 (11610c73^1 11610c73^2), schema 0.7.0: the graph usability spike walked these five changes (V100, foldFindings).",
+ "projects": [
+  {
+   "folder": "",
+   "name": "symbiote-monorepo",
+   "source": "root"
+  },
+  {
+   "folder": "packages/cli",
+   "name": "@symbiote/cli",
+   "source": "workspace"
+  },
+  {
+   "folder": "packages/core",
+   "name": "@symbiote/core",
+   "source": "workspace"
+  },
+  {
+   "folder": "packages/desktop",
+   "name": "@symbiote/desktop",
+   "source": "workspace"
+  },
+  {
+   "folder": "packages/forge",
+   "name": "@symbiote/forge",
+   "source": "workspace"
+  },
+  {
+   "folder": "packages/log",
+   "name": "@symbiote/log",
+   "source": "workspace"
+  },
+  {
+   "folder": "packages/monitor",
+   "name": "@symbiote/monitor",
+   "source": "workspace"
+  },
+  {
+   "folder": "packages/nexus",
+   "name": "@symbiote/nexus",
+   "source": "workspace"
+  },
+  {
+   "folder": "packages/viewer",
+   "name": "@symbiote/viewer",
+   "source": "workspace"
+  }
+ ],
+ "findings": [
+  {
+   "rule": "signature-changed",
+   "severity": "warning",
+   "symbol": "packages/viewer/src/shell/pages.ts#Route",
+   "message": "Route changed its signature; 8 of 12 users not updated: DiffShell, TransitionNotices, WindowTitle, routeHere, sameRoute and 3 more",
+   "data": {
+    "callers": 12,
+    "updated": 4,
+    "untouched": 8,
+    "untouchedElsewhere": 8,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "breaking"
+   },
+   "id": "f1"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/hive-request.ts#originForge",
+   "message": "originForge changed its signature; 2 of 4 users not updated: hiveRequests, landingSetting · 1 test user",
+   "data": {
+    "callers": 5,
+    "updated": 3,
+    "untouched": 2,
+    "untouchedElsewhere": 0,
+    "tests": 1,
+    "untouchedTests": 0,
+    "compatibility": "breaking"
+   },
+   "id": "f2"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/server.ts#RepositoryOptions",
+   "message": "RepositoryOptions changed its signature compatibly; existing users keep working (2 users, 1 untouched)",
+   "data": {
+    "callers": 2,
+    "updated": 1,
+    "untouched": 1,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f3"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/forge/src/http.ts#api",
+   "message": "api changed its signature compatibly; existing users keep working (2 users, 1 untouched)",
+   "data": {
+    "callers": 2,
+    "updated": 1,
+    "untouched": 1,
+    "untouchedElsewhere": 1,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f4"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/forge/src/types.ts#Forge",
+   "message": "Forge gained required members; code that creates it must add them (15 users, 7 untouched · 8 test users, 8 not updated)",
+   "data": {
+    "callers": 23,
+    "updated": 8,
+    "untouched": 15,
+    "untouchedElsewhere": 7,
+    "tests": 8,
+    "untouchedTests": 8,
+    "compatibility": "additive"
+   },
+   "id": "f5"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/forge/test/fake-forge.ts#FakeForge",
+   "message": "FakeForge gained required members; code that creates it must add them (20 test users, 17 not updated)",
+   "data": {
+    "callers": 20,
+    "updated": 3,
+    "untouched": 17,
+    "untouchedElsewhere": 0,
+    "tests": 20,
+    "untouchedTests": 17,
+    "compatibility": "additive"
+   },
+   "id": "f6"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/forge/test/mock-api.ts#Reply",
+   "message": "Reply changed its signature compatibly; existing users keep working (5 test users)",
+   "data": {
+    "callers": 5,
+    "updated": 5,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 5,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f7"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/viewer/src/ui/widths.ts#Widths",
+   "message": "Widths changed its signature compatibly; existing users keep working (5 users, 5 untouched)",
+   "data": {
+    "callers": 5,
+    "updated": 0,
+    "untouched": 5,
+    "untouchedElsewhere": 1,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f8"
+  }
+ ]
+}

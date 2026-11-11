@@ -16,6 +16,22 @@
   font-size: var(--size-small);
 }
 
+/* The findings' pills (V100, decision 968): each a button that opens the Findings tab at its
+   severity, 24 px around its 22 px label (WCAG 2.5.8), its wash a step stronger on hover. */
+.finding-pill-button {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 9999px;
+  background: none;
+}
+
+.finding-pill-button:hover .finding-pill {
+  background: color-mix(in srgb, var(--tone) 20%, transparent);
+}
+
 /* The change's chips on the head's second line, its 16 px (V85: the head two lines, 36 px). */
 .bar .page-line :is(.chip, .badge) {
   line-height: calc(var(--size-caption) + 5px);

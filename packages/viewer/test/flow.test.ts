@@ -607,6 +607,70 @@ describe("a node's marks (V90, decision 835)", () => {
   });
 });
 
+describe('findings on the map (V100, decision 970)', () => {
+  const finding = (
+    id: string,
+    symbol: string,
+    severity: Finding['severity'],
+    data: Record<string, unknown>,
+  ): Finding => ({
+    id,
+    rule: 'signature-changed',
+    severity,
+    symbol,
+    related: [],
+    message: id,
+    data,
+  });
+  const graph = synthetic(
+    ['src/a.ts#warned!', 'src/a.ts#fine!', 'src/b.ts#fine!', 'src/c.ts#noted!', 'src/d.ts#plain!'],
+    [],
+    [
+      finding('f1', 'src/a.ts#warned', 'warning', { compatibility: 'breaking', untouched: 2 }),
+      finding('f2', 'src/a.ts#fine', 'info', { compatibility: 'compatible', untouched: 1 }),
+      finding('f3', 'src/b.ts#fine', 'info', { compatibility: 'breaking', untouched: 0 }),
+      finding('f4', 'src/c.ts#noted', 'info', { compatibility: 'breaking', untouched: 1 }),
+    ],
+  );
+  const { nodes } = layoutFlow(graph);
+
+  it("a file's name takes the worst severity the head counts; a settled change colours none", () => {
+    const files = nodes.filter((n): n is FileFlowNode => n.type === 'file');
+    expect(Object.fromEntries(files.map((f) => [f.data.label, f.data.severity ?? null]))).toEqual({
+      'src/a.ts': 'warning',
+      'src/b.ts': null,
+      'src/c.ts': 'info',
+      'src/d.ts': null,
+    });
+  });
+
+  it("a box draws its symbols' counts at their cards' corners, for a finding the head counts", () => {
+    const files = nodes.filter((n): n is FileFlowNode => n.type === 'file');
+    const at = new Map(symbols(nodes).map((n) => [n.id, n]));
+    const corner = (id: string) => {
+      const card = at.get(id);
+      return { x: (card?.position.x ?? NaN) + (card?.width ?? NaN), y: card?.position.y };
+    };
+    expect(Object.fromEntries(files.map((f) => [f.data.label, f.data.counts ?? null]))).toEqual({
+      'src/a.ts': [
+        { symbol: 'src/a.ts#warned', ...corner('src/a.ts#warned'), count: 1, severity: 'warning' },
+      ],
+      'src/b.ts': null,
+      'src/c.ts': [
+        { symbol: 'src/c.ts#noted', ...corner('src/c.ts#noted'), count: 1, severity: 'info' },
+      ],
+      'src/d.ts': null,
+    });
+    // A settled change keeps its count on its card only (decision 835).
+    const settled = symbols(nodes).find((n) => n.id === 'src/b.ts#fine');
+    expect(findingCount(settled?.data.findings ?? { error: 0, warning: 0, info: 0 })).toEqual({
+      count: 1,
+      severity: 'info',
+      words: '1 info',
+    });
+  });
+});
+
 describe('layoutFlow: file edges for the map', () => {
   const file = (path: string) => `group:file:${path}`;
   const described = (edges: FlowEdge[]) =>

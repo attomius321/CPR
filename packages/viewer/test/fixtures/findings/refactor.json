@@ -1,0 +1,1103 @@
+{
+ "about": "The findings (without related) and projects of symbiote diff on Symbiote, refactor/cli-services merge eb807773 (eb807773^1 eb807773^2), schema 0.7.0: the graph usability spike walked these five changes (V100, foldFindings).",
+ "projects": [
+  {
+   "folder": "",
+   "name": "symbiote-monorepo",
+   "source": "root"
+  },
+  {
+   "folder": "packages/cli",
+   "name": "@symbiote/cli",
+   "source": "workspace"
+  },
+  {
+   "folder": "packages/core",
+   "name": "@symbiote/core",
+   "source": "workspace"
+  },
+  {
+   "folder": "packages/forge",
+   "name": "@symbiote/forge",
+   "source": "workspace"
+  },
+  {
+   "folder": "packages/log",
+   "name": "@symbiote/log",
+   "source": "workspace"
+  },
+  {
+   "folder": "packages/monitor",
+   "name": "@symbiote/monitor",
+   "source": "workspace"
+  },
+  {
+   "folder": "packages/nexus",
+   "name": "@symbiote/nexus",
+   "source": "workspace"
+  },
+  {
+   "folder": "packages/viewer",
+   "name": "@symbiote/viewer",
+   "source": "workspace"
+  }
+ ],
+ "findings": [
+  {
+   "rule": "signature-changed",
+   "severity": "warning",
+   "symbol": "packages/cli/src/command-context.ts#version",
+   "message": "version changed its signature; 1 of 6 users not updated: run",
+   "data": {
+    "callers": 6,
+    "updated": 5,
+    "untouched": 1,
+    "untouchedElsewhere": 1,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "unknown"
+   },
+   "id": "f1"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/command-activity.ts#activityCommand",
+   "message": "activityCommand changed its signature compatibly; existing users keep working (1 user, 1 untouched)",
+   "data": {
+    "callers": 1,
+    "updated": 0,
+    "untouched": 1,
+    "untouchedElsewhere": 1,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f2"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/command-agents.ts#agentFinder",
+   "message": "agentFinder changed its signature compatibly; existing users keep working (3 users, 0 untouched)",
+   "data": {
+    "callers": 3,
+    "updated": 3,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f3"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/command-agents.ts#codexFinder",
+   "message": "codexFinder changed its signature compatibly; existing users keep working (3 users, 0 untouched)",
+   "data": {
+    "callers": 3,
+    "updated": 3,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f4"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/command-agents.ts#levelsFinder",
+   "message": "levelsFinder changed its signature compatibly; existing users keep working (2 users, 0 untouched)",
+   "data": {
+    "callers": 2,
+    "updated": 2,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f5"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/command-agents.ts#mergerFinder",
+   "message": "mergerFinder changed its signature compatibly; existing users keep working (2 users, 0 untouched)",
+   "data": {
+    "callers": 2,
+    "updated": 2,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f6"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/command-agents.ts#modelsFinder",
+   "message": "modelsFinder changed its signature compatibly; existing users keep working (1 user, 0 untouched)",
+   "data": {
+    "callers": 1,
+    "updated": 1,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f7"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/command-app.ts#appCommand",
+   "message": "appCommand changed its signature compatibly; existing users keep working (1 user, 1 untouched)",
+   "data": {
+    "callers": 1,
+    "updated": 0,
+    "untouched": 1,
+    "untouchedElsewhere": 1,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f8"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/command-args.ts#ANALYSIS_OPTIONS",
+   "message": "ANALYSIS_OPTIONS changed its signature; all 3 users were updated",
+   "data": {
+    "callers": 3,
+    "updated": 3,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "unknown"
+   },
+   "id": "f9"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/command-args.ts#checkDepth",
+   "message": "checkDepth changed its signature compatibly; existing users keep working (2 users, 0 untouched)",
+   "data": {
+    "callers": 2,
+    "updated": 2,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f10"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/command-args.ts#checkFailOn",
+   "message": "checkFailOn changed its signature compatibly; existing users keep working (2 users, 0 untouched)",
+   "data": {
+    "callers": 2,
+    "updated": 2,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f11"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/command-args.ts#checkPort",
+   "message": "checkPort changed its signature compatibly; existing users keep working (3 users, 0 untouched)",
+   "data": {
+    "callers": 3,
+    "updated": 3,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f12"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/command-args.ts#parse",
+   "message": "parse changed its signature compatibly; existing users keep working (7 users, 0 untouched)",
+   "data": {
+    "callers": 7,
+    "updated": 7,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f13"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/command-args.ts#REPORT_OPTIONS",
+   "message": "REPORT_OPTIONS changed its signature; all 2 users were updated",
+   "data": {
+    "callers": 2,
+    "updated": 2,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "unknown"
+   },
+   "id": "f14"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/command-args.ts#SERVE_OPTIONS",
+   "message": "SERVE_OPTIONS changed its signature; all 2 users were updated",
+   "data": {
+    "callers": 2,
+    "updated": 2,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "unknown"
+   },
+   "id": "f15"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/command-context.ts#CLI_SCRIPT",
+   "message": "CLI_SCRIPT changed its signature; all 3 users were updated",
+   "data": {
+    "callers": 3,
+    "updated": 3,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "unknown"
+   },
+   "id": "f16"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/command-diff.ts#analyze",
+   "message": "analyze changed its signature compatibly; existing users keep working (3 users, 0 untouched)",
+   "data": {
+    "callers": 3,
+    "updated": 3,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f17"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/command-diff.ts#changeFiles",
+   "message": "changeFiles changed its signature compatibly; existing users keep working (2 users, 0 untouched)",
+   "data": {
+    "callers": 2,
+    "updated": 2,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f18"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/command-diff.ts#diff",
+   "message": "diff changed its signature compatibly; existing users keep working (1 user, 1 untouched)",
+   "data": {
+    "callers": 1,
+    "updated": 0,
+    "untouched": 1,
+    "untouchedElsewhere": 1,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f19"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/command-diff.ts#introOf",
+   "message": "introOf changed its signature compatibly; existing users keep working (2 users, 0 untouched)",
+   "data": {
+    "callers": 2,
+    "updated": 2,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f20"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/command-diff.ts#report",
+   "message": "report changed its signature compatibly; existing users keep working (2 users, 0 untouched)",
+   "data": {
+    "callers": 2,
+    "updated": 2,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f21"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/command-diff.ts#serve",
+   "message": "serve changed its signature compatibly; existing users keep working (1 user, 0 untouched)",
+   "data": {
+    "callers": 1,
+    "updated": 1,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f22"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/command-diff.ts#showUntilExit",
+   "message": "showUntilExit changed its signature compatibly; existing users keep working (2 users, 0 untouched)",
+   "data": {
+    "callers": 2,
+    "updated": 2,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f23"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/command-diff.ts#statsLine",
+   "message": "statsLine changed its signature compatibly; existing users keep working (2 users, 0 untouched)",
+   "data": {
+    "callers": 2,
+    "updated": 2,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f24"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/command-diff.ts#viewerDir",
+   "message": "viewerDir changed its signature compatibly; existing users keep working (2 users, 0 untouched)",
+   "data": {
+    "callers": 2,
+    "updated": 2,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f25"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/command-diff.ts#writeCodeQuality",
+   "message": "writeCodeQuality changed its signature compatibly; existing users keep working (2 users, 0 untouched)",
+   "data": {
+    "callers": 2,
+    "updated": 2,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f26"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/command-mcp.ts#mcpCommand",
+   "message": "mcpCommand changed its signature compatibly; existing users keep working (1 user, 1 untouched)",
+   "data": {
+    "callers": 1,
+    "updated": 0,
+    "untouched": 1,
+    "untouchedElsewhere": 1,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f27"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/command-merge.ts#merge",
+   "message": "merge changed its signature compatibly; existing users keep working (1 user, 1 untouched)",
+   "data": {
+    "callers": 1,
+    "updated": 0,
+    "untouched": 1,
+    "untouchedElsewhere": 1,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f28"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/command-pr.ts#pr",
+   "message": "pr changed its signature compatibly; existing users keep working (1 user, 1 untouched)",
+   "data": {
+    "callers": 1,
+    "updated": 0,
+    "untouched": 1,
+    "untouchedElsewhere": 1,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f29"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/command-view.ts#view",
+   "message": "view changed its signature compatibly; existing users keep working (1 user, 1 untouched)",
+   "data": {
+    "callers": 1,
+    "updated": 0,
+    "untouched": 1,
+    "untouchedElsewhere": 1,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f30"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/hive-round.ts#arrived",
+   "message": "arrived changed its signature compatibly; existing users keep working (2 users, 0 untouched)",
+   "data": {
+    "callers": 2,
+    "updated": 2,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f31"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/hive-round.ts#lastLines",
+   "message": "lastLines changed its signature compatibly; existing users keep working (2 users, 0 untouched)",
+   "data": {
+    "callers": 2,
+    "updated": 2,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f32"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/hive-round.ts#QUEUED",
+   "message": "QUEUED changed its signature; all 2 users were updated",
+   "data": {
+    "callers": 2,
+    "updated": 2,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "unknown"
+   },
+   "id": "f33"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/hive-runner.ts#hiveRunner",
+   "message": "hiveRunner changed its signature; its only user was updated · 9 test users, 9 not updated",
+   "data": {
+    "callers": 10,
+    "updated": 1,
+    "untouched": 9,
+    "untouchedElsewhere": 0,
+    "tests": 9,
+    "untouchedTests": 9,
+    "compatibility": "breaking"
+   },
+   "id": "f34"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/mcp-lookup.ts#sleep",
+   "message": "sleep changed its signature compatibly; existing users keep working (2 users, 0 untouched)",
+   "data": {
+    "callers": 2,
+    "updated": 2,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f35"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/mcp-tools.ts#branchOf",
+   "message": "branchOf changed its signature compatibly; existing users keep working (3 users, 0 untouched)",
+   "data": {
+    "callers": 3,
+    "updated": 3,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f36"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/mcp-tools.ts#count",
+   "message": "count changed its signature compatibly; existing users keep working (3 users, 0 untouched)",
+   "data": {
+    "callers": 3,
+    "updated": 3,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f37"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/mcp-tools.ts#flag",
+   "message": "flag changed its signature compatibly; existing users keep working (1 user, 0 untouched)",
+   "data": {
+    "callers": 1,
+    "updated": 1,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f38"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/mcp-tools.ts#idOf",
+   "message": "idOf changed its signature compatibly; existing users keep working (1 user, 0 untouched)",
+   "data": {
+    "callers": 1,
+    "updated": 1,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f39"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/mcp-tools.ts#words",
+   "message": "words changed its signature compatibly; existing users keep working (5 users, 0 untouched)",
+   "data": {
+    "callers": 5,
+    "updated": 5,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f40"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/merge-config.ts#isStrategy",
+   "message": "isStrategy changed its signature compatibly; existing users keep working (2 users, 0 untouched)",
+   "data": {
+    "callers": 2,
+    "updated": 2,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f41"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/merge-config.ts#modelOf",
+   "message": "modelOf changed its signature compatibly; existing users keep working (2 users, 0 untouched)",
+   "data": {
+    "callers": 2,
+    "updated": 2,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f42"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/merge-context.ts#lastLines",
+   "message": "lastLines changed its signature compatibly; existing users keep working (2 users, 0 untouched)",
+   "data": {
+    "callers": 2,
+    "updated": 2,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f43"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/merge-resolve.ts#tokens",
+   "message": "tokens changed its signature compatibly; existing users keep working (1 user, 0 untouched)",
+   "data": {
+    "callers": 1,
+    "updated": 1,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f44"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/merge-run.ts#cannotFastForward",
+   "message": "cannotFastForward changed its signature compatibly; existing users keep working (2 users, 0 untouched)",
+   "data": {
+    "callers": 2,
+    "updated": 2,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f45"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/merges.ts#merger",
+   "message": "merger changed its signature; all 2 users were updated · 10 test users, 9 not updated",
+   "data": {
+    "callers": 12,
+    "updated": 3,
+    "untouched": 9,
+    "untouchedElsewhere": 0,
+    "tests": 10,
+    "untouchedTests": 9,
+    "compatibility": "breaking"
+   },
+   "id": "f46"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/page-agent-levels.ts#isLevel",
+   "message": "isLevel changed its signature compatibly; existing users keep working (2 users, 0 untouched)",
+   "data": {
+    "callers": 2,
+    "updated": 2,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f47"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/page-agent-levels.ts#modelsOf",
+   "message": "modelsOf changed its signature compatibly; existing users keep working (3 users, 0 untouched)",
+   "data": {
+    "callers": 3,
+    "updated": 3,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f48"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/prompt-specs.ts#SPECS",
+   "message": "SPECS changed its signature; all 2 users were updated",
+   "data": {
+    "callers": 2,
+    "updated": 2,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "unknown"
+   },
+   "id": "f49"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/prompt-text.ts#nucleusAbout",
+   "message": "nucleusAbout changed its signature compatibly; existing users keep working (2 users, 0 untouched)",
+   "data": {
+    "callers": 2,
+    "updated": 2,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f50"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/prompts.ts#normalized",
+   "message": "normalized changed its signature compatibly; existing users keep working (2 users, 1 untouched)",
+   "data": {
+    "callers": 2,
+    "updated": 1,
+    "untouched": 1,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f51"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/prompts.ts#OLDER_KEYS",
+   "message": "OLDER_KEYS changed its signature; 1 of 2 users not updated: readPrompts",
+   "data": {
+    "callers": 2,
+    "updated": 1,
+    "untouched": 1,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "unknown"
+   },
+   "id": "f52"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/prompts.ts#problemOf",
+   "message": "problemOf changed its signature compatibly; existing users keep working (2 users, 1 untouched)",
+   "data": {
+    "callers": 2,
+    "updated": 1,
+    "untouched": 1,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f53"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/server-http.ts#answers",
+   "message": "answers changed its signature; all 2 users were updated",
+   "data": {
+    "callers": 2,
+    "updated": 2,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "unknown"
+   },
+   "id": "f54"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/server-http.ts#badBody",
+   "message": "badBody changed its signature compatibly; existing users keep working (5 users, 0 untouched)",
+   "data": {
+    "callers": 5,
+    "updated": 5,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f55"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/server-http.ts#exportFormat",
+   "message": "exportFormat changed its signature compatibly; existing users keep working (2 users, 0 untouched)",
+   "data": {
+    "callers": 2,
+    "updated": 2,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f56"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/server-http.ts#fromAnotherSite",
+   "message": "fromAnotherSite changed its signature compatibly; existing users keep working (1 user, 0 untouched)",
+   "data": {
+    "callers": 1,
+    "updated": 1,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f57"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/server-http.ts#json",
+   "message": "json changed its signature compatibly; existing users keep working (19 users, 0 untouched)",
+   "data": {
+    "callers": 19,
+    "updated": 19,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f58"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/server-http.ts#readBody",
+   "message": "readBody changed its signature compatibly; existing users keep working (5 users, 0 untouched)",
+   "data": {
+    "callers": 5,
+    "updated": 5,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f59"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/server-http.ts#redirect",
+   "message": "redirect changed its signature compatibly; existing users keep working (1 user, 0 untouched)",
+   "data": {
+    "callers": 1,
+    "updated": 1,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f60"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/server-http.ts#send",
+   "message": "send changed its signature compatibly; existing users keep working (21 users, 0 untouched)",
+   "data": {
+    "callers": 21,
+    "updated": 21,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f61"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/server-http.ts#TYPES",
+   "message": "TYPES changed its signature; all 2 users were updated",
+   "data": {
+    "callers": 2,
+    "updated": 2,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "unknown"
+   },
+   "id": "f62"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/server-sites.ts#siteFiles",
+   "message": "siteFiles changed its signature compatibly; existing users keep working (2 users, 0 untouched)",
+   "data": {
+    "callers": 2,
+    "updated": 2,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f63"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/workspace-agent.ts#effortsOf",
+   "message": "effortsOf changed its signature compatibly; existing users keep working (3 users, 0 untouched)",
+   "data": {
+    "callers": 3,
+    "updated": 3,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f64"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/workspace-agent.ts#modelsOf",
+   "message": "modelsOf changed its signature compatibly; existing users keep working (2 users, 0 untouched)",
+   "data": {
+    "callers": 2,
+    "updated": 2,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f65"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/cli/src/workspaces.ts#workspaces",
+   "message": "workspaces changed its signature; all 2 users were updated · 12 test users, 10 not updated",
+   "data": {
+    "callers": 14,
+    "updated": 4,
+    "untouched": 10,
+    "untouchedElsewhere": 0,
+    "tests": 12,
+    "untouchedTests": 10,
+    "compatibility": "breaking"
+   },
+   "id": "f66"
+  }
+ ]
+}

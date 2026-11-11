@@ -7,7 +7,7 @@ import {
   type CSSProperties,
   type DragEvent,
 } from 'react';
-import type { Graph } from '@symbiote/core';
+import type { Graph, Severity } from '@symbiote/core';
 import { BackLink, DiffProgress, analysisState, pairLabel } from './DiffProgress.js';
 import { StatusLabel } from '../ui/StatusLabel.js';
 import { useDiffGraph } from './useDiffGraph.js';
@@ -28,6 +28,7 @@ import { decorate } from '../graph/flow.js';
 import {
   changeList,
   filterChanges,
+  foldFindings,
   neighbourhood,
   onlyProject,
   projectNeighbourhood,
@@ -58,8 +59,10 @@ export function App() {
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
   /** With `--since`: only what changed since the earlier version. */
   const [sinceOnly, setSinceOnly] = useState(true);
-  /** The sidebar tab picked; until then, the findings if there are any. */
+  /** The sidebar tab picked; until then, the findings if any is listed (not folded, V100). */
   const [tab, setTab] = useState<SidebarTab | null>(null);
+  /** A head's pill clicked (V100): the Findings tab shows the first finding of its severity. */
+  const [findingAt, setFindingAt] = useState<{ severity: Severity } | null>(null);
   /** Words the change list is narrowed to. */
   const [search, setSearch] = useState('');
   /** The one project (by folder) the list and the canvas show; null for all. */
@@ -116,6 +119,18 @@ export function App() {
     setAsked(next);
     window.history.replaceState(window.history.state, '', withDiffView(window.location.href, next));
   }, []);
+  /** The findings listed and the settled signature changes folded (V100, decisions 968–969). */
+  const findings = useMemo(() => foldFindings(graph?.findings ?? [], graph?.projects), [graph]);
+  // A pill, on either page: the Graph page's Findings tab at its severity.
+  const showFindings = useCallback(
+    (severity: Severity) => {
+      setTab('findings');
+      showPage('graph');
+      setFindingAt({ severity });
+    },
+    [showPage],
+  );
+  const findingShown = useCallback(() => setFindingAt(null), []);
   const onlySince = sinceOnly && !!graph?.since;
   const changes = useMemo(
     () => (graph ? changeList(graph, { sinceOnly: onlySince }) : []),
@@ -377,7 +392,9 @@ export function App() {
                 {opening.words}
               </StatusLabel>
             )}
-            {state.status === 'ready' && <FindingPills graph={state.graph} />}
+            {state.status === 'ready' && (
+              <FindingPills shown={findings.shown} onPick={showFindings} />
+            )}
             {analyzing && inView && <BackLink />}
             {state.status === 'ready' && state.commits && <BackLink />}
             {state.status === 'ready' && page === 'files' && (
@@ -486,11 +503,14 @@ export function App() {
             <ReactFlowProvider>
               <Sidebar
                 graph={state.graph}
+                findings={findings}
+                findingAt={findingAt}
+                onFindingShown={findingShown}
                 changes={changes}
                 shown={shown}
                 search={search}
                 onSearch={setSearch}
-                tab={tab ?? (state.graph.findings.length > 0 ? 'findings' : 'changes')}
+                tab={tab ?? (findings.shown.length > 0 ? 'findings' : 'changes')}
                 onTab={setTab}
                 reviewed={reviewed}
                 stale={stale}

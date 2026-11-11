@@ -1,0 +1,284 @@
+{
+ "about": "The findings (without related) and projects of symbiote diff on Qwik 65661bf49~1 65661bf49 --no-merge-base --plugin qwik, schema 0.7.0: the graph usability spike walked these five changes (V100, foldFindings).",
+ "projects": [
+  {
+   "folder": "",
+   "name": "qwik-monorepo",
+   "source": "root"
+  },
+  {
+   "folder": "e2e/qwik-e2e",
+   "name": "qwik-e2e",
+   "source": "workspace"
+  },
+  {
+   "folder": "packages/docs",
+   "name": "qwik-docs",
+   "source": "workspace"
+  },
+  {
+   "folder": "packages/qwik",
+   "name": "@qwik.dev/core",
+   "source": "workspace"
+  }
+ ],
+ "findings": [
+  {
+   "rule": "signature-changed",
+   "severity": "warning",
+   "symbol": "packages/qwik/src/core/shared/utils/reveal.ts#RevealItemLike",
+   "message": "RevealItemLike changed its signature; 2 of 4 users not updated: OutOfOrderRevealCoordinator, RevealRegistrationLike",
+   "data": {
+    "callers": 4,
+    "updated": 2,
+    "untouched": 2,
+    "untouchedElsewhere": 1,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "breaking"
+   },
+   "id": "f1"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "warning",
+   "symbol": "packages/qwik/src/core/use/use-cursor-boundary.ts#CursorBoundary",
+   "message": "CursorBoundary changed its signature; 4 of 10 users not updated: RevealItem, useRevealBoundary, CursorData, setNearestCursorBoundary · 1 test user",
+   "data": {
+    "callers": 11,
+    "updated": 7,
+    "untouched": 4,
+    "untouchedElsewhere": 3,
+    "tests": 1,
+    "untouchedTests": 0,
+    "compatibility": "breaking"
+   },
+   "id": "f2"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "e2e/qwik-e2e/apps/e2e/src/components/suspense/suspense.tsx#BlockingUpdate",
+   "message": "BlockingUpdate changed its signature; only tests use it · 2 test users, 2 not updated",
+   "data": {
+    "callers": 2,
+    "updated": 0,
+    "untouched": 2,
+    "untouchedElsewhere": 0,
+    "untouchedBroken": 0,
+    "tests": 2,
+    "untouchedTests": 2,
+    "compatibility": "breaking"
+   },
+   "id": "f3"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "e2e/qwik-e2e/apps/e2e/src/components/suspense/suspense.tsx#BlockingUpdateProps",
+   "message": "BlockingUpdateProps changed its signature; only tests use it · 1 test user",
+   "data": {
+    "callers": 1,
+    "updated": 1,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 1,
+    "untouchedTests": 0,
+    "compatibility": "breaking"
+   },
+   "id": "f4"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/qwik/src/core/control-flow/suspense.tsx#_hf0",
+   "message": "_hf0 changed its signature; its only user was updated",
+   "data": {
+    "callers": 1,
+    "updated": 1,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "breaking"
+   },
+   "id": "f5"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/qwik/src/core/control-flow/suspense.tsx#_hf1",
+   "message": "_hf1 changed its signature; its only user was updated",
+   "data": {
+    "callers": 1,
+    "updated": 1,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "breaking"
+   },
+   "id": "f6"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/qwik/src/core/control-flow/suspense.tsx#scheduleOutOfOrderFallbackDelay",
+   "message": "scheduleOutOfOrderFallbackDelay changed its signature; its only user was updated",
+   "data": {
+    "callers": 1,
+    "updated": 1,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "breaking"
+   },
+   "id": "f7"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/qwik/src/core/control-flow/suspense.tsx#SSRFallbackProps",
+   "message": "SSRFallbackProps changed its signature; its only user was updated",
+   "data": {
+    "callers": 1,
+    "updated": 1,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "breaking"
+   },
+   "id": "f8"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/qwik/src/core/control-flow/suspense.tsx#SSROutOfOrderBoundaryState",
+   "message": "SSROutOfOrderBoundaryState gained required members; code that creates it must add them (6 users, 1 untouched)",
+   "data": {
+    "callers": 6,
+    "updated": 5,
+    "untouched": 1,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "additive"
+   },
+   "id": "f9"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/qwik/src/core/control-flow/suspense.tsx#SuspenseProps",
+   "message": "SuspenseProps changed its signature; 1 of 3 users not updated: Suspense",
+   "data": {
+    "callers": 3,
+    "updated": 2,
+    "untouched": 1,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "breaking"
+   },
+   "id": "f10"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/qwik/src/core/shared/utils/reveal.ts#canRevealRegistration",
+   "message": "canRevealRegistration changed its signature compatibly; existing users keep working (2 users, 2 untouched)",
+   "data": {
+    "callers": 2,
+    "updated": 0,
+    "untouched": 2,
+    "untouchedElsewhere": 2,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "compatible"
+   },
+   "id": "f11"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/qwik/src/core/shared/vnode/vnode-dirty.ts#findAndPropagateToBlockingCursor",
+   "message": "findAndPropagateToBlockingCursor changed its signature; its only user was updated",
+   "data": {
+    "callers": 1,
+    "updated": 1,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "breaking"
+   },
+   "id": "f12"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/qwik/src/core/shared/vnode/vnode-dirty.ts#propagateToCursorRoot",
+   "message": "propagateToCursorRoot changed its signature; its only user was updated",
+   "data": {
+    "callers": 1,
+    "updated": 1,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "breaking"
+   },
+   "id": "f13"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/qwik/src/core/use/use-cursor-boundary.ts#getNearestCursorBoundary",
+   "message": "getNearestCursorBoundary changed its signature; all 4 users were updated",
+   "data": {
+    "callers": 4,
+    "updated": 4,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "breaking"
+   },
+   "id": "f14"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/qwik/src/core/use/use-cursor-boundary.ts#getOwnCursorBoundary",
+   "message": "getOwnCursorBoundary changed its signature; all 6 users were updated",
+   "data": {
+    "callers": 6,
+    "updated": 6,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "breaking"
+   },
+   "id": "f15"
+  },
+  {
+   "rule": "signature-changed",
+   "severity": "info",
+   "symbol": "packages/qwik/src/core/use/use-cursor-boundary.ts#updateDirtySubtreeCursorBoundary",
+   "message": "updateDirtySubtreeCursorBoundary changed its signature; its only user was updated",
+   "data": {
+    "callers": 1,
+    "updated": 1,
+    "untouched": 0,
+    "untouchedElsewhere": 0,
+    "tests": 0,
+    "untouchedTests": 0,
+    "compatibility": "breaking"
+   },
+   "id": "f16"
+  }
+ ]
+}

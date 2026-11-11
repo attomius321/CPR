@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import type { Graph, GraphNode } from '@symbiote/core';
+import type { Finding, Graph, GraphNode, Project } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import { toFlow } from '../src/graph/flow.js';
 import {
@@ -7,7 +7,9 @@ import {
   changeList,
   fileViewed,
   filterChanges,
+  findingPills,
   fingerprint,
+  foldFindings,
   neighbourhood,
   nextProject,
   onlyProject,
@@ -310,5 +312,109 @@ describe("a file's viewed mark (V90, decision 843)", () => {
     expect(Object.keys(both).sort()).toEqual(['file:src/math.ts', 'src/math.ts#add']);
     expect(reviewStatus(graph, both).reviewed).toEqual(new Set(['src/math.ts#add']));
     expect(Object.keys(toggleFileMark(both, file))).toEqual(['src/math.ts#add']);
+  });
+});
+
+/** A walked change's findings and projects (`test/fixtures/findings/`: the spike's five, V100). */
+const walked = (name: string) =>
+  JSON.parse(
+    readFileSync(new URL(`./fixtures/findings/${name}.json`, import.meta.url), 'utf8'),
+  ) as { projects: Project[]; findings: Finding[] };
+
+/** A finding of `rule` on `symbol`, its severity and data as given. */
+const finding = (
+  id: string,
+  symbol: string,
+  severity: Finding['severity'],
+  data: Record<string, unknown>,
+  rule: Finding['rule'] = 'signature-changed',
+): Finding => ({ id, rule, severity, symbol, related: [], message: id, data });
+
+describe('foldFindings (V100, decision 969)', () => {
+  // The five changes the graph usability spike walked: what is listed by severity, and the
+  // settled signature changes folded per project.
+  it.each([
+    ['refactor', { warning: 1, info: 4 }, { '@symbiote/cli': 61 }],
+    [
+      'issues',
+      { warning: 1, info: 3 },
+      { '@symbiote/cli': 1, '@symbiote/forge': 2, '@symbiote/viewer': 1 },
+    ],
+    ['flakes', { info: 4 }, { '@symbiote/cli': 2 }],
+    ['bitwarden', { warning: 7 }, { web: 2 }],
+    ['qwik', { warning: 2, info: 3 }, { '@qwik.dev/core': 10, 'qwik-e2e': 1 }],
+  ])('%s: lists the rest by severity, folds the settled per project', (name, listed, folded) => {
+    const { findings, projects } = walked(name);
+    const { shown, folds } = foldFindings(findings, projects);
+    const count: Record<string, number> = {};
+    for (const f of shown) count[f.severity] = (count[f.severity] ?? 0) + 1;
+    expect(count).toEqual(listed);
+    expect(Object.fromEntries(folds.map((f) => [f.project?.name, f.findings.length]))).toEqual(
+      folded,
+    );
+    // Nothing lost, nothing twice; every warning and error still listed.
+    expect(shown.length + folds.reduce((n, f) => n + f.findings.length, 0)).toBe(findings.length);
+    expect(shown.filter((f) => f.severity !== 'info')).toHaveLength(
+      findings.filter((f) => f.severity !== 'info').length,
+    );
+    // The worst first; folds in their projects' folder order.
+    const order = { error: 0, warning: 1, info: 2 };
+    const severities = shown.map((f) => order[f.severity]);
+    expect(severities).toEqual([...severities].sort((a, b) => a - b));
+    const folders = folds.map((f) => f.project?.folder ?? '');
+    expect(folders).toEqual([...folders].sort((a, b) => a.localeCompare(b)));
+  });
+
+  it('folds a compatible change, or one whose users were all updated; keeps the rest', () => {
+    const findings = [
+      finding('f1', 'src/a.ts#compatible', 'info', { compatibility: 'compatible', untouched: 3 }),
+      finding('f2', 'src/a.ts#updated', 'info', { compatibility: 'breaking', untouched: 0 }),
+      // Code that creates it must add the new members: something is left to update.
+      finding('f3', 'src/a.ts#additive', 'info', { compatibility: 'additive', untouched: 2 }),
+      finding('f4', 'src/a.ts#notUpdated', 'info', { compatibility: 'breaking', untouched: 1 }),
+      // A warning is never folded, whatever its data says.
+      finding('f5', 'src/a.ts#warned', 'warning', { compatibility: 'compatible', untouched: 0 }),
+      // Another rule with the same data.
+      finding(
+        'f6',
+        'src/a.ts#exported',
+        'info',
+        { compatibility: 'compatible' },
+        'exported-api-changed',
+      ),
+      // A graph from before `compatibility` and `untouched`.
+      finding('f7', 'src/a.ts#older', 'info', { callers: 2 }),
+    ];
+    const { shown, folds } = foldFindings(findings);
+    expect(shown.map((f) => f.id)).toEqual(['f5', 'f3', 'f4', 'f6', 'f7']);
+    // Without projects, one fold.
+    expect(folds).toEqual([{ findings: [findings[0], findings[1]] }]);
+  });
+
+  it('nothing settled, no fold', () => {
+    const { findings } = walked('bitwarden');
+    const unsettled = findings.filter((f) => f.rule !== 'signature-changed');
+    expect(foldFindings(unsettled).folds).toEqual([]);
+  });
+});
+
+describe('findingPills (V100, decision 968)', () => {
+  it("callers: the head's pills count what the tab lists, by severity", () => {
+    const graph = golden('callers');
+    const { shown, folds } = foldFindings(graph.findings, graph.projects);
+    // The info, `add` changed compatibly, is folded: counted in its fold, not in a pill.
+    expect(findingPills(shown).map((p) => p.words)).toEqual(['1 error', '1 warning']);
+    expect(folds.map((f) => f.findings.map((x) => x.symbol))).toEqual([['src/math.ts#add']]);
+  });
+
+  it('infos are notes, each severity a pill in severity order', () => {
+    const graph = golden('detectors');
+    const { shown } = foldFindings(graph.findings, graph.projects);
+    expect(findingPills(shown)).toEqual([
+      { severity: 'error', count: 1, words: '1 error' },
+      { severity: 'warning', count: 2, words: '2 warnings' },
+      { severity: 'info', count: 1, words: '1 note' },
+    ]);
+    expect(findingPills([])).toEqual([]);
   });
 });

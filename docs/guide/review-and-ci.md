@@ -78,7 +78,9 @@ Large changes stay readable in three ways:
 - If more than 8 unchanged symbols use a changed symbol, or are used by it, they are drawn as one
   box, such as "390 users in 220 files". Click the box to open it.
 - Zoomed out, the graph becomes a map of file names. A name longer than its file's box is cut
-  short; point at the box to see the file's path. Click a name to zoom in.
+  short; point at the box to see the file's path. Click a name to zoom in. A file's name takes
+  the colour of its worst finding, and a symbol with findings keeps its count, at the corner of
+  its block. A signature change with nothing left to update (see Findings) colours no name.
 - The change list has a search (`/`). It keeps the symbols whose path and name hold every word you
   type.
 
@@ -110,6 +112,12 @@ Each finding is an error, a warning or info:
 - `signature-changed` is a warning if the change may break code that uses the symbol and that the
   change did not update, in another file that is not a test. Otherwise it is info.
 - `exported-api-changed` is a warning.
+
+The page's head counts the findings by severity: "1 warning · 4 notes", where a note is an info.
+Click a count to open the **Findings** tab at them. A `signature-changed` info with nothing left
+to update is not counted there: its change is compatible, or the change updated every symbol that
+uses it. The tab folds these into one row per project, below the others, such as "61 signature
+changes, nothing left to update". Click the row to see them.
 
 Symbiote tells tests apart from product code by their path: `*.test.*`, `*.spec.*`, and files
 under `test/`, `tests/`, `e2e/`, `__tests__/` or `__mocks__/`.

@@ -132,7 +132,7 @@ loop steadier, from what the graph runs of 2026-11-02 found (Agents, below).
 | [V96](plan/v96-map-labels.md) | Project names never cover file names on the map | planned | 938–939 | [journal](journal/v96-map-labels.md) |
 | [Spike](../spikes/graph-usability/README.md) | Spike: the graph for a reviewer — five changes walked, 84 graphs measured; the first view unreadable on 24 of 26 merges, findings out of sight, Files opening on docs; twelve improvements ranked (V99–V109, V96) | measured | | [journal](journal/spike-graph-usability.md) |
 | [V99](plan/v99-picks-land-readable.md) | A picked symbol lands readable, at the person's text size | built, ready for review | 966–967 | [journal](journal/v99-picks-land-readable.md) |
-| [V100](plan/v100-findings-where-you-look.md) | Findings where the reviewer looks: the head counts what the tab counts, settled signature changes folded, findings on the map (includes fix-finding-counts) | planned | 968–970 | [journal](journal/v100-findings-where-you-look.md) |
+| [V100](plan/v100-findings-where-you-look.md) | Findings where the reviewer looks: the head counts what the tab counts, settled signature changes folded, findings on the map (includes fix-finding-counts) | built, ready for review | 968–970 | [journal](journal/v100-findings-where-you-look.md) |
 | [V101](plan/v101-links-a-finding-is-about.md) | Focus and a pick draw the type references a finding is about | planned | 971–972 | [journal](journal/v101-links-a-finding-is-about.md) |
 | [V103](plan/v103-panel-code-whole.md) | The detail panel's code wraps; a signature's change marked word by word | planned | 975–976 | [journal](journal/v103-panel-code-whole.md) |
 | [V105](plan/v105-stylesheet-cards.md) | A stylesheet's changed rules as one card | planned | 979–980 | [journal](journal/v105-stylesheet-cards.md) |
@@ -173,7 +173,7 @@ What holds now: [Reviews](area/reviews.md) · its decisions: [the register](deci
 | [V60](plan/v60-files-page.md) | A Files page in the review, the default: the changed files, a file's diff, comments on its lines | ✅ | 431–436 | [journal](journal/v60-files-page.md) |
 | [V76](plan/v76-review-tab-layout.md) | The Review tab in sections — comments, your review, the merge — and a Merge into that fits the sidebar; Files and Graph that stay put | ✅ | 557–560, 568 | [journal](journal/v76-review-tab-layout.md) |
 | [Fix](plan/fix-review-hint-wrap.md) | The review's comment hint keeps "(c)." on one line | planned | | |
-| [Fix](plan/fix-finding-counts.md) | A diff's head and its Findings tab count the same findings | planned; part of [V100](plan/v100-findings-where-you-look.md) | | |
+| [Fix](plan/fix-finding-counts.md) | A diff's head and its Findings tab count the same findings | built by [V100](plan/v100-findings-where-you-look.md) (`feature/v100-findings-where-you-look`), ready for review | 968 | [journal](journal/v100-findings-where-you-look.md) |
 | [V102](plan/v102-files-by-risk.md) | Files in order of risk, each file's findings counted | planned | 973–974 | [journal](journal/v102-files-by-risk.md) |
 | [V104](plan/v104-graph-files-follow.md) | Graph and Files follow the pick: `g` opens a symbol's lines, and back | planned | 977–978 | [journal](journal/v104-graph-files-follow.md) |
 | [V108](plan/v108-one-review-progress.md) | One review progress: files viewed and symbols reviewed meet | planned | 983–985 | [journal](journal/v108-one-review-progress.md) |

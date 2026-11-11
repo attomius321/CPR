@@ -1,8 +1,8 @@
-import type { Finding, Graph, GraphNode, Project } from '@symbiote/core';
-import type { ReactNode } from 'react';
+import type { Finding, Graph, GraphNode, Project, Severity } from '@symbiote/core';
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { groupOf, kindMark, label, tone } from '../graph/flow.js';
 import { pathInProject, projectOf } from '../graph/projects.js';
-import { byProject, type FileChanges } from './review.js';
+import { byProject, type FileChanges, type FindingFold } from './review.js';
 import { ReviewTab, type ReviewProps } from './ReviewTab.js';
 import type { Draft } from './comments.js';
 import {
@@ -15,13 +15,17 @@ import {
   HelpIcon,
 } from '../ui/icons.js';
 import { tip } from '../ui/tip.js';
-
-const SEVERITY_ORDER = { error: 0, warning: 1, info: 2 } as const;
+import { plural } from '../ui/plural.js';
 
 export type SidebarTab = 'changes' | 'findings' | 'review';
 
 interface Props {
   graph: Graph;
+  /** The findings listed, worst first, and the settled signature changes folded (V100). */
+  findings: { shown: Finding[]; folds: FindingFold[] };
+  /** A head's pill asked for this severity (V100): its first finding is shown, then cleared. */
+  findingAt: { severity: Severity } | null;
+  onFindingShown: () => void;
   changes: FileChanges[];
   /** The changes the search leaves. */
   shown: FileChanges[];
@@ -55,6 +59,9 @@ interface Props {
  */
 export function Sidebar({
   graph,
+  findings,
+  findingAt,
+  onFindingShown,
   changes,
   shown,
   search,
@@ -81,9 +88,20 @@ export function Sidebar({
   const total = changes.reduce((n, f) => n + f.symbols.length, 0);
   const matches = shown.reduce((n, f) => n + f.symbols.length, 0);
   const done = changes.reduce((n, f) => n + f.symbols.filter((s) => reviewed.has(s.id)).length, 0);
-  const findings = [...graph.findings].sort(
-    (a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] || a.id.localeCompare(b.id),
-  );
+  /** The folds opened, by their project's folder. */
+  const [opened, setOpened] = useState<ReadonlySet<string>>(new Set());
+  const findingList = useRef<HTMLDivElement>(null);
+  // A head's pill (V100, decision 968): the first finding of its severity at the list's top, and
+  // focused, so the keyboard goes on from it.
+  useEffect(() => {
+    if (!findingAt || tab !== 'findings') return;
+    const row = findingList.current?.querySelector<HTMLElement>(
+      `.finding-row.finding-${findingAt.severity}`,
+    );
+    row?.scrollIntoView({ block: 'start' });
+    row?.focus({ preventScroll: true });
+    onFindingShown();
+  }, [findingAt, tab, onFindingShown]);
   // By project only when the changes span two or more.
   const grouped = changes.some((f) => f.project);
   const progress = new Map<string, { done: number; total: number }>();
@@ -103,6 +121,16 @@ export function Sidebar({
     const file = node ? groupOf(node).file : undefined;
     return grouped && file ? projectOf(file, graph.projects ?? [])?.name : undefined;
   };
+
+  const findingRow = (finding: Finding) => (
+    <FindingRow
+      key={finding.id}
+      finding={finding}
+      project={projectName(finding.symbol)}
+      current={finding.symbol === selected}
+      onSelect={onSelect}
+    />
+  );
 
   const fileList = (files: FileChanges[], of?: Project) =>
     files.map(({ file, symbols }) => (
@@ -132,7 +160,7 @@ export function Sidebar({
           Changes <span className="count">{total}</span>
         </button>
         <button role="tab" aria-selected={tab === 'findings'} onClick={() => setTab('findings')}>
-          Findings <span className="count">{graph.findings.length}</span>
+          Findings <span className="count">{findings.shown.length}</span>
         </button>
         {review && (
           <button role="tab" aria-selected={tab === 'review'} onClick={() => setTab('review')}>
@@ -267,17 +295,31 @@ export function Sidebar({
       ) : tab === 'review' && review ? (
         <ReviewTab graph={graph} review={review} onOpen={onOpenDraft} canOpen={canOpen} />
       ) : (
-        <div className="list">
-          {findings.map((finding) => (
-            <FindingRow
-              key={finding.id}
-              finding={finding}
-              project={projectName(finding.symbol)}
-              current={finding.symbol === selected}
-              onSelect={onSelect}
-            />
-          ))}
-          {findings.length === 0 && <p className="muted pad">No findings.</p>}
+        <div className="list" ref={findingList}>
+          {findings.shown.map(findingRow)}
+          {/* The settled signature changes, a row per project below the rest (V100, 969). */}
+          {findings.folds.map((fold) => {
+            const folder = fold.project?.folder ?? '';
+            const open = opened.has(folder);
+            return (
+              <Fragment key={`fold:${folder}`}>
+                <FoldRow
+                  count={fold.findings.length}
+                  project={grouped ? fold.project?.name : undefined}
+                  open={open}
+                  onToggle={() =>
+                    setOpened((current) => {
+                      const next = new Set(current);
+                      if (!next.delete(folder)) next.add(folder);
+                      return next;
+                    })
+                  }
+                />
+                {open && fold.findings.map(findingRow)}
+              </Fragment>
+            );
+          })}
+          {graph.findings.length === 0 && <p className="muted pad">No findings.</p>}
         </div>
       )}
       {review && tab !== 'review' && (
@@ -433,6 +475,43 @@ function FindingRow({
       <span className="finding-row-message">{finding.message}</span>
       <span className="finding-row-rule">
         {finding.rule}
+        {project && <span className="finding-row-project">{project}</span>}
+      </span>
+    </button>
+  );
+}
+
+/**
+ * A project's settled signature changes as one row (V100, decision 969): changed compatibly, or
+ * with every user updated in this change. A click opens them under it.
+ */
+function FoldRow({
+  count,
+  project,
+  open,
+  onToggle,
+}: {
+  count: number;
+  /** Its project, when the change spans several. */
+  project: string | undefined;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      className="finding-row finding-fold"
+      aria-expanded={open}
+      onClick={onToggle}
+      {...tip('Changed compatibly, or every user was updated in this change')}
+    >
+      <span className="finding-icon">
+        <ChevronIcon open={open} />
+      </span>
+      <span className="finding-row-message">
+        {plural(count, 'signature change')}, nothing left to update
+      </span>
+      <span className="finding-row-rule">
+        signature-changed
         {project && <span className="finding-row-project">{project}</span>}
       </span>
     </button>

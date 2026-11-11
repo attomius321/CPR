@@ -130,6 +130,17 @@ in view moves nothing, and one out of view is panned to at the person's zoom (96
 `pickView`). The first layout is fitted whole once drawn (886), and no fit comes closer than the
 reading zoom: the first, Focus, a group's reveal, a file or a frame clicked on the map.
 
+Since V100 the head counts what the Findings tab lists: a pill per severity, infos as "notes"
+(968, amending 839). A pill is a button: on either page it opens the Graph page's Findings tab
+and focuses the first finding of its severity. A `signature-changed` info whose change is
+compatible, or that leaves no user untouched, is *settled* (`settled` in `graph/flow.ts`). The
+tab folds the settled ones into one row per project, below the rest, opened on a click (969,
+`foldFindings` in `diff/review.ts`). Neither the head nor the tab's count counts them, and the tab
+opens first only when a finding is listed. On the map, a file's name takes the colour of its
+worst listed finding, and its box draws its symbols' counts at their cards' top-right corners
+(`.map-count`), scaled like the names (970). The box draws them because the map draws a box and
+its name above its cards.
+
 ## Opening a review
 
 While a review's change is analyzed, its page shows the six steps of the analysis as a timeline
@@ -151,6 +162,8 @@ symbol holding its line.
 | The Review tab | `packages/viewer/src/diff/ReviewTab.tsx` |
 | The marks, the drafts and the verdict picked, for both pages | `packages/viewer/src/diff/useReview.ts` |
 | The Files page and its diff | `packages/viewer/src/diff/FilesPage.tsx`, `packages/viewer/src/diff/file-diff.ts` |
+| The head's findings pills; the Findings tab's fold | `FindingPills` in `packages/viewer/src/diff/DiffHead.tsx`; `foldFindings`, `findingPills` in `diff/review.ts`; `Sidebar.tsx` |
+| Findings on the map: a file name's colour, the counts | `layoutFlow` in `packages/viewer/src/graph/flow.ts` (`FileData.severity`, `counts`), `FileNode.tsx`, `map.css` |
 | Opening a review: the steps, their times, what needs no graph | `packages/viewer/src/diff/DiffProgress.tsx`, `analysis-steps.ts` |
 | The files before the graph exists | `pairFiles` in `packages/cli/src/server-sites.ts` |
 | Comments and sending a verdict | `packages/viewer/src/diff/comments.ts` (`POST /api/review`) |
@@ -186,9 +199,13 @@ when a later decision or a fix changed it.
 | 846–847 | Opening a review: the steps as a timeline with their times as the page saw them; the files (served from the pair), a workspace's report, commits and brief at once; the Files page read only meanwhile | [V90](../plan/v90-redesign-reviews.md) |
 | 900 | The reviews list keeps what git said of each review under a key of its file's commits, its refs' tips, the tips it is counted against and its verdict's target's tips: git runs only for a review whose key changed | [V94](../plan/v94-push-not-polling.md) |
 | 886–890 | A review as proof 03: the first fit whole (≤ 1×), no zoom to a pick but from the map; the detail 336 px; Open ↗ per use; syntax colours from our own tokenizer (supersedes 845); a finding's message as its title | [V93](../plan/v93-redesign-finish.md) |
+| 968–970 | The head's pills: each severity the Findings tab lists, infos as notes, a click opening the tab at it (amends 839); settled signature changes folded per project, counted in their fold only; on the map a file's name in its worst listed finding's colour, its box drawing its symbols' counts | [V100](../plan/v100-findings-where-you-look.md) |
 | 966–967 | A pick lands readable: a name under 11 px on screen comes to the reading zoom, a readable pick in view moves nothing (amends 886); the reading zoom is the body size over the graph's 12 px names, and no fit comes closer | [V99](../plan/v99-picks-land-readable.md) |
 
 These no longer hold:
+
+- **839's pills for errors and warnings only**: since V100 (968) a pill per severity the Findings
+  tab lists, and the tab counts what it lists, not every finding.
 
 - **435's "tabs Files and Review"**: one card since V90 (842), the review under the files.
 - **845's "no syntax colours"**: since V93 (889) our own tokenizer colours TS, JS and HTML.
@@ -202,6 +219,10 @@ These no longer hold:
 - **82's `into`, "the default branch"**: the branch reviewed against (473).
 
 ## Traps
+
+- **On the map, a file's box and its name are drawn above its cards** (z-index 2000, so that a
+  click zooms into the file). A card's count shown there was under the name on 26 of 43 at the
+  five walked first views, so the box draws the counts (`FileData.counts`, V100).
 
 - **Claude Code loads a folder's `AGENTS.md` by itself**, git-ignored folders included. A
   `symbiote/CLAUDE.md` would load the rules twice ([V17](../journal/v17-approve-means-merge.md)).

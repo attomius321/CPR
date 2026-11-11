@@ -2,9 +2,10 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v100-findings-where-you-look.md)
 
-**Status:** planned (2026-11-10), to be built on branch `feature/v100-findings-where-you-look` in
-its own workspace; written by the graph usability spike (`spike/graph-usability`). Not started.
-Includes [fix-finding-counts](fix-finding-counts.md): its brief is part 1 below.
+**Status:** built, ready for review (2026-11-11), on branch `feature/v100-findings-where-you-look`
+(the workspace's, from `main` at 7e4a36e); planned by the graph usability spike
+(`spike/graph-usability`). Includes [fix-finding-counts](fix-finding-counts.md): its brief is part
+1 below.
 
 **Kind** feature (milestone) · **Branch** `feature/v100-findings-where-you-look` · **Size** S–M ·
 **Depends on** none · **Rank** 2 of 12
@@ -97,5 +98,93 @@ seen at any zoom.
 | # | Question | Decision | Why |
 |---|---|---|---|
 | 968 | What the head counts (amends 839) | **Every severity the tab lists, a pill each ("notes" for infos), each pill opening the Findings tab at it** | The head and the tab disagreed on 33 of 37 graphs |
-| 969 | Settled signature changes | **`signature-changed` findings that are compatible or leave no user untouched fold into one row per project, below the rest, opened on a click** | 303 of 352 infos are such; on the refactor they buried 2 warnings |
-| 970 | Findings on the map | **A symbol's findings badge stays on the map, scaled by transform like file names; its file's name takes the worst severity's colour** | The map, the first view of 19 of 26 merges, drew no finding |
+| 969 | Settled signature changes | **`signature-changed` infos that are compatible or leave no user untouched fold into one row per project, below the rest, opened on a click; the head and the tab's count count what is listed** | 303 of 352 infos are such; on the refactor they buried 2 warnings |
+| 970 | Findings on the map | **A file's name takes its worst listed finding's colour, and its box draws its symbols' counts at their cards' corners, scaled by transform like the names; a settled change colours and counts nothing there** | The map, the first view of 19 of 26 merges, drew no finding; drawn by the cards, 26 of 43 counts were under a file's name |
+
+## As built
+
+Built as planned, decisions 968–970, with the map's counts drawn by the file box (970, below).
+The rows above say what was built: 969 adds "infos" and what the counts count, 970 the box and
+the listed findings. Tests first: 12 unit tests and the 4 of `e2e/findings.spec.ts` failed on
+`main`'s build for the right reasons, then passed. `foldFindings` and `findingPills` were not
+functions; the layout had no file severity or counts; `MAP_LABELS` was not exported. On
+`callers` the tab read "Findings 3", not 2. On `detectors` the head had no "1 note" pill. On the
+map at 0.2 the count was hidden.
+
+- **The pills** (`FindingPills` in `diff/DiffHead.tsx`) come from `findingPills` in
+  `diff/review.ts`, over the findings the tab lists. Each is a button around its `StatusLabel`,
+  24 px tall for WCAG 2.5.8. A click opens the Findings tab, and the Graph page from the Files
+  page. The sidebar then scrolls the first finding of that severity to the list's top and focuses
+  it. A note's icon is its row's (`HelpIcon`), not the paused icon of the `info` tone.
+- **The fold** (`foldFindings`) asks `settled`, which lives in `graph/flow.ts`: `review.ts`
+  imports `flow.ts`, and the other way would be a cycle. The rule also asks for an info. Today's
+  detector makes every such finding an info, and a warning must not fold if that changes. A
+  finding's project is its symbol's path's (`projectOf`). The fold's row names its project when
+  the change list is by project, as a finding's row does. The tab's count is what it lists, and
+  the tab opens first only when it lists a finding (before: when the graph had any).
+- **The fixture**: `test/fixtures/findings/` holds the five walked changes' findings (without
+  `related`) and projects, made with this branch's CLI. The refactor's merge, as
+  `symbiote diff eb807773^1 eb807773^2`, has 1 warning and 65 infos. The spike's review of the
+  branch listed a second warning, a `removed-still-referenced` on `version`, which this diff does
+  not give. No detector changed since; the review's base was another. The test counts what the
+  diff gives.
+- **The map (970) differs from the design in two ways**:
+  - *The file box draws the counts, not the card.* The plan kept the card's `.symbol-count`
+    visible and scaled it. Built that way first, 26 of the 43 counts at the five first views (two
+    screen sizes) were under a file's name. On the map React Flow draws a file box above its
+    cards (z-index 2000, so a click zooms into the file), and its name with it. So each file box
+    now carries its listed symbols' counts and their cards' top-right corners
+    (`FileData.counts`). `FileNode` draws them after its name, as `.map-count`, on the map only;
+    the card's own count is hidden there as before. A count over a name can hide one letter of a
+    name already cut, such as "hive…" on the refactor's first view.
+  - *Only what the head counts.* A file name's colour and the counts come from the listed
+    findings. A settled change colours no name and draws no count on the map; its card keeps its
+    count (decision 835). On the refactor, 5 names are coloured, not 27, and 5 counts are drawn,
+    not 66.
+- `.map-count` joins `MAP_LABELS`, now exported for a unit test: every rule in `map.css` that
+  reads `--symbiote-zoom` or `--symbiote-cut` aims at one of the labels. The colour is a class set
+  by the layout (`findings-<severity>`), the same at every zoom.
+
+## Results
+
+The five walked changes, as `symbiote diff` of each (the unit test's fixture); the head and the
+tab at 1440 × 900, 1x.
+
+| Change | `main` (7e4a36e): head; tab | V100: head; tab; folds |
+|---|---|---|
+| `callers` (fixture) | 1 error · 1 warning; 3 | 1 error · 1 warning; 2; 1 |
+| The refactor's merge (eb807773) | 1 warning; 66 | 1 warning · 4 notes; 5; 61 (`@symbiote/cli`) |
+| The small fix (fix/e2e-flakes) | nothing; 6 | 4 notes; 4; 2 |
+| The feature (feature/issues-page) | 1 warning; 8 | 1 warning · 3 notes; 4; 4 (cli 1, forge 2, viewer 1) |
+| Bitwarden 737ee3f, Angular plugin | 7 warnings; 9 | 7 warnings; 7; 2 (`web`) |
+| Qwik 65661bf49, Qwik plugin | 2 warnings; 16 | 2 warnings · 3 notes; 5; 11 (core 10, e2e 1) |
+
+The head and the tab disagreed on 5 of 5 changes and agree on 5 of 5. 80 of the 105 findings
+fold; all 11 warnings stay listed.
+
+| Measure | `main` | V100 |
+|---|---|---|
+| The feature's map at 0.16: `Route`'s count | hidden, 2.6 px | 16 × 16 px, amber, on its block's corner |
+| The same: `pages.ts`'s name | `--text` | `--warning` (rgb 242 179 61 dark, 143 91 0 light) |
+| Counts drawn at the five first views, 2560 × 1440 and 1440 × 900 | 0 | 44; 30 of them over a file's name, drawn above it |
+| The refactor's map: coloured file names; counts | none; none | 5; 5 (1 amber, 4 cyan) |
+| `interactions.mjs`, zoom out ×20 and zoom in ×10, Bitwarden and the feature, 2 runs of 3 rounds alternated | 0 ms blocked, no long frame | the same |
+| Bitwarden: open; select; mark | 344, 388; 64, 65; 8, 9 ms | 359, 419; 64, 77; 8, 9 ms |
+| The feature: open; select; mark | 360, 405; 59, 67; 9, 8 ms | 392, 372; 66, 60; 10, 8 ms |
+| Map elements of the file boxes (Bitwarden; the feature); clicks reaching the file | 420; 392; 100 % | 426; 396; 100 % |
+
+Shots, 1440 × 900, 1x: the refactor's head, tab and first view
+([before](../images/v100-findings-where-you-look/refactor-before-dark.png),
+[after](../images/v100-findings-where-you-look/refactor-after-dark.png); light:
+[before](../images/v100-findings-where-you-look/refactor-before-light.png),
+[after](../images/v100-findings-where-you-look/refactor-after-light.png)); the feature's map at
+0.16 around `Route`
+([before](../images/v100-findings-where-you-look/issues-map-before-dark.png),
+[after](../images/v100-findings-where-you-look/issues-map-after-dark.png); light:
+[before](../images/v100-findings-where-you-look/issues-map-before-light.png),
+[after](../images/v100-findings-where-you-look/issues-map-after-light.png)).
+
+Cost: none measured. The layout adds a pass over the findings and the drawn symbols. On the map,
+the file boxes draw one element per listed symbol (6 on Bitwarden's), which reads the zoom with
+the names.
+
