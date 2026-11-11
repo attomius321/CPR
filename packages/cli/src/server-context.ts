@@ -179,6 +179,8 @@ export interface ViewServerOptions {
    * `start_workspace` goes without a Confirm, on while `hive` is; the MCP reads it at each call.
    */
   nucleusStart?: HiveRecord;
+  /** How long an MCP ask waits for the person before it lapses (MC3; e2e's `SYMBIOTE_ASK_MS`). */
+  askMs?: number;
   /**
    * Enables `/api/hive/reviewer/…` (HV3): the running reviewer's model and level, as the
    * merger's.

@@ -359,6 +359,8 @@ export async function view(argv: string[], ctx: CliContext): Promise<number> {
     // The check Hive would run (V92): the default checkout's, as the runner finds it.
     hiveCheck: () => projectCheck(repo, repo.root, 'HEAD'),
     nucleusStart: nucleusStartSetting,
+    // How long an MCP ask waits before it lapses: 10 minutes unless set (the viewer's e2e sets it).
+    ...(Number(ctx.env.SYMBIOTE_ASK_MS) > 0 ? { askMs: Number(ctx.env.SYMBIOTE_ASK_MS) } : {}),
     // The page's stream (V94); `SYMBIOTE_EVENTS=off`: the pages poll as before.
     events: ctx.env.SYMBIOTE_EVENTS !== 'off',
     log,

@@ -2,7 +2,7 @@
 import type { McpAsk, MergeEntry, PageAgentState } from '@symbiote/core';
 import { workspaceGroups } from '../workspaces/workspace-groups.js';
 import type { WorkspacesState } from '../workspaces/useWorkspaces.js';
-import { asksBy } from './asks.js';
+import { asksBy, waitsForPerson } from './asks.js';
 
 /** What waits, by where the sidenav marks it. */
 export interface Waiting {
@@ -39,7 +39,7 @@ export function whatWaits(read: Read, asks: readonly McpAsk[]): Waiting {
     merges: mergesWaiting(read.merges?.merges ?? []),
     nucleus: nucleusWaiting(read.nucleus, asks),
     scribe: scribeWaiting(read.scribe),
-    asks: asks.filter((ask) => ask.by.via === 'mcp').length,
+    asks: asks.filter((ask) => ask.by.via === 'mcp' && waitsForPerson(ask)).length,
   };
 }
 

@@ -123,6 +123,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     ? symbioteMcp(repository, {
         onAsks: () => events?.changed(['asks'], 'asks'),
         ...(options.version ? { version: options.version } : {}),
+        ...(options.askMs ? { askMs: options.askMs } : {}),
         url: () => address,
         exclusive,
         // Nucleus's calls and their Confirms, in its activity (NU2, decision 607).
