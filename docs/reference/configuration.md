@@ -40,6 +40,8 @@ the merger, Nucleus and Scribe, and leaves the rest of the file as it is.
 | `merge.agent` | `agent.kind`, else Claude Code, else Codex | The agent that resolves conflicts: `claude` or `codex`. |
 | `merge.model` | `sonnet` for Claude Code, else the agent's own | The model the merger runs on. |
 | `merge.effort` | the agent's own | The effort level the merger runs at, if its model takes one. |
+| `merged.commands` | none | The commands that mark merged work in the project's docs, one or a list run in order, for the MCP tool `mark_merged`. Symbiote runs them at the default branch's tip in a worktree of its cache, makes what they change one commit, moves the branch to it as a merge lands, and pushes it as `merge.push` says. Without them the tool is not offered. This repository's: `node scripts/plan/mark-merged.mjs --write`, then `consolidate.mjs --write`. |
+| `merged.message` | `Docs: merged` | That commit's subject. Its body is what the commands printed. |
 | `hive.lands` | `queue` | How [Hive](#hive-mode) lands a workspace: `queue`, through the merge queue into the branch it started from; or `request`, through a pull request (GitHub) or merge request (GitLab) that you merge. See [Landing through a pull or merge request](#landing-through-a-pull-or-merge-request). Set it in Settings' **Hive mode** page. |
 | `hive.usage.pauseAt` | `90` | A whole percent from 1 to 100: while any window of your Claude subscription is at it or above, [Hive](#hive-mode) starts no agent until that window resets. `false`: Hive does not pause by usage. See [Pacing: usage and budget](#pacing-usage-and-budget). Set it in Settings' **Hive mode** page. |
 | `hive.budget` | none | Dollars a workspace Hive drives may spend, by Claude Code's own count: its agent's sessions and its running reviews. Reached, Hive stops the workspace. See [Pacing: usage and budget](#pacing-usage-and-budget). |
@@ -521,7 +523,8 @@ Nucleus starts a workspace only after you click **Confirm**. To let it start one
   say whether a start waits. A conversation that started before you changed the setting learns it
   from its next start's answer.
 - **Each start is recorded.** Nucleus's **Activity** tab shows "Started without a Confirm", with
-  why: your setting or Hive mode.
+  why: your setting or Hive mode. Several starts in one call all start at once, recorded as one,
+  with what became of each.
 - **Hive mode turns it on.** While Hive is on, Alpha Ceph starts workspaces without a Confirm, and
   Settings shows the switch on and greyed out. Your own choice is kept, and holds again when Hive
   is off.
@@ -614,6 +617,7 @@ the same files aside.
 | `GITHUB_API_URL`, `GITLAB_API_URL` | The forge's API address, for a self-hosted GitHub or GitLab. |
 | `SYMBIOTE_FORGE` | `github` or `gitlab`, as `--forge` does. |
 | `SYMBIOTE_HIVE_REQUEST_MS` | How often Hive reads a pull or merge request it waits on, in milliseconds. Default: 60000. |
+| `SYMBIOTE_ASK_MS` | How long a tool's **Confirm** waits before it lapses onto the bar, in milliseconds. Default: 600000 (10 minutes). The viewer's end-to-end tests shorten it. |
 
 The CI templates read a few more variables. The [review guide](../guide/review-and-ci.md#run-in-ci)
 lists them.

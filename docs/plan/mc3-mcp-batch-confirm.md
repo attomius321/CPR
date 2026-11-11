@@ -2,9 +2,9 @@
 
 [Index](../PLAN.md) · [Journal](../journal/mc3-mcp-batch-confirm.md)
 
-**Status:** planned (2026-11-11), on branch `feature/mcp-batch-confirm` (the workspace's, from
+**Status:** built, ready for review (2026-11-11), on branch `feature/mcp-batch-confirm` (the workspace's, from
 `main` at `bc24845`); the person's OK the same day ("Yes. everything recommended": the batch bar as
-in the mockup, B for a lapsed Confirm, fix-mcp-annotations built here). Building.
+in the mockup, B for a lapsed Confirm, fix-mcp-annotations built here).
 
 **Problem** (the brief: seven changes found while Nucleus drove 15 workspaces on 2026-11-09–11).
 Measured on the person's records (`symbiote/nucleus-activity.jsonl`, the running view's
@@ -250,3 +250,37 @@ Prototype markup over a real `symbiote view` (this branch's build, its tokens an
 1440 px wide: `packages/viewer/coverage/mc3-mockup/shots/` (not committed), and on the review
 page. `1-start-asking`, `2-clean-asking`, `3-start-working`, `4-start-results`, `5-lapsed`,
 `6-single-today`, each `-dark` and `-light`.
+
+## As built (MC3)
+
+- **`mark_merged`'s setting is `merged.commands` (and `message`), with no `list` command.** The
+  Confirm's words come from running the commands themselves in the cache's worktree at the
+  target's tip, which changes nothing of the person's: it names the files they change and whether
+  the commit is pushed. One contract, nothing parsed from a script's output, and the person
+  confirms the change itself. The commit's body is what the commands printed, which for this
+  repository is the IDs `mark-merged.mjs` marked (CLAUDE.md: "the IDs in the body").
+- **A batch takes 1 to 10 starts and 1 to 20 clean-ups**, not 2 to: a list of one is a batch too.
+  A batch with a failure or a "can't" stays on the bar after it is done.
+- **The record has a fourth Confirm stage, `done`**: what a batch's items or a late yes came to,
+  written once they are done. `ended`'s answer adds `late`, `dismissed` and `replaced`; an
+  `expired` end keeps its words "No answer in time" in the tab and the export, since older records'
+  lapses were not kept.
+- **`finish_review` refuses an approval of a branch in the queue already**, before asking
+  (`merge: false` records it alone), and `into`/`strategy` on anything but an approval that merges.
+- **A named wait outranks the recorded Esc.** A session that lists `working`, idle and a
+  `waitingFor` reads `needs-you` with what it waits for; before, it also carried `interrupted`.
+  The e2e fake now does what Claude Code does: every hook gets a `transcript_path`, and its Esc
+  writes Claude Code's marker there and drops the wait it named. Four unit tests and one e2e
+  assertion that encoded the guess say what is recorded now (decision 810's, three of Hive's,
+  `agentState`'s; Hive's tests still guard that a message is not the writer asking).
+- **`suggest_settings` lists every field of a start** (fix-mcp-annotations): it takes
+  `start_workspace`'s whole brief by design (decision 583), and unknown arguments are refused now.
+- **`SYMBIOTE_ASK_MS`** shortens the ask's 10 minutes for the viewer's e2e, as
+  `SYMBIOTE_HIVE_REQUEST_MS` does Hive's poll; the bar says the wait from the ask's own times.
+- **The asks were compared by their IDs** on the page (`useAsks`): a batch's row changing state
+  would never have redrawn. They are compared whole.
+- **`mcp.test.ts`'s fakes moved to `mcp-fakes.ts`** unchanged; MC3's tests are in files of their
+  own (`mcp-batch`, `mcp-approve`, `mcp-marks`, `mark-merged`).
+- **Not built**: a screenshot of a batch being done (a state of a second or two), and the same
+  guess on Nucleus's own page (`page-agent-conversation.ts:70` reads `working` and idle as
+  interrupted): the brief names a workspace's state; a fix of its own.

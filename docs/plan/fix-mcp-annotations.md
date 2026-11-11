@@ -2,8 +2,9 @@
 
 [Index](../PLAN.md) · [The audit](../journal/chore-improvement-audit.md) (finding S8)
 
-**Status:** planned (2026-11-06), to be built on branch `fix/mcp-annotations` in its own workspace;
-written by the improvement audit (`chore/improvement-audit`). Not started.
+**Status:** built in MC3 (decision 997) on branch `feature/mcp-batch-confirm`, ready for review
+(2026-11-11); planned 2026-11-06 for a branch `fix/mcp-annotations` of its own, written by the
+improvement audit (`chore/improvement-audit`).
 
 **Kind** fix · **Branch** `fix/mcp-annotations` · **Size** S · **Depends on** none · **Plan** P31
 of 51 (the audit's order)
@@ -70,3 +71,20 @@ argument blocks.
 
 `pnpm check`; `e2e/mcp.spec.ts`; the stdio run of the audit repeated (25 tools, the wrong argument
 refused in < 50 ms).
+
+## As built (in MC3)
+
+Built whole in [MC3](mc3-mcp-batch-confirm.md), which changed four of the same schemas and the
+tools snapshot (decision 997, the person's choice). As planned, but:
+
+- **`suggest_settings` names every field of a start.** It takes `start_workspace`'s whole brief by
+  design (decision 583: one brief fits both, the run's choices left out). With unknown arguments
+  refused, its schema lists those fields too, and it still reads only the brief.
+- **An acting tool says `destructiveHint: false`** unless it removes something: MCP's default for
+  a tool that is not read-only is that it may destroy. `stop_agent`, `clean_workspace` and
+  `remove_merge` say `true` and `idempotentHint: true`.
+- **Two tests called tools with arguments they do not take** (`workspaces` with `state`): they now
+  use real ones.
+
+`wait {"seconds": 1}` answers "unknown argument: seconds (wait takes minutes)" at once, where it
+waited 10 minutes; 26 tools listed, each with its annotations and `additionalProperties: false`.

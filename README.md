@@ -359,8 +359,9 @@ the web and read web pages.
 
 Nucleus can also act for you: start a workspace, answer an agent, review or merge a branch. It never
 edits files. It may send a message to an agent without asking you, but a start, a verdict, a merge
-or a clean-up waits until you click **Confirm** in the bar it shows. Its **Activity** tab records
-what it did.
+or a clean-up waits until you click **Confirm** in the bar it shows. Several starts or clean-ups are
+one Confirm, with a tick for each, and one you do not answer within 10 minutes stays on the bar for
+later. Its **Activity** tab records what it did.
 
 ![Nucleus's page: its terminal, ready for a question, and its Activity tab beside it](docs/images/nucleus.png)
 

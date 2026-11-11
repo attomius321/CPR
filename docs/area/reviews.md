@@ -71,8 +71,17 @@ workspace agent's input box instead.
 |---|---|
 | Request changes | Fixes each comment in new commits, then says per comment what it changed |
 | Comment | Answers each comment; changes code only where a comment asks |
-| Approve, with `into` | Nothing: the person merges with **Merge into ▾**, and the merger does the merge |
+| Approve, with `into` | Nothing: the person merges with **Merge into ▾**, and the merger does the merge. Through Symbiote's MCP, the approval queues the merge in the same Confirm (MC3) |
 | Approve, without `into` | Pushes the approved commits if the project's rules say to push. Only a review of the default branch's own unpushed commits has no `into` |
+
+On the page, Approve and **Merge into** are two presses, and neither waits for a Confirm. Through
+Symbiote's MCP (MC3, decision 991), `finish_review`'s approve asks once, "Approve fix/a at abc1234
+and merge it into main", and its yes takes the same two steps in the same order: the verdict
+recorded, then the merge queued (`approveAndQueue`, `packages/cli/src/approve-merge.ts`). With
+`merge: false` it records the verdict alone. A queue that refuses after the approval is said, and
+the approval stands. `queue_merge` on a branch nobody approved, a workspace's or not, approves its
+tip in its one Confirm too (decision 992); that verdict's summary says it was not reviewed in
+Symbiote.
 
 Symbiote pushes nothing on Approve. The `into` an approval names is the branch the review was
 made against: the workspace's `against`, else its `from`, else the default branch.
@@ -248,6 +257,8 @@ when a later decision or a fix changed it.
 | 966–967 | A pick lands readable: a name under 11 px on screen comes to the reading zoom, a readable pick in view moves nothing (amends 886); the reading zoom is the body size over the graph's 12 px names, and no fit comes closer | [V99](../plan/v99-picks-land-readable.md) |
 | 973–974 | The Files page in order of risk: files with listed findings (worst severity, then the most of each), other code, tests, then every other file, git's order inside each and until the graph arrives (amends 431's first file); a file's listed findings counted on its row in the worst severity's colour | [V102](../plan/v102-files-by-risk.md) |
 | 975–976 | The panel's code wraps under its own code, at its indent (keeps 887); a changed signature is one, removed words struck and added words marked, folded past 400 characters; core cuts a signature at 2,000 | [V103](../plan/v103-panel-code-whole.md) |
+| 991 | An approval through Symbiote's MCP queues its merge in the same Confirm: the verdict, then the entry, as the page's Approve and **Merge into**; `merge: false`, the verdict alone | [MC3](../plan/mc3-mcp-batch-confirm.md) |
+| 992 | `queue_merge` on a branch nobody approved, a workspace's or not, approves its tip in the same Confirm | MC3 |
 | 977–978 | `g` follows the pick: from Graph, the symbol's first changed row on Files (its removed rows, in the file it left, for a removed or moved symbol); from Files, the symbol holding the line last clicked or commented, picked; the panel's **Show its lines** does the same | [V104](../plan/v104-graph-files-follow.md) |
 
 These no longer hold:
