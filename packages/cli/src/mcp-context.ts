@@ -16,6 +16,7 @@ import type { UsageService } from './usage.js';
 import type { PageAgent } from './page-agent.js';
 import type { Workspaces } from './workspace-context.js';
 import type { Args } from './mcp-tools.js';
+import type { Recording } from './mcp-confirm.js';
 
 /** What the tools are given: `symbiote view`'s services (`RepositoryOptions`). */
 export interface McpServices {
@@ -88,20 +89,50 @@ export interface McpOptions {
   withoutConfirm?: () => Promise<WithoutConfirm | undefined>;
   /** Each ask held or let go (V94a): the page's stream sends the asks then. */
   onAsks?: () => void;
+  /** How long a lapsed ask is kept for a late yes (MC3, decision 994): 24 hours. */
+  keepMs?: number;
 }
 
-/** An asked call's way to the person: its words, then what to do on the yes. */
-interface Prepared {
+/** One action of a batch (MC3, decision 987): what it acts on, its words, what doing it gives. */
+export interface PreparedItem {
+  name: string;
   words: string;
-  act: () => Promise<unknown>;
+  /** Checked before asking: why it cannot be done; it is not done. */
+  cant?: string;
+  act: () => Promise<Record<string, unknown>>;
 }
 
-/** An ask held for the person (decision 361). */
+/**
+ * An asked call's way to the person: its words, then what to do on the yes; or a batch's items,
+ * done in order on the yes, each said `did` once done (`started`, `cleaned`).
+ */
+export type Prepared =
+  | { words: string; act: () => Promise<unknown> }
+  | { words: string; items: PreparedItem[]; did: string };
+
+/** An ask held for the person (decision 361): waiting, then lapsed, being done or done (MC3). */
 export interface Held {
   ask: McpAsk;
-  settle(answer: 'yes' | 'no' | 'expired' | 'gone'): void;
+  /** The person's answer while it waits; `items`, a batch's ticked ones. */
+  settle(answer: 'yes' | 'no' | 'expired' | 'gone', items?: readonly string[]): void;
   /** Once what it asked is done, or not done: the person's answer is answered then. */
   finished: Promise<void>;
+  /** For a late yes (MC3): the call prepared again, its record, and what makes it the same ask. */
+  again: () => Promise<Prepared>;
+  recording: Recording | null;
+  same: string;
+  /** Once lapsed: when it goes. */
+  keep?: ReturnType<typeof setTimeout>;
+}
+
+/** What became of a lapsed ask (MC3, decision 994), for `overview`; kept as long as it is. */
+export interface Lapsed {
+  words: string;
+  asked: string;
+  now: 'waiting' | 'done' | 'failed' | 'dismissed';
+  results?: Record<string, unknown>[];
+  /** When it is forgotten. */
+  until: number;
 }
 
 /** What `symbioteMcp`'s tools share. */
@@ -114,8 +145,11 @@ export interface McpContext {
   analysisMs: number;
   pollMs: number;
   minuteMs: number;
-  /** The asks waiting for the person, by ID. */
+  /** The asks waiting for the person, by ID; lapsed, being done and done ones too (MC3). */
   held: Map<string, Held>;
+  /** What became of lapsed asks, by ID (MC3). */
+  lapsed: Map<string, Lapsed>;
+  keepMs: number;
   exclusive: <T>(words: string, task: () => Promise<T>) => Promise<T>;
 }
 

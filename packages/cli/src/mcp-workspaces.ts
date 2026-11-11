@@ -4,6 +4,7 @@ import {
   AGENT_KINDS,
   WORK_KINDS,
   type AgentKind,
+  type McpCaller,
   type SuggestRequest,
   type WorkspaceRequest,
   type WorkspaceSummary,
@@ -12,7 +13,19 @@ import { AGENT_NAMES } from './agent-levels.js';
 import { parseSuggestRequest, parseWorkspaceRequest } from './server-requests.js';
 import type { McpContext, McpRead, McpAsking } from './mcp-context.js';
 import type { McpLookup } from './mcp-lookup.js';
-import { via, ToolProblem, words, branchOf, flag, count } from './mcp-tools.js';
+import {
+  via,
+  ToolProblem,
+  words,
+  branchOf,
+  flag,
+  count,
+  plural,
+  MAX_STARTS,
+  MAX_CLEANS,
+  START_FIELDS,
+  type Args,
+} from './mcp-tools.js';
 
 /**
  * Most of an activity `activity` gives (V84, decision 672): ~15K tokens, under Claude Code's
@@ -168,41 +181,97 @@ export function mcpWorkspaces(
       return { workspace: row(stopped.workspace) };
     },
   };
+  const ws = () => service('workspaces');
+
+  /** One start's fields, checked as `/api/workspaces` checks them; its words but for the branch. */
+  async function startOf(fields: Args, agents: () => Promise<AgentKind | undefined>) {
+    const picked = Object.fromEntries(
+      START_FIELDS.filter((k) => fields[k] !== undefined).map((k) => [k, fields[k]]),
+    );
+    let request: WorkspaceRequest;
+    try {
+      request = parseWorkspaceRequest(JSON.stringify(picked));
+    } catch (error) {
+      throw new ToolProblem((error as Error).message);
+    }
+    if (!request.kind || !WORK_KINDS.includes(request.kind)) {
+      throw new ToolProblem(`kind: ${WORK_KINDS.join(', ')}`);
+    }
+    if (request.agent !== undefined && !AGENT_KINDS.includes(request.agent)) {
+      throw new ToolProblem(`agent: ${AGENT_KINDS.join(' or ')}`);
+    }
+    const agent: AgentKind | undefined = request.agent ?? (await agents());
+    // The settings it starts with, so the person confirms them too (decision 584).
+    const by = `${agent ? `with ${AGENT_NAMES[agent]}` : 'with no agent installed'}${
+      request.model ? ` on ${request.model}` : ''
+    }${request.effort ? ` at ${request.effort}` : ''}`;
+    const rest = `${by}${request.planFirst ? ', plan first' : ''}${
+      request.from ? `, from ${request.from}` : ''
+    }`;
+    return { request, rest };
+  }
+
+  /** A start, once confirmed: one at a time, as the page's (the server's one-at-a-time rule). */
+  const startNow = (request: WorkspaceRequest, caller: McpCaller) =>
+    exclusive('a workspace is being started', () =>
+      ws().start({ ...request, via: via(caller) }),
+    ).then((started) => ({ workspace: row(started.workspace) }));
+
   const asking: Record<string, McpAsking> = {
     async start_workspace(args, caller) {
-      const ws = service('workspaces');
-      const picked = Object.fromEntries(
-        ['kind', 'title', 'branch', 'parts', 'planFirst', 'agent', 'effort', 'model', 'from']
-          .filter((k) => args[k] !== undefined)
-          .map((k) => [k, args[k]]),
+      const firstAgent = async () => (await ws().options()).agents[0]?.kind;
+      if (args.workspaces === undefined) {
+        const { request, rest } = await startOf(args, firstAgent);
+        const title = request.title ? `, "${request.title}"` : '';
+        return {
+          words: `Start ${request.branch}${title}, ${rest}`,
+          act: () => startNow(request, caller),
+        };
+      }
+      // Several in one Confirm (MC3, decision 987).
+      if (START_FIELDS.some((k) => args[k] !== undefined)) {
+        throw new ToolProblem("workspaces: a list of starts, or one start's fields, not both");
+      }
+      const listed = args.workspaces;
+      if (!Array.isArray(listed) || listed.length < 1 || listed.length > MAX_STARTS) {
+        throw new ToolProblem(`workspaces: 1 to ${MAX_STARTS} starts`);
+      }
+      const [options, { workspaces }] = await Promise.all([ws().options(), ws().list()]);
+      const agent = () => Promise.resolve(options.agents[0]?.kind);
+      const starts: Awaited<ReturnType<typeof startOf>>[] = [];
+      for (const [i, one] of listed.entries()) {
+        if (!one || typeof one !== 'object' || Array.isArray(one)) {
+          throw new ToolProblem(`workspaces[${i + 1}]: a start's fields`);
+        }
+        try {
+          starts.push(await startOf(one as Args, agent));
+        } catch (error) {
+          throw new ToolProblem(`workspaces[${i + 1}]: ${(error as Error).message}`);
+        }
+      }
+      const twice = starts.find((s, i) =>
+        starts.some((t, j) => j < i && t.request.branch === s.request.branch),
       );
-      let request: WorkspaceRequest;
-      try {
-        request = parseWorkspaceRequest(JSON.stringify(picked));
-      } catch (error) {
-        throw new ToolProblem((error as Error).message);
+      if (twice) throw new ToolProblem(`workspaces: ${twice.request.branch} twice`);
+      const items = starts.map(({ request, rest }) => {
+        const branch = request.branch;
+        // Checked before asking: what the start would refuse (MC3).
+        const cant = workspaces.some((w) => w.branch === branch)
+          ? `a workspace ${branch} exists already`
+          : options.branches.some((b) => b.name === branch && !b.remote)
+            ? `a branch ${branch} exists already`
+            : undefined;
+        return {
+          name: branch,
+          words: `${request.title ? `“${request.title}”, ` : ''}${rest}`,
+          ...(cant ? { cant } : {}),
+          act: () => startNow(request, caller),
+        };
+      });
+      if (items.every((item) => item.cant)) {
+        throw new ToolProblem(items.map((item) => `${item.name}: ${item.cant}`).join('; '));
       }
-      if (!request.kind || !WORK_KINDS.includes(request.kind)) {
-        throw new ToolProblem(`kind: ${WORK_KINDS.join(', ')}`);
-      }
-      if (request.agent !== undefined && !AGENT_KINDS.includes(request.agent)) {
-        throw new ToolProblem(`agent: ${AGENT_KINDS.join(' or ')}`);
-      }
-      const agent: AgentKind | undefined = request.agent ?? (await ws.options()).agents[0]?.kind;
-      const title = request.title ? `, "${request.title}"` : '';
-      // The settings it starts with, so the person confirms them too (decision 584).
-      const by = `${agent ? `with ${AGENT_NAMES[agent]}` : 'with no agent installed'}${
-        request.model ? ` on ${request.model}` : ''
-      }${request.effort ? ` at ${request.effort}` : ''}`;
-      return {
-        words: `Start ${request.branch}${title}, ${by}${request.planFirst ? ', plan first' : ''}${
-          request.from ? `, from ${request.from}` : ''
-        }`,
-        act: () =>
-          exclusive('a workspace is being started', () =>
-            ws.start({ ...request, via: via(caller) }),
-          ).then((started) => ({ workspace: row(started.workspace) })),
-      };
+      return { words: `Start ${plural(items.length, 'workspace')}`, items, did: 'started' };
     },
 
     async restart_agent(args) {
@@ -219,14 +288,64 @@ export function mcpWorkspaces(
     },
 
     async clean_workspace(args) {
-      const branch = branchOf(args);
       const unmerged = flag(args, 'unmerged');
-      await workspaceOf(branch);
+      if (args.branches === undefined) {
+        const branch = branchOf(args);
+        await workspaceOf(branch);
+        return {
+          words: unmerged
+            ? `Clean up ${branch}: its agent's sessions and its worktree; its branch stays, not merged`
+            : `Clean up ${branch}: its agent's sessions and its worktree, and its branch once merged`,
+          act: () => ws().clean({ branch, ...(unmerged ? { unmerged: true } : {}) }),
+        };
+      }
+      // Several in one Confirm (MC3, decision 987).
+      if (args.branch !== undefined) {
+        throw new ToolProblem("branches: a list of workspaces' branches, or branch, not both");
+      }
+      const listed = args.branches;
+      if (
+        !Array.isArray(listed) ||
+        listed.length < 1 ||
+        listed.length > MAX_CLEANS ||
+        !listed.every((b) => typeof b === 'string' && b.trim() !== '' && b.length <= 255)
+      ) {
+        throw new ToolProblem(`branches: 1 to ${MAX_CLEANS} workspaces' branches`);
+      }
+      const branches = listed as string[];
+      const twice = branches.find((b, i) => branches.indexOf(b) !== i);
+      if (twice) throw new ToolProblem(`branches: ${twice} twice`);
+      const { workspaces } = await ws().list();
+      const items = branches.map((branch) => {
+        const w = workspaces.find((one) => one.branch === branch);
+        if (!w) throw new ToolProblem(`no workspace ${branch}`);
+        const changed = w.worktree.changed ?? 0;
+        // Checked before asking: what the clean-up would refuse (MC3).
+        const cant =
+          !w.merged && !unmerged
+            ? 'not merged: unmerged: true cleans it up and keeps its branch'
+            : changed > 0
+              ? `${plural(changed, 'file')} not committed in its worktree: commit or remove ${
+                  changed === 1 ? 'it' : 'them'
+                } first`
+              : undefined;
+        return {
+          name: branch,
+          words: w.merged ? 'merged' : unmerged ? 'not merged: its branch stays' : 'not merged',
+          ...(cant ? { cant } : {}),
+          act: () =>
+            ws()
+              .clean({ branch, ...(unmerged ? { unmerged: true } : {}) })
+              .then(() => ({})),
+        };
+      });
+      if (items.every((item) => item.cant)) {
+        throw new ToolProblem(items.map((item) => `${item.name}: ${item.cant}`).join('; '));
+      }
       return {
-        words: unmerged
-          ? `Clean up ${branch}: its agent's sessions and its worktree; its branch stays, not merged`
-          : `Clean up ${branch}: its agent's sessions and its worktree, and its branch once merged`,
-        act: () => service('workspaces').clean({ branch, ...(unmerged ? { unmerged: true } : {}) }),
+        words: `Clean up ${plural(items.length, 'workspace')}: each one's worktree and agent sessions, and its branch once merged`,
+        items,
+        did: 'cleaned',
       };
     },
   };

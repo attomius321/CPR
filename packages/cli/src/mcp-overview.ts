@@ -13,9 +13,11 @@ export function mcpOverview(
   {
     services,
     held,
+    lapsed,
+    now,
     minuteMs,
     pollMs,
-  }: Pick<McpContext, 'services' | 'held' | 'minuteMs' | 'pollMs'>,
+  }: Pick<McpContext, 'services' | 'held' | 'lapsed' | 'now' | 'minuteMs' | 'pollMs'>,
   { service, states }: Pick<McpLookup, 'service' | 'states'>,
 ) {
   const reads: Record<string, McpRead> = {
@@ -34,7 +36,17 @@ export function mcpOverview(
         const state = w.merged ? 'merged' : w.agent.state;
         counts[state] = (counts[state] ?? 0) + 1;
       }
-      const open = [...held.values()].map((h) => h.ask.words);
+      // The asks that wait; lapsed ones, kept for a late yes, with what became of them (MC3).
+      const open = [...held.values()].filter((h) => !h.ask.stage).map((h) => h.ask.words);
+      const at = now().getTime();
+      const late = [...lapsed.values()]
+        .filter((l) => l.until > at)
+        .map((l) => ({
+          words: l.words,
+          asked: l.asked,
+          now: l.now,
+          ...(l.results ? { results: l.results } : {}),
+        }));
       return {
         ...(services.name ? { repository: services.name } : {}),
         checkout: {
@@ -64,6 +76,7 @@ export function mcpOverview(
         workspaces: counts,
         merges: merges.map((e) => ({ id: e.id, branch: e.branch, into: e.into, state: e.state })),
         ...(open.length > 0 ? { asks: open } : {}),
+        ...(late.length > 0 ? { lapsed: late } : {}),
       };
     },
 

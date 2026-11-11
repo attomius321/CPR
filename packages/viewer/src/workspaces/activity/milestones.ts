@@ -37,7 +37,47 @@ const CONFIRM_ENDS = {
   declined: { text: 'Declined', tone: 'muted' },
   expired: { text: 'No answer in time', tone: 'warning' },
   gone: { text: 'Its call ended first', tone: 'muted' },
+  // A lapsed one's later end (MC3, decision 994).
+  late: { text: 'Confirmed after it lapsed', tone: 'ok' },
+  dismissed: { text: 'Dismissed after it lapsed', tone: 'muted' },
+  replaced: { text: 'Asked again', tone: 'muted' },
 } as const;
+
+/** An item done, by the tool that did it (MC3). */
+const DID: Record<string, string> = {
+  start_workspace: 'started',
+  clean_workspace: 'cleaned up',
+};
+
+/**
+ * A batch's items (MC3, decision 989), a line each: once done, what became of each; else as
+ * asked. A single ask confirmed late that failed: why. Undefined for a single ask.
+ */
+function itemsDetail(event: Extract<ActivityEvent, { kind: 'confirm' }>): string | undefined {
+  const done = event.done?.stage === 'done' ? event.done : undefined;
+  if (done && !done.items) return done.error ? `Failed: ${done.error}` : undefined;
+  const first = event.asked ?? event.ended;
+  const asked = first?.stage === 'asked' || first?.stage === 'skipped' ? (first.items ?? []) : [];
+  const items = done?.items ?? asked;
+  if (items.length === 0) return undefined;
+  const did = DID[first?.tool ?? ''] ?? 'done';
+  return items
+    .map((item) => {
+      const why = item.error ?? item.cant;
+      const what =
+        item.outcome === 'done'
+          ? did
+          : item.outcome === 'failed'
+            ? `failed: ${why ?? ''}`
+            : item.outcome === 'declined'
+              ? 'declined'
+              : item.outcome === 'cant' || item.cant
+                ? `can’t: ${why ?? ''}`
+                : (item.words ?? '');
+      return `${item.name}: ${what}`;
+    })
+    .join('\n');
+}
 
 /** Why a start went without a Confirm (NU8), in words and tone. */
 const WITHOUT_CONFIRM = {
@@ -54,7 +94,7 @@ function confirmGroup(
   context: Context,
 ): ActivityGroup {
   const words = (event.asked ?? event.ended)?.words ?? '';
-  const did = event.did?.output;
+  const did = itemsDetail(event) ?? event.did?.output;
   // None asked (NU8, decision 785): the person's setting or Hive mode started it at once.
   if (event.ended?.stage === 'skipped') {
     return {
@@ -69,7 +109,8 @@ function confirmGroup(
       said: WITHOUT_CONFIRM[event.ended.why],
     };
   }
-  const answer = event.ended?.stage === 'ended' ? event.ended.answer : undefined;
+  const end = event.later ?? event.ended;
+  const answer = end?.stage === 'ended' ? end.answer : undefined;
   // Unanswered while Nucleus works on: it waits for the person; else its end was never recorded.
   const live = context.agent.state === 'working' || context.agent.state === 'needs-you';
   return {
@@ -79,12 +120,20 @@ function confirmGroup(
     milestone: true,
     title: `Confirm: ${words}`,
     ...((event.asked ?? event.ended) ? { summary: (event.asked ?? event.ended)?.tool ?? '' } : {}),
-    ...(answer === 'confirmed' && did ? { detail: did } : {}),
+    ...((answer === 'confirmed' ||
+      answer === 'late' ||
+      (!answer && event.asked?.stage === 'asked' && event.asked.items)) &&
+    did
+      ? { detail: did }
+      : {}),
     status: !answer
       ? live
         ? 'waiting'
         : 'open'
-      : answer === 'declined' || answer === 'gone'
+      : answer === 'declined' ||
+          answer === 'gone' ||
+          answer === 'dismissed' ||
+          answer === 'replaced'
         ? 'cancelled'
         : 'done',
     ...(answer ? { said: CONFIRM_ENDS[answer] } : {}),

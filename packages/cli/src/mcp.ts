@@ -9,11 +9,12 @@ import type {
   McpServices,
   McpOptions,
   Held,
+  Lapsed,
   McpContext,
   McpRead,
   McpAsking,
 } from './mcp-context.js';
-import { mcpConfirm } from './mcp-confirm.js';
+import { AnswerRefused, lapsedText, mcpConfirm } from './mcp-confirm.js';
 import { mcpLookup } from './mcp-lookup.js';
 import {
   ToolProblem,
@@ -39,13 +40,15 @@ const ANALYSIS_MS = 60_000;
 const POLL_MS = 2_000;
 /** How long the person's answer waits for what they confirmed to be done, before it is answered. */
 const ANSWER_MS = 30_000;
+/** How long a lapsed ask is kept on the person's bar for a late yes (MC3, decision 994). */
+const KEEP_MS = 24 * 60 * 60_000;
 
 /** An ask or a write the server cannot take: its status and why. */
 export class McpRefused extends Error {
   override name = 'McpRefused';
   constructor(
     message: string,
-    readonly status: 404 | 409,
+    readonly status: 400 | 404 | 409,
   ) {
     super(message);
   }
@@ -77,6 +80,7 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
     url = () => '/',
     now = () => new Date(),
     askMs = ASK_MS,
+    keepMs = KEEP_MS,
     analysisMs = ANALYSIS_MS,
     pollMs = POLL_MS,
     minuteMs = 60_000,
@@ -94,6 +98,7 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
       }
     });
   const held = new Map<string, Held>();
+  const lapsed = new Map<string, Lapsed>();
   const closing = new AbortController();
 
   const available = (tool: ToolSpec) => tool.needs.every((need) => services[need] !== undefined);
@@ -104,13 +109,16 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
     url,
     now,
     askMs,
+    keepMs,
     analysisMs,
     pollMs,
     minuteMs,
     held,
+    lapsed,
     exclusive,
   };
-  const { ask, recorder } = mcpConfirm(ctx);
+  const confirm = mcpConfirm(ctx);
+  const { ask, recorder } = confirm;
   const lookup = mcpLookup(ctx);
   const families = [
     mcpOverview(ctx, lookup),
@@ -118,6 +126,9 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
     mcpReviews(ctx, lookup),
     mcpMerges(lookup),
   ];
+
+  /** A held ask by its ID, while it is held. */
+  const heldOf = (id: string) => held.get(id) ?? null;
 
   /** The tools that run at once. */
   const reads: Record<string, McpRead> = Object.fromEntries(
@@ -173,29 +184,46 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
       }
       const prepare = asking[name];
       if (!prepare) throw new ToolProblem(`unknown tool: ${name}`);
-      const { words: said, act } = await prepare(args, caller, signal);
+      const prepared = await prepare(args, caller, signal);
+      const said = prepared.words;
       const why = await startsAtOnce(name, caller);
       if (why) {
-        recording?.skipped(name, said, why);
-        const started = (await act()) as Record<string, unknown>;
+        const skipped = recording?.skipped(name, prepared, why);
+        if ('items' in prepared) {
+          const out = await confirm.runBatch(null, prepared, undefined);
+          if (skipped) {
+            recording?.done(skipped, { items: confirm.recordedItems(out.results, prepared.did) });
+          }
+          return { text: JSON.stringify({ results: out.results, withoutConfirm: why }) };
+        }
+        const started = (await prepared.act()) as Record<string, unknown>;
         return { text: JSON.stringify({ ...started, withoutConfirm: why }) };
       }
-      const { answer: answered, done, ask: held } = ask(name, said, caller, signal);
+      // A late yes prepares the call again: checked as it is then (MC3, decision 994).
+      const again = () => prepare(args, caller, closing.signal);
+      const {
+        answer: answered,
+        done,
+        ask: held,
+      } = ask(name, prepared, caller, signal, { again, recording });
       recording?.asked(held);
       try {
-        const answer = await answered;
+        const { answer, items } = await answered;
         recording?.answered(held, answer);
         if (answer === 'gone') return null;
         if (answer === 'no') {
           return { text: `The person declined: ${said}. Nothing was done.`, isError: true };
         }
-        if (answer === 'expired') {
+        if (answer === 'expired') return { text: lapsedText(said), isError: true };
+        if ('items' in prepared) {
+          const out = await confirm.runBatch(heldOf(held.id), prepared, items);
+          recording?.done(held, { items: confirm.recordedItems(out.results, prepared.did) });
           return {
-            text: `No answer from the person to: ${said}. Nothing was done; ask them, then call again.`,
-            isError: true,
+            text: JSON.stringify({ results: out.results }),
+            ...(out.none ? { isError: true as const } : {}),
           };
         }
-        return { text: JSON.stringify(await act()) };
+        return { text: JSON.stringify(await prepared.act()) };
       } finally {
         done();
       }
@@ -283,22 +311,19 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
 
     asks: () => ({ asks: [...held.values()].map((h) => h.ask) }),
 
-    async answer({ id, yes }) {
-      const found = held.get(id);
-      if (!found) throw new McpRefused(`no ask ${id}`, 404);
-      found.settle(yes ? 'yes' : 'no');
-      // Answered once it is done (30 s at most): the page reads what it changed then.
-      let timer: ReturnType<typeof setTimeout> | undefined;
-      await Promise.race([
-        found.finished,
-        new Promise<void>((resolve) => (timer = setTimeout(resolve, ANSWER_MS))),
-      ]);
-      clearTimeout(timer);
+    async answer(answer) {
+      try {
+        await confirm.answer(answer, ANSWER_MS);
+      } catch (error) {
+        if (error instanceof AnswerRefused) throw new McpRefused(error.message, error.status);
+        throw error;
+      }
       return { asks: [...held.values()].map((h) => h.ask) };
     },
 
     close() {
       closing.abort();
+      for (const h of held.values()) if (h.keep) clearTimeout(h.keep);
     },
   };
 }

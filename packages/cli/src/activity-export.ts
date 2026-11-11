@@ -8,6 +8,7 @@
 import type {
   ActivityEntry,
   AgentKind,
+  ConfirmItem,
   NucleusActivityLine,
   NucleusCall,
   NucleusEntry,
@@ -467,7 +468,34 @@ const CONFIRM_ENDS = {
   declined: 'Confirm declined',
   expired: 'Confirm not answered in time',
   gone: 'Confirm ended: its call ended first',
+  // A lapsed Confirm's end (MC3, decision 994).
+  late: 'Confirmed after it lapsed',
+  dismissed: 'Lapsed Confirm dismissed',
+  replaced: 'Lapsed Confirm replaced by the same ask',
 } as const;
+
+/** What became of a batch's item (MC3), in words. */
+const ITEM_ENDS = {
+  done: 'done',
+  failed: 'failed',
+  declined: 'declined',
+  cant: "can't be done",
+} as const;
+
+/** A Confirm's items (MC3), as one list: each one's name, words and what became of it. */
+const itemLines = (items: readonly ConfirmItem[] | undefined): string[] | undefined =>
+  items && [
+    items
+      .map((i) =>
+        [
+          `- ${code(i.name)}`,
+          i.words ? ` ${i.words}` : '',
+          i.outcome ? `: ${ITEM_ENDS[i.outcome]}` : '',
+          (i.error ?? i.cant) ? ` (${i.error ?? i.cant})` : '',
+        ].join(''),
+      )
+      .join('\n'),
+  ];
 
 /** A turn's tokens in words: `155,000 tokens in (80 % cached) · 603 out`. */
 function tokensText(tokens: TurnTokens): string {
@@ -538,10 +566,25 @@ function nucleusEntryPiece(entry: NucleusEntry, zone: string): Piece | null {
           at,
           zone,
           `Started without a Confirm (${why}): ${entry.words} (${code(entry.tool)})`,
+          itemLines(entry.items),
+        );
+      }
+      if (entry.stage === 'done') {
+        // What a batch's items or a late yes came to (MC3).
+        return item(
+          at,
+          zone,
+          `Done: ${entry.words}${entry.error ? `: failed (${entry.error})` : ''}`,
+          itemLines(entry.items),
         );
       }
       return entry.stage === 'asked'
-        ? item(at, zone, `Confirm asked: ${entry.words} (${code(entry.tool)})`)
+        ? item(
+            at,
+            zone,
+            `Confirm asked: ${entry.words} (${code(entry.tool)})`,
+            itemLines(entry.items),
+          )
         : item(at, zone, `${CONFIRM_ENDS[entry.answer]} after ${duration(entry.ms)}`);
     default:
       return null;
@@ -562,7 +605,8 @@ function notConfirmed(lines: readonly NucleusActivityLine[]): Map<string, string
   const ends = new Map<string, string>();
   for (const line of lines) {
     if (isCall(line) || line.kind !== 'confirm' || line.stage !== 'ended' || !line.call) continue;
-    if (line.answer !== 'confirmed') ends.set(line.call, NOT_YES[line.answer]);
+    // A lapsed Confirm's later end (MC3) is its own line; its call ended at the lapse.
+    if (line.answer in NOT_YES) ends.set(line.call, NOT_YES[line.answer as keyof typeof NOT_YES]);
   }
   return ends;
 }

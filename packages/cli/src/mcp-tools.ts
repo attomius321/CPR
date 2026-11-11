@@ -11,6 +11,23 @@ import {
 /** Most `wait` waits, in minutes. */
 export const MAX_WAIT = 10;
 
+/** Most starts and clean-ups one Confirm holds (MC3, decision 987). */
+export const MAX_STARTS = 10;
+export const MAX_CLEANS = 20;
+
+/** A start's fields, as start_workspace takes them alone or in its `workspaces` (MC3). */
+export const START_FIELDS = [
+  'kind',
+  'title',
+  'branch',
+  'parts',
+  'planFirst',
+  'agent',
+  'effort',
+  'model',
+  'from',
+] as const;
+
 export const via = (caller: McpCaller) => caller.via;
 
 /** Why a tool's call cannot be done: its words become the tool's error result. */
