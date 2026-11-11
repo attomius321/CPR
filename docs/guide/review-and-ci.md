@@ -163,13 +163,19 @@ branches panel and choose **Review**. A workspace's review starts where the work
 at the branch picked in its **Changes** panel; any other branch's, where it leaves the default
 branch. Then:
 
-1. On **Files**, read each file's diff. Click a line to comment on it: any line shown, changed or
-   not.
-2. On **Graph**, select each symbol and read it. Press `r` to mark it reviewed. A bar under the
-   tabs shows how much you have reviewed. To comment on a symbol, select it and press `c`. To put
-   the comment on one line, click an added or removed line in the symbol's diff.
+1. On **Files**, read each file's diff. Press `v` or click **Viewed** to mark the file viewed.
+   Click a line to comment on it: any line shown, changed or not.
+2. On **Graph**, select each symbol and read it. Press `r` to mark it reviewed, or `R` to mark
+   every changed symbol of its file. To comment on a symbol, select it and press `c`. To put the
+   comment on one line, click an added or removed line in the symbol's diff.
 3. Open the **Review** tab, on either page. Pick **Approve**, **Request changes** or
    **Comment**, write a summary if you like, and click **Finish review**.
+
+The two marks are one review. A file you mark viewed has its changed symbols reviewed on
+**Graph**, and a file whose changed symbols you all reviewed shows viewed on **Files**. Both pages
+show the same line above their list: the files viewed, the symbols reviewed and the findings left
+on symbols you have not reviewed. **Next** opens what is left: the next symbol on **Graph**, the
+next file on **Files**. A file or a symbol that changed since you marked it shows unmarked again.
 
 Symbiote writes the review to `symbiote/reviews/<branch>/<your git email>.json`, in the
 repository. Symbiote's `symbiote/.gitignore` keeps reviews out of git. To commit and share them,

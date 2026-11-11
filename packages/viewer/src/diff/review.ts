@@ -320,7 +320,9 @@ export function fileSymbols(graph: Graph, files: readonly ChangedPath[]): Map<st
     const own = (node.head ?? node.base)?.file;
     if (node.status === 'unchanged' || own === undefined) continue;
     const path = rows.get(own) ?? own;
-    held.set(path, [...(held.get(path) ?? []), node]);
+    const list = held.get(path);
+    if (list) list.push(node);
+    else held.set(path, [node]);
   }
   return held;
 }

@@ -36,7 +36,8 @@ export function useReview(graph: Graph | undefined, store: Store | undefined) {
   const [draft, setDraft] = useState<ReviewDraft>({ drafts: [], body: '' });
   const [verdict, setVerdict] = useState<ReviewEvent>('comment');
   useEffect(() => {
-    setFiles([]);
+    // The same empty list when there is none: a new one would draw the page again for nothing.
+    setFiles((current) => (current.length === 0 ? current : []));
     if (!graph || !store?.server) return;
     let live = true;
     void readChangeFiles(graph).then((read) => {

@@ -213,12 +213,19 @@ export function FilesPage({
   }, [files, comments?.drafts]);
   const at = shown ? files.indexOf(shown) : -1;
   // The line Graph shows too (V108, decision 984), from the marks both pages read.
+  const whole = useMemo(
+    () =>
+      graph && {
+        list: changeList(graph),
+        listed: foldFindings(graph.findings, graph.projects).shown,
+      },
+    [graph],
+  );
   const progress = useMemo(() => {
-    if (!graph) return null;
+    if (!graph || !whole) return null;
     const { reviewed } = reviewStatus(graph, marks);
-    const listed = foldFindings(graph.findings, graph.projects).shown;
-    return progressLine(files, changeList(graph), reviewed, listed);
-  }, [graph, files, marks]);
+    return progressLine(files, whole.list, reviewed, whole.listed);
+  }, [graph, whole, files, marks]);
   const nextLeft = progress
     ? leftAfter(
         files.map((f) => f.path),

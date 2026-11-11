@@ -147,6 +147,8 @@ toolbar.
 | / | Find a branch | | Search the change list |
 | c | Check out the commit or one of its branches (asks first) | Comment on the file's first change | Comment on the selected symbol |
 | r | | | Mark the selected symbol reviewed; a rule of a stylesheet shown as one card marks all its rules |
+| R | | | Mark every changed symbol of the selected symbol's file reviewed; again, unmark them |
+| v | | Mark the file viewed, which marks its changed symbols reviewed on Graph; again, unmark it | |
 | x | Compare mode: pick two commits | | |
 | f | Find a commit: Enter and Shift+Enter step through what it finds | | Focus: show only the selected symbol and every symbol it links to, type references included |
 | d | Show or fold the commit's details | | |

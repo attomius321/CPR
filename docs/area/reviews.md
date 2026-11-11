@@ -42,7 +42,8 @@ the repository reads the same folder.
 - **The fields**: `about` first (what an agent should read), then `base`, `branch`, `drafts`,
   `head`, `marks`, `reviewer`, `summary`, `updated` and `verdicts`. A mark is a symbol's ID with
   its fingerprint, so a symbol that changed since is no longer marked; a file viewed is
-  `file:<path>` with its blob (V90).
+  `file:<path>` with its blob (V90). The file keeps the person's own marks only: what they imply
+  (a file viewed reviews its symbols, V108) is read, never written.
 
 ## Where a review starts
 
@@ -113,9 +114,33 @@ all**.
 
 A file is marked **Viewed** with its button or `v`. The mark is kept in the review's `marks` as
 `file:<path>`, valued with the file's blob (`git diff --raw`, its base blob for a deleted file),
-so a file changed since shows unviewed again. Marking a symbol keeps the files' marks. A comment
-under its line can be written again with **Edit**, and Ctrl+Enter in the summary finishes the
-review.
+so a file changed since shows unviewed again. A comment under its line can be written again with
+**Edit**, and Ctrl+Enter in the summary finishes the review.
+
+Since V108 the two kinds of marks meet (983). A file viewed at the blob it has now reviews its
+changed symbols on Graph, and a file whose changed symbols all carry their own current marks reads
+viewed on Files. Both are derived when read (`derivedMarks` in `diff/review.ts`), never stored:
+`useReview` keeps the person's own marks, saves only those, and gives both pages the derived ones,
+so an older review loads as it was and reads with what it implies. A symbol is in its file as
+`fileFindings` places a finding (the head's file, the base's for a removed symbol, a renamed
+file's old path held under its new one: `fileSymbols`). The blobs come from the server that keeps
+the review: `useReview` reads `./api/files` through the read the Files page's list makes, once
+per graph (`readChangeFiles`). Without blobs (a graph opened from a file, or before the read
+arrives) a file reads viewed through its symbols only. The toggles keep the two meeting: `r` on a
+symbol reviewed through its file's mark drops that mark and gives the file's other symbols marks
+of their own; `v` on a file viewed through its symbols unmarks them; `R` (Shift+R, 985) marks
+every changed symbol of the picked symbol's file in one write, and again unmarks them.
+
+Since V108 both pages show one progress line (984, `ReviewProgress.tsx`): on Graph under the
+tabs, on Files above the list. "10 of 18 files viewed · 19 of 19 symbols reviewed", then a bar,
+the findings left and **Next**. A finding is left while its symbol is not reviewed (the Findings
+tab's listed ones, on changed symbols). The bar counts each item (a symbol, a stylesheet once)
+and each file with no symbol once, so it fills only when nothing is left; then the line says
+"Done: 18 files viewed, 19 symbols reviewed". Next goes to the next thing left after the current
+one, wrapping: the next symbol in the change list's order on Graph, the next file in the order of
+risk on Files. On Graph, when only files without symbols are left, "Files g" stands in its place.
+Both pages count the whole change (`progressLine`): the Graph list's `--since` filter does not
+apply to the line.
 
 Since V93 a diff of TypeScript, JavaScript or HTML is in colour, the Files page's and a symbol's in
 the detail panel (decision 889, replacing 845's "none"): `ui/syntax.ts`, a tokenizer of our own,
@@ -207,6 +232,7 @@ shown, and the first graph does not reset it (V104, in place of V102's `useKeptO
 | The Files page's order and each file's findings | `riskOrder`, `fileFindings`, `fileKind` in `packages/viewer/src/diff/file-order.ts`; applied in `useReviewFiles` (`FilesPage.tsx`) |
 | The head's findings pills; the Findings tab's fold | `FindingPills` in `packages/viewer/src/diff/DiffHead.tsx`; `foldFindings`, `findingPills` in `diff/review.ts`; `Sidebar.tsx` |
 | Findings on the map: a file name's colour, the counts | `layoutFlow` in `packages/viewer/src/graph/flow.ts` (`FileData.severity`, `counts`), `FileNode.tsx`, `map.css` |
+| The marks both pages read (a file viewed and its symbols), `R`, the progress line | `derivedMarks`, `fileSymbols`, `viewedIn`, `toggleMark`, `toggleFileViewed`, `toggleFileSymbols`, `progressLine`, `leftAfter` in `packages/viewer/src/diff/review.ts`; `useReview.ts`; `readChangeFiles` in `diff/change-files.ts`; `ReviewProgress.tsx` (in `Sidebar.tsx` and `FilesPage.tsx`) |
 | A stylesheet as one card, one row and one item | `stylesheetFiles`, `foldStylesheets` in `packages/viewer/src/graph/flow.ts`, `StylesheetNode.tsx`; `reviewItems`, `reviewProgress`, `toggleMark` in `diff/review.ts`; `Sidebar.tsx` |
 | Opening a review: the steps, their times, what needs no graph | `packages/viewer/src/diff/DiffProgress.tsx`, `analysis-steps.ts` |
 | The files before the graph exists | `pairFiles` in `packages/cli/src/server-sites.ts` |
@@ -248,9 +274,14 @@ when a later decision or a fix changed it.
 | 966–967 | A pick lands readable: a name under 11 px on screen comes to the reading zoom, a readable pick in view moves nothing (amends 886); the reading zoom is the body size over the graph's 12 px names, and no fit comes closer | [V99](../plan/v99-picks-land-readable.md) |
 | 973–974 | The Files page in order of risk: files with listed findings (worst severity, then the most of each), other code, tests, then every other file, git's order inside each and until the graph arrives (amends 431's first file); a file's listed findings counted on its row in the worst severity's colour | [V102](../plan/v102-files-by-risk.md) |
 | 975–976 | The panel's code wraps under its own code, at its indent (keeps 887); a changed signature is one, removed words struck and added words marked, folded past 400 characters; core cuts a signature at 2,000 | [V103](../plan/v103-panel-code-whole.md) |
+| 983–985 | A file viewed at its current blob reviews its changed symbols, and a file whose changed symbols are all reviewed reads viewed: derived when read, the store keeping the person's own marks (amends 843). One progress line on both pages: files viewed, symbols reviewed, findings left on symbols not reviewed, a bar, Next (amends 840's row). `R` marks every changed symbol of the picked symbol's file | [V108](../plan/v108-one-review-progress.md) |
 | 977–978 | `g` follows the pick: from Graph, the symbol's first changed row on Files (its removed rows, in the file it left, for a removed or moved symbol); from Files, the symbol holding the line last clicked or commented, picked; the panel's **Show its lines** does the same | [V104](../plan/v104-graph-files-follow.md) |
 
 These no longer hold:
+
+- **Two progresses**: V90's line counted symbols reviewed on Graph only, and Files counted
+  nothing; marks on one page never showed on the other. Since V108 (983–984) one line on both,
+  and each kind of mark reads on the other page.
 
 - **431's first file, git's first**: since V102 (973) the page opens on the first file in order
   of risk. On the spike's 30 merges, git's first was never code.
@@ -269,6 +300,14 @@ These no longer hold:
 - **82's `into`, "the default branch"**: the branch reviewed against (473).
 
 ## Traps
+
+- **`reviewStatus` reads derived marks.** Its `reviewed` set holds `file:<path>` for each file
+  viewed, because the Graph page's sidebar gets only `reviewed` and `stale` from `App.tsx`. Given
+  the stored marks instead, a file viewed at an old blob would count as viewed: pass it what
+  `derivedMarks` gives (V108).
+- **A button named with "viewed" or "reviewed" is found by older tests.** `files.spec.ts` looks up
+  `getByRole('button', { name: 'Viewed' })` without `exact`, which matched a "Next file not
+  viewed": the line's buttons are "Next file left" and "Next symbol left" (V108).
 
 - **A new graph reset the Files page's open file to none**, which means the first file. A file
   read while the change was analyzed jumped to the riskiest once the graph reordered the list
