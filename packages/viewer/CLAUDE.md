@@ -286,7 +286,9 @@ symbol glyph. Measure first paint (`/git`) and Bitwarden's graph after any font 
   summary.
 - A graph node (V90, `SymbolNode`) is a neutral card: the kind of change is a mark (`kindMark`),
   findings one count (`findingCount`), never a tinted ground or coloured name; `--tone` stays for
-  the map's blocks and the marks.
+  the map's blocks and the marks. A changed symbol's name is the strongest text on the canvas
+  (V106, decision 981): no text of a summary or an unchanged card is larger or bolder
+  (`e2e/context.spec.ts`).
 - Anything `<ReactFlow>` hands to every node (`onNodeClick`, the minimap's `nodeClassName`) keeps
   its identity across renders (`useCallback`, module-level): a new function re-renders every node.
 - Import only **types** from `@symbiote/core`; anything else must work in a browser.
