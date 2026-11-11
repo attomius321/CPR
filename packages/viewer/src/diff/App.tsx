@@ -50,6 +50,7 @@ import { DiffName, FindingPills, HeadFacts, PageSwitch } from './DiffHead.js';
 import { CanvasCard, DropZone } from './CanvasCard.js';
 import { useDiffKeys } from './useDiffKeys.js';
 import { useFirstView } from './useFirstView.js';
+import { useTrail } from './useTrail.js';
 
 export function App() {
   const { state, setState, inView, retry } = useDiffGraph();
@@ -253,6 +254,7 @@ export function App() {
     });
   }, []);
 
+  const trail = useTrail(selected, setSelected);
   useDiffKeys({
     state,
     served,
@@ -272,6 +274,7 @@ export function App() {
     setFocus,
     setProject,
     changes,
+    back: trail.previous === null ? null : trail.back,
   });
 
   const load = useCallback(async (file: File) => {
@@ -643,7 +646,10 @@ export function App() {
                   reviewed={reviewed.has(selected)}
                   stale={stale.has(selected)}
                   onToggleReviewed={() => toggleReviewed(selected)}
-                  onSelect={setSelected}
+                  onSelect={trail.followLink}
+                  {...(trail.previous !== null
+                    ? { back: { to: trail.previous, go: trail.back } }
+                    : {})}
                   onClose={() => setSelected(null)}
                   // Its lines on Files (V104, decision 978): where its file's diff is served.
                   {...(pickedLines && served ? { onShowLines: () => follow('files') } : {})}

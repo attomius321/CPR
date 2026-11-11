@@ -12,5 +12,6 @@
       "@symbiote/monitor": ["../monitor/src/index.ts"]
     }
   },
-  "include": ["src", "test", "e2e", "vite.config.ts", "playwright.config.ts"]
+  "include": ["src", "test", "e2e", "vite.config.ts", "playwright.config.ts"],
+  "exclude": ["test/fixtures"]
 }

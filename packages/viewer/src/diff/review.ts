@@ -601,3 +601,30 @@ export function leftAfter(
   }
   return left[0] ?? null;
 }
+
+/**
+ * The picks followed from the detail panel (V107, decision 982): `at` the pick the last link led
+ * to, `before` the picks it was followed from, oldest first. It holds only while `at` is picked.
+ */
+export interface Trail {
+  at: string;
+  before: string[];
+}
+
+/** Follows a link from `from` to `to`: onto the trail, or a new one when the pick moved since. */
+export function pushTrail(trail: Trail | null, from: string, to: string): Trail {
+  return { at: to, before: [...(trail?.at === from ? trail.before : []), from] };
+}
+
+/** Back one step: the pick before, and the trail left (none at its start). */
+export function backTrail(trail: Trail | null): { pick: string; trail: Trail | null } | null {
+  const pick = trail?.before.at(-1);
+  if (!trail || pick === undefined) return null;
+  const before = trail.before.slice(0, -1);
+  return { pick, trail: before.length > 0 ? { at: pick, before } : null };
+}
+
+/** Where Back goes from `selected`: the pick before it, while the trail is at it. */
+export function trailBack(trail: Trail | null, selected: string | null): string | null {
+  return trail && trail.at === selected ? (trail.before.at(-1) ?? null) : null;
+}

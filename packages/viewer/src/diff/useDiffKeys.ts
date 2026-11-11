@@ -1,4 +1,4 @@
-// A diff's keys (V6, V60): j/k, r, R, f, p, c, o, /, Esc and g, on the Graph page and on Files.
+// A diff's keys (V6, V60): j/k, r, R, f, p, c, o, /, Esc, g and Alt+←, on the Graph page and on Files.
 import { useEffect, type Dispatch, type SetStateAction } from 'react';
 import { flushSync } from 'react-dom';
 import type { ReviewFile } from '@symbiote/core';
@@ -36,6 +36,7 @@ export function useDiffKeys({
   setFocus,
   setProject,
   changes,
+  back,
 }: {
   state: State;
   /** The pair's files are served: Files can be shown while it is analyzed. */
@@ -58,15 +59,24 @@ export function useDiffKeys({
   setFocus: Dispatch<SetStateAction<boolean>>;
   setProject: Dispatch<SetStateAction<string | null>>;
   changes: FileChanges[];
+  /** Back in the detail panel (V107, decision 982), while it has a trail. */
+  back: (() => void) | null;
 }): void {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target;
-      if (event.metaKey || event.ctrlKey || event.altKey) return;
       const typing =
         target instanceof HTMLTextAreaElement ||
         target instanceof HTMLSelectElement ||
         (target instanceof HTMLInputElement && !['checkbox', 'radio'].includes(target.type));
+      // Alt+← is the browser's Back but while the panel has a trail (V107).
+      const altOnly = event.altKey && !event.metaKey && !event.ctrlKey && !event.shiftKey;
+      if (altOnly && event.key === 'ArrowLeft' && back && page === 'graph' && !typing) {
+        event.preventDefault();
+        back();
+        return;
+      }
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
       if (typing) {
         // Esc leaves the field (keeping what was typed) instead of closing the panel.
         if (event.key === 'Escape') target.blur();
@@ -133,5 +143,6 @@ export function useDiffKeys({
     served,
     forge,
     openFile,
+    back,
   ]);
 }

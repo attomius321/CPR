@@ -41,9 +41,11 @@ import { OpenIcon } from './OpenIcon.js';
 import { pathInProject, projectOf } from '../graph/projects.js';
 import {
   AlertIcon,
+  BackIcon,
   CheckIcon,
   CloseIcon,
   ExternalIcon,
+  EyeOffIcon,
   FailedIcon,
   FileIcon,
   HelpIcon,
@@ -112,7 +114,10 @@ interface Props {
   /** Reviewed before, but changed since. */
   stale: boolean;
   onToggleReviewed: () => void;
+  /** Picks a symbol the panel names: a neighbour, a member, a finding's (V107: onto the trail). */
   onSelect: (id: string) => void;
+  /** The pick a link was followed from, and going back to it (V107, decision 982). */
+  back?: { to: string; go: () => void } | undefined;
   onClose: () => void;
   /**
    * The symbols on the canvas (V101, decision 972): a neighbour that is not is marked. `focusShows`:
@@ -144,6 +149,7 @@ export function DetailPanel({
   stale,
   onToggleReviewed,
   onSelect,
+  back,
   onClose,
   canvas,
   comments,
@@ -206,6 +212,17 @@ export function DetailPanel({
     <aside className="panel" aria-label="Symbol detail">
       <header className="panel-head">
         <div className="panel-head-line">
+          {back && (
+            <button
+              type="button"
+              className="panel-back"
+              aria-label="Back"
+              {...tip(`Back to ${backName(graph, back.to)}`, { keys: 'Alt+←' })}
+              onClick={back.go}
+            >
+              <BackIcon />
+            </button>
+          )}
           <span className="panel-kind">{node.kind}</span>
           <h2 className={`panel-title${node.status === 'removed' ? ' removed' : ''}`}>
             {label(node)}
@@ -327,7 +344,11 @@ export function DetailPanel({
           <ul className="neighbours">
             {members.map((member) => (
               <li key={member.id}>
-                <button className="link" onClick={() => onSelect(member.id)}>
+                <button
+                  className="link"
+                  {...tip(nameTip(label(member), place(member)), { code: true })}
+                  onClick={() => onSelect(member.id)}
+                >
                   {label(member)}
                 </button>
                 <span className="muted"> {tone(member)}</span>
@@ -678,6 +699,7 @@ function Neighbours({
       <ul className="neighbours">
         {items.map((item) => {
           const decl = item.node && (item.node.head ?? item.node.base);
+          const name = item.node ? label(item.node) : item.id;
           return (
             <li key={`${item.id}|${item.kind}`}>
               {groupTone && (
@@ -685,10 +707,21 @@ function Neighbours({
                   {groupTone === 'error' ? <FailedIcon /> : <CheckIcon />}
                 </span>
               )}
-              <button className="link" onClick={() => onSelect(item.id)} disabled={!item.node}>
-                {item.node ? label(item.node) : item.id}
+              <button
+                className="link"
+                {...tip(nameTip(name, item.node && place(item.node)), { code: true })}
+                onClick={() => onSelect(item.id)}
+                disabled={!item.node}
+              >
+                {name}
               </button>
-              {away.has(item.id) && <span className="neighbour-away">not on the canvas</span>}
+              {away.has(item.id) && (
+                // In a narrow panel only its icon (decision 999): the words are its tip.
+                <span className="neighbour-away" {...tip('not on the canvas')}>
+                  <EyeOffIcon />
+                  <span className="neighbour-away-words">not on the canvas</span>
+                </span>
+              )}
               <span className="muted">
                 {/* Where it is, then how it is used when not a call; the kind alone without a place. */}
                 {decl ? `${decl.file}:${decl.range.start.line}` : item.kind}
@@ -713,6 +746,26 @@ function Neighbours({
       </ul>
     </div>
   );
+}
+
+/** A symbol's name for Back's tip: the trail's ids are the graph's. */
+function backName(graph: Graph, id: string): string {
+  const node = graph.nodes.find((n) => n.id === id);
+  return node ? label(node) : id.slice(id.indexOf('#') + 1);
+}
+
+/** Where a symbol is declared, `file:line`; undefined when it has no declaration. */
+function place(node: GraphNode): string | undefined {
+  const decl = node.head ?? node.base;
+  return decl ? `${decl.file}:${decl.range.start.line}` : undefined;
+}
+
+/**
+ * A row's name tip (V107, decision 999): the name whole and, under it, where it is, which a narrow
+ * row cuts first.
+ */
+function nameTip(name: string, where: string | undefined): string {
+  return where ? `${name}\n${where}` : name;
 }
 
 /** Where a symbol is: `web › src/app/foo.ts` when the change spans projects, else the path. */

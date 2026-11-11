@@ -128,7 +128,10 @@
   margin-top: 12px;
 }
 
-.close {
+/* Close, and Back while the panel has a trail (V107, decision 982): icon buttons of a row's
+   height. */
+.close,
+.panel-back {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -142,7 +145,8 @@
   cursor: pointer;
 }
 
-.close:hover {
+.close:hover,
+.panel-back:hover {
   background: var(--hover);
   color: var(--text);
 }
@@ -318,11 +322,13 @@
   font: var(--size-caps) / 1.4 var(--mono);
 }
 
-/* Used by, Uses: rows, not a bulleted list (V37). */
+/* Used by, Uses: rows, not a bulleted list (V37). One line each at every width (V107, decision
+   999): the place gives way first, then the name is cut; the chip and Open stay whole. */
 .neighbours {
   margin: 0 -8px;
   padding: 0;
   list-style: none;
+  container: neighbours / inline-size;
 }
 
 .neighbours li {
@@ -339,6 +345,8 @@
 }
 
 .neighbours li > .muted {
+  /* Shrinks before the name: by its weight it takes the whole cut until it is gone. */
+  flex: 0 100000 auto;
   min-width: 0;
   overflow: hidden;
   font-size: var(--size-caption);
@@ -348,13 +356,38 @@
 
 /* A neighbour not on the canvas (V101): a quiet chip after its name, never cut with its place. */
 .neighbour-away {
+  display: inline-flex;
   flex: none;
+  align-items: center;
+  align-self: center;
   padding: 0 6px;
   border-radius: 4px;
   background: var(--raised);
   color: var(--muted);
   font-size: var(--size-caption);
   white-space: nowrap;
+}
+
+/* Its icon only where the words would leave the name a few characters (V107, decision 999): a
+   list under 440 px, a panel under about 450 px (the Resizer's 320 and the default 336 included). */
+.neighbour-away .icon {
+  display: none;
+  width: 14px;
+  height: calc(var(--size-caption) * 1.5);
+}
+
+@container neighbours (width < 440px) {
+  .neighbour-away {
+    padding: 0 4px;
+  }
+
+  .neighbour-away .icon {
+    display: block;
+  }
+
+  .neighbour-away-words {
+    display: none;
+  }
 }
 
 /* What draws them: Focus's key (V101). */
@@ -403,6 +436,15 @@
 .neighbours .link,
 .finding .link {
   font: var(--size-code) var(--mono);
+}
+
+/* A row's name on one line, cut with an ellipsis; its tip says it whole (decision 999). */
+.neighbours .link {
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .panel-actions {
@@ -592,6 +634,7 @@
    class is the use's name). */
 .neighbour-open {
   display: inline-flex;
+  flex: none;
   align-items: center;
   gap: 4px;
   margin-left: auto;
