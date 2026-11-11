@@ -1,4 +1,4 @@
-// A diff's keys (V6, V60): j/k, r, f, p, c, o, /, Esc and g, on the Graph page and on Files.
+// A diff's keys (V6, V60): j/k, r, R, f, p, c, o, /, Esc and g, on the Graph page and on Files.
 import { useEffect, type Dispatch, type SetStateAction } from 'react';
 import { flushSync } from 'react-dom';
 import type { ReviewFile } from '@symbiote/core';
@@ -12,7 +12,7 @@ import type { useReview } from './useReview.js';
 type Review = ReturnType<typeof useReview>;
 
 /**
- * Keyboard review: j/k walk the changes, r marks reviewed, f focuses, p (P) shows the next
+ * Keyboard review: j/k walk the changes, r marks reviewed (R: the pick's whole file, V108), f focuses, p (P) shows the next
  * (previous) project only, c comments, o opens in VS Code, / searches, Esc closes, g switches
  * between the pages, following the pick (V104). On the Files page, j/k walk the files and c
  * comments on the first change.
@@ -111,6 +111,8 @@ export function useDiffKeys({
       } else if (event.key === 'j') setSelected((id) => stepChange(walked, id, 1));
       else if (event.key === 'k') setSelected((id) => stepChange(walked, id, -1));
       else if (event.key === 'r' && selected) toggleReviewed(selected);
+      // Its file's changed symbols at once (V108, decision 985).
+      else if (event.key === 'R' && selected) toggleReviewed(selected, 'file');
       else if (event.key === 'f') setFocus((on) => !on);
       else if (event.key === 'p' || event.key === 'P') {
         setProject((folder) => nextProject(changes, folder, event.key === 'p' ? 1 : -1));

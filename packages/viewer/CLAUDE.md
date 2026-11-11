@@ -57,8 +57,10 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   pick's move, `pickView`, and every fit's cap, the reading zoom from Settings' text size,
   `readingZoom` in `graph/mapzoom.ts`, V99),
   `CanvasCard.tsx` its card (the legend and the view's toggles), `DiffHead.tsx` the head's parts;
-  `useDiffGraph.ts` the graph's loading and polling, `useReview.ts` marks and drafts,
-  `useDiffKeys.ts` the keys.
+  `useDiffGraph.ts` the graph's loading and polling, `useReview.ts` marks and drafts (V108: it
+  stores the person's own marks and gives both pages `derivedMarks`, a file viewed and its
+  symbols reviewed read together, against the files' blobs it reads with `readChangeFiles`),
+  `useDiffKeys.ts` the keys; `ReviewProgress.tsx` the progress line both pages show.
 - `src/diff/FilesPage.tsx` (V60) — the Files page: the change's files (`./api/files`, git's lines)
   drawn with a workspace's `FileRow` (`workspaces/ChangesPanel.tsx`), the open file's diff
   (`./api/file`: git's, the whole file as context) and comments under their lines. Its pure part

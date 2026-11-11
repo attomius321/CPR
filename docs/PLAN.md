@@ -176,7 +176,7 @@ What holds now: [Reviews](area/reviews.md) · its decisions: [the register](deci
 | [Fix](plan/fix-finding-counts.md) | A diff's head and its Findings tab count the same findings | built by [V100](plan/v100-findings-where-you-look.md) (`feature/v100-findings-where-you-look`), ready for review | 968 | [journal](journal/v100-findings-where-you-look.md) |
 | [V102](plan/v102-files-by-risk.md) | Files in order of risk, each file's findings counted | built, ready for review | 973–974 | [journal](journal/v102-files-by-risk.md) |
 | [V104](plan/v104-graph-files-follow.md) | Graph and Files follow the pick: `g` opens a symbol's lines, and back | built, ready for review | 977–978 | [journal](journal/v104-graph-files-follow.md) |
-| [V108](plan/v108-one-review-progress.md) | One review progress: files viewed and symbols reviewed meet | planned | 983–985 | [journal](journal/v108-one-review-progress.md) |
+| [V108](plan/v108-one-review-progress.md) | One review progress: a file viewed reviews its symbols and a file's symbols reviewed view it, one line on both pages with Next, `R` for a file's symbols | built, ready for review | 983–985 | [journal](journal/v108-one-review-progress.md) |
 
 ### Workspaces
 

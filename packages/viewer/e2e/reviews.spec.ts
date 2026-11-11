@@ -106,7 +106,8 @@ test('reviews a branch, then only what the agent changed since', async ({ page }
     await page.keyboard.press('j');
     await page.keyboard.press('r');
   }
-  await expect(progress(page)).toContainText('2 of 2');
+  // Every symbol of its one file: the line says it is done (V108).
+  await expect(progress(page)).toContainText('Done: 1 file viewed, 2 symbols reviewed');
 
   // In symbiote/reviews/, out of git, written mark by mark: read once both have landed.
   const read = () =>

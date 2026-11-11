@@ -18,7 +18,17 @@ import {
   ReviewIcon,
   RunningIcon,
 } from '../ui/icons.js';
-import { fileViewed, type Marks } from './review.js';
+import { fetchChangeFiles, readChangeFiles } from './change-files.js';
+import {
+  changeList,
+  foldFindings,
+  leftAfter,
+  progressLine,
+  reviewStatus,
+  viewedIn,
+  type Marks,
+} from './review.js';
+import { ReviewProgress } from './ReviewProgress.js';
 import { CodeText, useTokens } from '../ui/CodeText.js';
 import { tip } from '../ui/tip.js';
 import { FileRow, Lines } from '../workspaces/ChangesPanel.js';
@@ -78,12 +88,10 @@ export function useReviewFiles(
     setFiles(graph?.files ?? []);
     if ((!graph && !analyzing) || !served) return;
     let live = true;
-    fetch('./api/files')
-      .then((response) => (response.ok ? (response.json() as Promise<ReviewFile[]>) : null))
-      .then((read) => {
-        if (live && read) setFiles(read);
-      })
-      .catch(() => {});
+    // The graph's read is the review's too (V108): one request for both.
+    void (graph ? readChangeFiles(graph) : fetchChangeFiles()).then((read) => {
+      if (live && read) setFiles(read);
+    });
     return () => {
       live = false;
     };
@@ -148,7 +156,10 @@ interface Props {
   served: boolean;
   /** The server opens files in VS Code (`/api/open`). */
   canOpen: boolean;
-  /** The review's marks: a file viewed is one (`file:<path>`, V90). */
+  /**
+   * The review's marks as both pages read them (`derivedMarks`, V108): a file viewed is one
+   * (`file:<path>`, V90), its own or through its symbols.
+   */
   marks: Marks;
   /** Marks a file viewed, or not; absent where the page takes no review. */
   onToggleViewed?: ((file: ReviewFile) => void) | undefined;
@@ -201,9 +212,40 @@ export function FilesPage({
     return counts;
   }, [files, comments?.drafts]);
   const at = shown ? files.indexOf(shown) : -1;
+  // The line Graph shows too (V108, decision 984), from the marks both pages read.
+  const whole = useMemo(
+    () =>
+      graph && {
+        list: changeList(graph),
+        listed: foldFindings(graph.findings, graph.projects).shown,
+      },
+    [graph],
+  );
+  const progress = useMemo(() => {
+    if (!graph || !whole) return null;
+    const { reviewed } = reviewStatus(graph, marks);
+    return progressLine(files, whole.list, reviewed, whole.listed);
+  }, [graph, whole, files, marks]);
+  const nextLeft = progress
+    ? leftAfter(
+        files.map((f) => f.path),
+        progress.filesLeft,
+        shown?.path ?? null,
+      )
+    : null;
   return (
     <>
       <nav className="sidebar files-side" aria-label="Files">
+        {progress && (
+          <ReviewProgress
+            progress={progress}
+            next={
+              nextLeft === null
+                ? undefined
+                : { label: 'Next file left', onNext: () => onOpenFile(nextLeft) }
+            }
+          />
+        )}
         <div className="list files-scroll">
           {files.length === 0 ? (
             <p className="muted pad">No file changed.</p>
@@ -213,7 +255,7 @@ export function FilesPage({
                 const count = commented.get(file.path);
                 const findings = risks?.get(file.path);
                 const risk = findings && findingCount(findings);
-                const viewed = fileViewed(marks, file);
+                const viewed = viewedIn(marks, file.path);
                 const current = file === shown;
                 return (
                   <li key={file.path} className="files-item">
@@ -280,7 +322,7 @@ export function FilesPage({
             const next = files[at + step];
             if (next) onOpenFile(next.path);
           }}
-          viewed={fileViewed(marks, shown)}
+          viewed={viewedIn(marks, shown.path)}
           onToggleViewed={onToggleViewed && (() => onToggleViewed(shown))}
           served={served}
           canOpen={canOpen}

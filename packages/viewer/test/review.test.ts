@@ -359,7 +359,10 @@ describe("a file's viewed mark (V90, decision 843)", () => {
     const viewed = toggleFileMark({}, file);
     const both = toggleMark(graph, viewed, 'src/math.ts#add');
     expect(Object.keys(both).sort()).toEqual(['file:src/math.ts', 'src/math.ts#add']);
-    expect(reviewStatus(graph, both).reviewed).toEqual(new Set(['src/math.ts#add']));
+    // The file viewed is read as its mark's key (V108: the Graph page counts files from it).
+    expect(reviewStatus(graph, both).reviewed).toEqual(
+      new Set(['src/math.ts#add', 'file:src/math.ts']),
+    );
     expect(Object.keys(toggleFileMark(both, file))).toEqual(['src/math.ts#add']);
   });
 });

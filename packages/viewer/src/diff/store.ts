@@ -6,6 +6,11 @@ import { reviewKey, type Marks } from './review.js';
 export type StateName = 'review' | 'drafts';
 
 export interface Store {
+  /**
+   * Kept by `symbiote view` or `symbiote pr`, whose server also gives the change's files with
+   * their blobs (`./api/files`): what a file's viewed mark is read against (V108).
+   */
+  server?: true;
   load(name: StateName): Promise<unknown>;
   /** Saves after `delay` ms; a newer value for the same name replaces a pending one. */
   save(name: StateName, value: unknown, delay?: number): void;
@@ -41,6 +46,7 @@ export function serverStore(): Store {
   });
 
   return {
+    server: true,
     async load(name) {
       try {
         const response = await fetch(`./api/state/${name}`);

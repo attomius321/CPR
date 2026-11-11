@@ -77,43 +77,6 @@
   font-weight: 400;
 }
 
-/* How far the review is (V90, decision 840; proof 03's `.progress`): words, then a bar. */
-.review-progress {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px var(--card-pad);
-  border-bottom: 1px solid var(--line);
-  color: var(--muted);
-  font-size: var(--size-caption);
-}
-
-.review-progress-words {
-  display: flex;
-  gap: 8px;
-}
-
-.review-progress-keys {
-  flex: none;
-  margin-left: auto;
-  white-space: nowrap;
-}
-
-.progress {
-  height: 4px;
-  overflow: hidden;
-  border-radius: 9999px;
-  background: var(--raised);
-}
-
-/* The person's review, in their violet. */
-.review-progress .progress > div {
-  height: 100%;
-  border-radius: 9999px;
-  background: var(--you);
-  transition: width 0.2s;
-}
-
 .search {
   display: flex;
   align-items: center;

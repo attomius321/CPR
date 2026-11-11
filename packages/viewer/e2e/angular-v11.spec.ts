@@ -209,7 +209,7 @@ test('the change list holds every changed symbol, by file, in its colour', async
   await page.getByRole('tab', { name: /Changes/ }).click();
   await expect(page.getByRole('tab', { name: /Changes/ })).toContainText(`${CHANGED.length}`);
   await expect(sidebar(page).locator('.review-progress')).toContainText(
-    `0 of ${CHANGED.length} changed symbols reviewed`,
+    `0 of ${CHANGED.length} symbols reviewed`,
   );
   await expect(sidebar(page).locator('.list-file-name')).toHaveText([SERVICE, HTML, HEROES]);
   await expect(sidebar(page).locator('.list-link')).toHaveText(CHANGED.map((s) => s.label));
