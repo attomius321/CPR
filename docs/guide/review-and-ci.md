@@ -89,7 +89,10 @@ in it, such as `signature` or `body`. Its badge counts its findings.
 Click a symbol, or press `j` and `k` to walk the change list. The detail panel opens beside the
 graph with the symbol's findings, its signature, a diff of only that symbol, and the
 symbols that use it and that it uses, each with **Open ↗** to open it in VS Code. A user or use
-that the graph does not draw is marked "not on the canvas". Press `f` (**Focus**) to show only
+that the graph does not draw is marked "not on the canvas" (in a narrow panel, an eye crossed
+out). Each of them is one line: a name too long for the panel is cut, and its tip gives it whole
+with its file and line. Click one to select it; **Back** at the top of the panel, or Alt+←,
+returns to the symbol you came from. Press `f` (**Focus**) to show only
 the symbol and every symbol it links to, type references included; press `f` again to leave. If
 the symbol's name would be drawn under 11 px, the graph zooms in until its names are at your text
 size: 15 px, or 14 and 16 with Settings' Compact and Large. Otherwise the graph moves only to

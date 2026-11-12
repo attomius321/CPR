@@ -1,0 +1,7 @@
+.ledger-report .quarterly-summary .account-balance-row:hover {
+  color: var(--ledger-accent);
+}
+
+.ledger-report .quarterly-summary .account-balance-row .amount-cell {
+  border-color: var(--ledger-accent);
+}

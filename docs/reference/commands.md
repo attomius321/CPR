@@ -157,6 +157,7 @@ toolbar.
 | o | Open the file shown as a diff in VS Code | Open the file in VS Code at its first change | Open the selected symbol in VS Code |
 | g | | The Graph page, the symbol of the line you last clicked selected | The Files page, at the selected symbol's first changed line |
 | Esc | Back to the commits from a file shown; leave compare mode | Close the comment box | Close the detail panel |
+| Alt+← | | | Back to the symbol you came from by a name in the detail panel; without one, the browser's Back |
 
 These keys work on the Overview, Git, Nucleus, Skills, Monitor, Issues, History, Settings and a
 workspace's page. In a change, only n and [ work.
