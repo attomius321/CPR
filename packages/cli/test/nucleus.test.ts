@@ -1,6 +1,14 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { openRepo, type AgentModel, type PageAgentAsk } from '@symbiote/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
@@ -200,6 +208,9 @@ async function appServer(): Promise<FakeAppServer> {
   return server;
 }
 
+/** Nucleus's key (SC1): what its bridge gets in its environment. */
+const NUCLEUS_KEY = 'nucleus-key';
+
 const service = async (
   repo: TestRepo,
   {
@@ -222,6 +233,7 @@ const service = async (
     gate: GATE,
     bridge: BRIDGE,
     node: '/usr/bin/node',
+    nucleusKey: NUCLEUS_KEY,
     ...(terminals ? { terminals } : {}),
     ...(hive ? { hive } : {}),
   });
@@ -997,9 +1009,15 @@ describe('Nucleus is a terminal (V50)', () => {
     fake.claude.models = () => Promise.resolve(structuredClone(MODELS));
     return fake;
   };
-  const files = (repo: TestRepo) => ({
+  const files = async (repo: TestRepo) => ({
     settings: join(repo.root, 'symbiote', 'nucleus-settings.json'),
-    mcpConfig: join(repo.root, 'symbiote', 'nucleus-mcp.json'),
+    // In the cache since SC1: it holds Nucleus's key.
+    mcpConfig: join(
+      cache,
+      'mcp',
+      basename(viewFile(cache, (await openRepo(repo.root)).commonDir), '.json'),
+      'nucleus-mcp.json',
+    ),
   });
 
   it("opens a conversation with no question: Claude Code waits for its first, Nucleus's instructions its system prompt", async () => {
@@ -1016,7 +1034,7 @@ describe('Nucleus is a terminal (V50)', () => {
       cwd: repo.root,
       name: 'Nucleus',
       ...READ_ONLY,
-      ...files(repo),
+      ...(await files(repo)),
       instructions: INSTRUCTIONS,
     });
     expect(request).not.toHaveProperty('prompt');
@@ -1703,36 +1721,44 @@ describe('Scribe (V41): the same conversation, writing skills', () => {
 
 describe("Nucleus with Symbiote's tools (MC1, decisions 358, 365)", () => {
   const viewOf = async (repo: TestRepo) => viewFile(cache, (await openRepo(repo.root)).commonDir);
-  const mcpFile = (repo: TestRepo) => join(repo.root, 'symbiote', 'nucleus-mcp.json');
+  /** In the cache, beside the view record, the user's alone (SC1): it holds Nucleus's key. */
+  const mcpFile = async (repo: TestRepo) =>
+    join(cache, 'mcp', basename(await viewOf(repo), '.json'), 'nucleus-mcp.json');
 
   it("starts Claude Code with Symbiote's server and no other, its file written before each wake", async () => {
     const repo = fresh();
     const { claude, startPageAgent, set } = fakeClaude(repo.root);
     const { terminals } = fakeTerminals();
+    // One written before SC1, in symbiote/: gone at the next start.
+    const before = join(repo.root, 'symbiote', 'nucleus-mcp.json');
+    mkdirSync(join(repo.root, 'symbiote'), { recursive: true });
+    writeFileSync(before, '{}');
     const s = await service(repo, { claude, terminals });
     await s.ask({ text: 'What needs me?' });
-    expect(startPageAgent.mock.calls[0]?.[0]).toMatchObject({
-      ...READ_ONLY,
-      mcpConfig: mcpFile(repo),
-    });
+    const file = await mcpFile(repo);
+    expect(startPageAgent.mock.calls[0]?.[0]).toMatchObject({ ...READ_ONLY, mcpConfig: file });
     const expected = {
       mcpServers: {
         symbiote: {
           type: 'stdio',
           command: '/usr/bin/node',
           args: [BRIDGE, '--as', 'nucleus', '--view', await viewOf(repo)],
+          // Nucleus's key, for its bridge's process alone (SC1, decision 931).
+          env: { SYMBIOTE_NUCLEUS_KEY: NUCLEUS_KEY },
         },
       },
     };
-    expect(JSON.parse(readFileSync(mcpFile(repo), 'utf8'))).toEqual(expected);
+    expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual(expected);
+    expect(statSync(file).mode & 0o777).toBe(0o600);
+    expect(existsSync(before)).toBe(false);
     // A session that wakes reads it again: a reply and a terminal write it first.
-    rmSync(mcpFile(repo));
+    rmSync(file);
     set('s9', { state: 'done', status: 'idle' });
     await s.ask({ text: 'And now?' });
-    expect(JSON.parse(readFileSync(mcpFile(repo), 'utf8'))).toEqual(expected);
-    rmSync(mcpFile(repo));
+    expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual(expected);
+    rmSync(file);
     await s.terminal({ cols: 80, rows: 24 });
-    expect(existsSync(mcpFile(repo))).toBe(true);
+    expect(existsSync(file)).toBe(true);
     expect(repo.git('status', '--porcelain')).toBe('');
   });
 
@@ -1748,6 +1774,7 @@ describe("Nucleus with Symbiote's tools (MC1, decisions 358, 365)", () => {
         symbiote: {
           command: '/usr/bin/node',
           args: [BRIDGE, '--as', 'nucleus', '--view', await viewOf(repo)],
+          env: { SYMBIOTE_NUCLEUS_KEY: NUCLEUS_KEY },
           default_tools_approval_mode: 'approve',
           tool_timeout_sec: 660,
         },

@@ -31,6 +31,7 @@ import {
   FORMAT_WORDS,
   json,
   send,
+  refuseKey,
   badBody,
   readBody,
   type ServerHttp,
@@ -50,12 +51,30 @@ export function serverWorkspaces(
   { opened, root }: Pick<ServerContext, 'opened' | 'root'>,
   uses: Pick<
     ServerHttp,
-    'written' | 'onBranch' | 'startingOne' | 'oneAtATime' | 'sameSite' | 'writable' | 'streamLog'
+    | 'written'
+    | 'onBranch'
+    | 'startingOne'
+    | 'oneAtATime'
+    | 'sameSite'
+    | 'writable'
+    | 'refused'
+    | 'keyed'
+    | 'streamLog'
   > &
     Pick<ServerSites, 'serveSite'>,
 ) {
-  const { written, onBranch, startingOne, oneAtATime, sameSite, writable, streamLog, serveSite } =
-    uses;
+  const {
+    written,
+    onBranch,
+    startingOne,
+    oneAtATime,
+    sameSite,
+    writable,
+    refused,
+    keyed,
+    streamLog,
+    serveSite,
+  } = uses;
   /** `/api/workspaces/hive…` (HV3): a Hive workspace's Review tab, its kept tests, its logs. */
   async function hiveRoute(
     req: IncomingMessage,
@@ -244,10 +263,12 @@ export function serverWorkspaces(
       );
     }
     if (url.pathname === '/api/workspaces/shells') {
-      // It hands out terminals' IDs, which read and drive them: for the page only (V45).
+      // It hands out terminals' IDs, which read and drive them: for the page only (V45), with its
+      // key (SC1).
       if (req.headers['x-symbiote'] !== '1' || !sameSite(req)) {
         return send(res, 403, 'forbidden');
       }
+      if (!keyed(req)) return refuseKey(res);
       return ofBranch(req, res, url, (branch) => workspaces.shells(branch));
     }
     return serveSite(req, res, url, url.pathname, root);
@@ -261,7 +282,7 @@ export function serverWorkspaces(
   ): Promise<void> {
     if (req.method === 'GET') return json(res, 200, await workspaces.list());
     if (req.method !== 'POST') return send(res, 405, 'method not allowed');
-    if (!writable(req)) return send(res, 403, 'forbidden');
+    if (!writable(req)) return refused(req, res);
     let request: WorkspaceRequest;
     try {
       request = parseWorkspaceRequest(await readBody(req, MAX_BODY_BYTES));

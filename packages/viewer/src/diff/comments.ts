@@ -2,6 +2,7 @@ import type { BranchMerge, FinishResult, Graph, GraphNode, LocalReview } from '@
 import type { DiffRow } from './detail.js';
 import { label } from '../graph/flow.js';
 import { fingerprint } from './review.js';
+import { write } from '../ui/http.js';
 
 export type Side = 'base' | 'head';
 export type ReviewEvent = 'comment' | 'approve' | 'request-changes';
@@ -249,9 +250,7 @@ export async function checkMerge(): Promise<BranchMerge | null> {
 }
 
 async function send<T>(url: string, payload: unknown): Promise<T> {
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+  const response = await write(url, {
     body: JSON.stringify(payload),
   });
   if (response.ok) return (await response.json()) as T;
@@ -266,9 +265,7 @@ async function send<T>(url: string, payload: unknown): Promise<T> {
 }
 
 export async function postReview(payload: ReviewPayload): Promise<{ url: string }> {
-  const response = await fetch('./api/review', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+  const response = await write('./api/review', {
     body: JSON.stringify(payload),
   });
   if (response.ok) return (await response.json()) as { url: string };

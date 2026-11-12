@@ -3,6 +3,7 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
+import { E2E_NUCLEUS_KEY } from './page-key.js';
 import { serveAgentBranch, serveWorkspaces, type Running } from './symbiote.js';
 
 // Symbiote's MCP (MC1): an agent's calls through the bridge, the asks on the pages, the person's
@@ -26,6 +27,9 @@ test.afterEach(() => {
   symbiote?.stop();
   expect(errors).toEqual([]);
 });
+
+/** Nucleus's bridge's environment, as Symbiote's MCP file sets it (SC1, decision 931). */
+const NUCLEUS_ENV = { SYMBIOTE_NUCLEUS_KEY: E2E_NUCLEUS_KEY };
 
 /** `symbiote view`'s record for the bridge, in its cache. */
 const record = (cache: string) => {
@@ -89,6 +93,7 @@ test("Nucleus reviews a branch, approves it and queues its merge, each on the pe
   const nucleus = client(
     [BRIDGE, '--as', 'nucleus', '--view', record(running.cache)],
     running.repo,
+    NUCLEUS_ENV,
   );
   const init = await nucleus.request('initialize', {
     protocolVersion: '2025-06-18',
@@ -200,6 +205,7 @@ test("Nucleus starts a workspace without the person's Confirm once they turn it 
   const nucleus = client(
     [BRIDGE, '--as', 'nucleus', '--view', record(running.cache)],
     running.repo,
+    NUCLEUS_ENV,
   );
   await nucleus.request('initialize', { clientInfo: { name: 'claude-code', version: '2' } });
   const startDescription = async () =>
@@ -316,6 +322,7 @@ test('Nucleus starts three workspaces with one Confirm, one unticked, and cleans
   const nucleus = client(
     [BRIDGE, '--as', 'nucleus', '--view', record(running.cache)],
     running.repo,
+    NUCLEUS_ENV,
   );
   await nucleus.request('initialize', { clientInfo: { name: 'claude-code', version: '2' } });
   await page.goto(`${running.url}git`);
@@ -392,6 +399,7 @@ test("a Confirm nobody answers lapses and stays on the person's bar; confirmed l
   const nucleus = client(
     [BRIDGE, '--as', 'nucleus', '--view', record(running.cache)],
     running.repo,
+    NUCLEUS_ENV,
   );
   await nucleus.request('initialize', { clientInfo: { name: 'claude-code', version: '2' } });
   await page.goto(`${running.url}git`);

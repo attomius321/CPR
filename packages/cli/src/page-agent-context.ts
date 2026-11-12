@@ -143,7 +143,8 @@ export interface PageAgentContext {
   /** What it is called now: `hiveName` while Hive mode is on (decision 687), else `name`. */
   called: () => Promise<string>;
   /** Symbiote's MCP server (MC1): its bridge, told who calls and where `symbiote view` is. */
-  symbioteServer: { command: string; args: string[] } | undefined;
+  /** Symbiote's MCP server (MC1): its bridge, and Nucleus's key in its environment (SC1). */
+  symbioteServer: { command: string; args: string[]; env?: Record<string, string> } | undefined;
   /** Codex's thread's configuration: Symbiote's server and the spec's own; undefined for none. */
   codexTools: () => Record<string, unknown> | undefined;
   codexAt: ReturnType<PageAgentSpec['codex']>;

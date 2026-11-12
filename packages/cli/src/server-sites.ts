@@ -96,7 +96,11 @@ export function serverSites(
     options: Pick<ViewServerOptions, 'open' | 'viewerDir'>;
     repository: Pick<RepositoryOptions, 'name' | 'files' | 'state'> | undefined;
   },
-  { writable, hiveOn }: Pick<ServerHttp, 'writable'> & Pick<ServerHive, 'hiveOn'>,
+  {
+    writable,
+    refused,
+    hiveOn,
+  }: Pick<ServerHttp, 'writable' | 'refused'> & Pick<ServerHive, 'hiveOn'>,
 ) {
   const { options, repository, viewerFiles, pairSites, opened, reviewSites, sites } = ctx;
   /** The viewer and its API for one graph (or none: the commits page). */
@@ -306,7 +310,7 @@ export function serverSites(
   ): Promise<void> {
     if (req.method === 'GET') return json(res, 200, await reviews.list());
     if (req.method !== 'POST') return send(res, 405, 'method not allowed');
-    if (!writable(req)) return send(res, 403, 'forbidden');
+    if (!writable(req)) return refused(req, res);
     let ref: string;
     try {
       ref = parseRef(await readBody(req, MAX_BODY_BYTES));
@@ -351,7 +355,7 @@ export function serverSites(
     repo: RepositoryOptions,
   ): Promise<void> {
     if (req.method !== 'POST') return send(res, 405, 'method not allowed');
-    if (!writable(req)) return send(res, 403, 'forbidden');
+    if (!writable(req)) return refused(req, res);
     let pair: Pair;
     try {
       pair = parsePair(await readBody(req, MAX_BODY_BYTES));
@@ -372,7 +376,7 @@ export function serverSites(
     repo: RepositoryOptions,
   ): Promise<void> {
     if (req.method !== 'POST') return send(res, 405, 'method not allowed');
-    if (!writable(req)) return send(res, 403, 'forbidden');
+    if (!writable(req)) return refused(req, res);
     let pair: Pair;
     try {
       pair = parsePair(await readBody(req, MAX_BODY_BYTES));
@@ -391,7 +395,7 @@ export function serverSites(
     site: Site,
   ): Promise<void> {
     if (req.method !== 'POST') return send(res, 405, 'method not allowed');
-    if (!writable(req)) return send(res, 403, 'forbidden');
+    if (!writable(req)) return refused(req, res);
     let review: LocalReview;
     try {
       review = parseLocalReview(await readBody(req, MAX_BODY_BYTES), site.graph, site.allowed);
@@ -422,7 +426,7 @@ export function serverSites(
     const target = site?.review;
     if (!site || !target) return send(res, 404, 'reviews are posted from symbiote pr');
     if (req.method !== 'POST') return send(res, 405, 'method not allowed');
-    if (!writable(req)) return send(res, 403, 'forbidden');
+    if (!writable(req)) return refused(req, res);
 
     let review: Review;
     try {
@@ -447,7 +451,7 @@ export function serverSites(
     const { open } = options;
     if (!open || !site) return send(res, 404, 'files open from symbiote view and symbiote pr');
     if (req.method !== 'POST') return send(res, 405, 'method not allowed');
-    if (!writable(req)) return send(res, 403, 'forbidden');
+    if (!writable(req)) return refused(req, res);
     let target: ReturnType<typeof parseOpen>;
     try {
       const text = await readBody(req, MAX_BODY_BYTES);
@@ -488,7 +492,7 @@ export function serverSites(
       return send(res, 200, JSON.stringify(await store.read(name as StateName)), TYPES['.json']);
     }
     if (req.method !== 'PUT') return send(res, 405, 'method not allowed');
-    if (!writable(req)) return send(res, 403, 'forbidden');
+    if (!writable(req)) return refused(req, res);
     let value: unknown;
     try {
       value = JSON.parse(await readBody(req, MAX_BODY_BYTES));

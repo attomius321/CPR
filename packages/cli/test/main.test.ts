@@ -173,9 +173,12 @@ describe('symbiote diff', () => {
       expect(result.code).toBe(0);
       expect(result.stdout).toContain('4 files · 3 symbols changed · 1 findings');
       // The pair's own page, compared from the merge-base; the commits page is at `/`.
+      // With an open token in its fragment (SC1, decision 930).
       expect(result.opened).toEqual([
         expect.stringMatching(
-          new RegExp(`^http://127\\.0\\.0\\.1:\\d+/diff/${shas.root}\\.\\.${shas.feature}/$`),
+          new RegExp(
+            `^http://127\\.0\\.0\\.1:\\d+/diff/${shas.root}\\.\\.${shas.feature}/#k=[\\w-]{43}$`,
+          ),
         ),
       ]);
       expect(seen['']).toBe('200 <!doctype html><title>viewer</title>');
@@ -200,9 +203,12 @@ describe('symbiote diff', () => {
         page = (await (await fetch(new URL('api/history', url))).json()) as typeof page;
       });
       expect(result.code).toBe(0);
-      expect(url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/$/);
+      // The printed address and the opened one, each with an open token of its own (SC1).
+      expect(url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/#k=[\w-]{43}$/);
       expect(result.stdout).toBe(`Symbiote viewer: ${url}  (Ctrl+C to stop)\n`);
-      expect(result.opened).toEqual([url]);
+      expect(result.opened).toEqual([expect.stringMatching(/#k=[\w-]{43}$/)]);
+      expect(result.opened[0]?.replace(/#.*/, '')).toBe(url.replace(/#.*/, ''));
+      expect(result.opened[0]).not.toBe(url);
       // Every branch: main and feature, each above the root they forked from.
       expect(page).toMatchObject({ branch: 'main', done: true });
       expect(page?.commits.map((c) => c.subject).sort()).toEqual([
@@ -246,7 +252,13 @@ describe('symbiote diff', () => {
         code = await bridged;
       });
       expect(result.code).toBe(0);
-      expect(record).toMatchObject({ url, pid: process.pid, root: expect.any(String) as unknown });
+      // Its bridge key beside its address (SC1), in a file the user's alone.
+      expect(record).toMatchObject({
+        url: url.replace(/#.*/, ''),
+        pid: process.pid,
+        root: expect.any(String) as unknown,
+        key: expect.stringMatching(/^[\w-]{43}$/) as unknown,
+      });
       expect(code).toBe(0);
       const tools = (JSON.parse(answer) as { result: { tools: { name: string }[] } }).result.tools;
       expect(tools.map((t) => t.name)).toContain('overview');
@@ -275,7 +287,9 @@ describe('symbiote diff', () => {
       expect(result.code).toBe(0);
       expect(files).toEqual([`${process.pid}.json`]);
       expect(record).toEqual({
-        url,
+        url: url.replace(/#.*/, ''),
+        // The nexus asks a frame's open token with it (SC1).
+        key: expect.stringMatching(/^[\w-]{43}$/) as unknown,
         pid: process.pid,
         root: repo.root,
         name: basename(repo.root),
@@ -359,7 +373,7 @@ describe('symbiote diff', () => {
         /\nSymbiote's window is open: close it, or Ctrl\+C, to stop\n$/,
       );
       expect(result.asked).toEqual([
-        [expect.stringMatching(/^http:\/\/127\.0\.0\.1:\d+\/$/), basename(repo.root)],
+        [expect.stringMatching(/^http:\/\/127\.0\.0\.1:\d+\/#k=[\w-]{43}$/), basename(repo.root)],
       ]);
     });
 
@@ -367,7 +381,7 @@ describe('symbiote diff', () => {
       const shown = window(new Promise(() => undefined));
       const result = await inApp(['view', 'main', 'feature'], shown, true);
       expect(result.code).toBe(0);
-      expect(result.asked[0]?.[0]).toMatch(/\/diff\/[0-9a-f]+\.\.[0-9a-f]+\/$/);
+      expect(result.asked[0]?.[0]).toMatch(/\/diff\/[0-9a-f]+\.\.[0-9a-f]+\/#k=[\w-]{43}$/);
       expect(shown.close).toHaveBeenCalledOnce();
     });
 
@@ -375,7 +389,9 @@ describe('symbiote diff', () => {
       const browser = await inApp(['view', '--browser'], window(Promise.resolve()), true);
       expect(browser.asked).toEqual([]);
       expect(browser.stdout).not.toContain("Symbiote's window");
-      expect(browser.opened).toEqual([expect.stringMatching(/^http:\/\/127\.0\.0\.1:\d+\/$/)]);
+      expect(browser.opened).toEqual([
+        expect.stringMatching(/^http:\/\/127\.0\.0\.1:\d+\/#k=[\w-]{43}$/),
+      ]);
       const none = await inApp(['view'], null, true);
       expect(none.opened).toHaveLength(1);
       expect(none.stderr).toBe('');
@@ -456,6 +472,15 @@ describe('symbiote view: Hive mode, per repository', () => {
   });
 
   const urlOf = (stdout: () => string) => /Symbiote viewer: (\S+)/.exec(stdout())?.[1] ?? '';
+  /** The page key, traded for the printed address's token as the page does (SC1). */
+  const keyOf = async (printed: string) => {
+    const res = await fetch(new URL('api/session', printed), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+      body: JSON.stringify({ k: new URL(printed).hash.slice('#k='.length) }),
+    });
+    return ((await res.json()) as { key: string }).key;
+  };
   const page = async (url: string) => (await fetch(url)).text();
   const hive = async (url: string) =>
     ((await (await fetch(new URL('api/hive', url))).json()) as { on: boolean }).on;
@@ -472,7 +497,11 @@ describe('symbiote view: Hive mode, per repository', () => {
         seen.before = [await page(oneUrl), await page(otherUrl)];
         const turned = await fetch(new URL('api/hive', oneUrl), {
           method: 'POST',
-          headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+          headers: {
+            'content-type': 'application/json',
+            'x-symbiote': '1',
+            'x-symbiote-key': await keyOf(oneUrl),
+          },
           body: '{"on":true}',
         });
         seen.turned = turned.status;

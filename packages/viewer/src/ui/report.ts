@@ -2,7 +2,7 @@
 // writes them as `viewer` lines beside its own. A page throwing in a loop must not flood it: one
 // error is sent once per `REPEAT_MS` with how many times it came, and `PER_MINUTE` at most.
 
-import { WRITE_HEADERS } from './http.js';
+import { write } from './http.js';
 
 /** What `POST /api/logs` takes (`parsePageError` in the CLI). */
 export interface PageError {
@@ -100,9 +100,7 @@ export function reportPageErrors(): (error: unknown, componentStack?: string) =>
   const report = reporter({
     send: (error) => {
       // Best effort: a server that is gone cannot be told, and that must not be one more error.
-      void fetch('/api/logs', {
-        method: 'POST',
-        headers: WRITE_HEADERS,
+      void write('/api/logs', {
         body: JSON.stringify(error),
         keepalive: true,
       }).catch(() => undefined);

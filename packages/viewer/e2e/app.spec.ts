@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { _electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
-import { serveCommits, serveWorkspaces, type RunningCommits } from './symbiote.js';
+import { serveCommits, serveWorkspaces, type Opens, type RunningCommits } from './symbiote.js';
 
 // Symbiote's desktop app (N1): the window `symbiote view` opens on its server. It needs Electron's
 // binary (`pnpm app:setup`) and Xvfb: the app's windows open on a display of the specs' own, never
@@ -107,8 +107,17 @@ test.afterEach(async () => {
   expect(errors).toEqual([]);
 });
 
-/** The app on `url`: its first window. */
-async function launch(url = symbiote.url): Promise<{ app: ElectronApplication; page: Page }> {
+/**
+ * An address Symbiote's window opens a server at (SC1): `path` on it, with a fresh open token in
+ * its fragment, as `symbiote view` hands the window one.
+ */
+async function addressOf(served: Opens, path = ''): Promise<string> {
+  return (await served.freshAddress()).replace('#', `${path}#`);
+}
+
+/** The app on `url` (by default a fresh address of the specs' server): its first window. */
+async function launch(url?: string): Promise<{ app: ElectronApplication; page: Page }> {
+  url ??= await addressOf(symbiote);
   const app = await _electron.launch({
     executablePath: electron as string,
     args: [desktop, '--url', url, '--title', 'repo'],
@@ -190,8 +199,16 @@ const style = (page: Page, selector: string, property: string) =>
 
 test('opens the server in a window of its own: no menu bar, the page’s title', async () => {
   const { app, page } = await launch();
-  // `/` opens the Overview (V91, decision 848), at its own address.
+  // `/` opens the Overview (V91, decision 848), at its own address: the open token gone from it.
   expect(page.url()).toBe(`${symbiote.url}overview`);
+  // Traded for the page key (SC1), kept in the window's storage: its writes are the page's.
+  expect(
+    await page.evaluate(async () => {
+      const key = localStorage.getItem('symbiote.viewer.key') ?? '';
+      const res = await fetch('/api/session', { headers: { 'x-symbiote-key': key } });
+      return (await res.json()) as unknown;
+    }),
+  ).toEqual({ page: true });
   // Shown at `ready-to-show`, Chromium's first paint: after the page's parts are laid out, and on a
   // cold start that falls back to software GL (a CI runner) later than that (fix-ci-green).
   await expect
@@ -277,7 +294,7 @@ test('remembers the window, the zoom and the page’s choices for the next run',
   // page's own scripts read them.
   const other = await serveCommits();
   try {
-    const second = await launch(other.url);
+    const second = await launch(await addressOf(other));
     expect(await second.page.evaluate(() => document.documentElement.dataset.theme)).toBe('light');
     expect(await zoomLevel(second.app)).toBe(1);
     expect(
@@ -298,7 +315,7 @@ test('the first-time intro: with sound at once, under the title bar, in the wind
     XDG_CONFIG_HOME: join(home, '.config'),
   });
   try {
-    const { app, page } = await launch(first.url);
+    const { app, page } = await launch(await addressOf(first));
     const intro = page.locator('.intro');
     await expect(intro.locator('canvas')).toBeVisible();
     // Sound with no click or key: the app lets its own window play audio.
@@ -386,7 +403,7 @@ test('symbiote view opens its window, and ends when the window closes', async ()
 test.describe('the title bar', () => {
   test('back and forward, the page’s title, the OS’s buttons; the page’s own parts under it', async () => {
     // On Git, whose branches are the page's own parts.
-    const { page } = await launch(`${symbiote.url}git`);
+    const { page } = await launch(await addressOf(symbiote, 'git'));
     const bar = page.locator('.titlebar');
     await expect(bar).toBeVisible();
     await expect(bar.locator('.titlebar-title')).toHaveText(/^Git · .+ — Symbiote$/);
@@ -495,7 +512,7 @@ test.describe('the title bar', () => {
   test('a workspace: its tabs in their card, Changes in its head, as in a browser', async () => {
     const served = await serveWorkspaces();
     try {
-      const { page } = await launch(served.url);
+      const { page } = await launch(await addressOf(served));
       // A workspace started opens in the main area.
       await page.getByRole('link', { name: 'Start a workspace' }).click();
       const starting = page.getByRole('region', { name: 'Start a workspace' });
@@ -603,7 +620,7 @@ test.describe('what waits for you, on the taskbar (N2)', () => {
   test('an amber dot while an agent waits; a blink until its window has the focus', async () => {
     const served = await serveWorkspaces();
     try {
-      const { app, page } = await launch(served.url);
+      const { app, page } = await launch(await addressOf(served));
       const id = await app.evaluate(({ BrowserWindow }) => {
         const handle = BrowserWindow.getAllWindows()[0]?.getNativeWindowHandle();
         return `0x${(handle?.readUInt32LE(0) ?? 0).toString(16)}`;

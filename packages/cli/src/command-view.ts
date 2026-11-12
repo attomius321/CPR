@@ -55,6 +55,7 @@ import { workspaces } from './workspaces.js';
 import { symbioteFolder } from './workspace-record.js';
 import { findClaude } from './claude-code.js';
 import { removeViewRecord, viewFile, writeViewRecord } from './mcp-bridge.js';
+import { runKeys } from './server-keys.js';
 import { type CliContext, CLI_SCRIPT, version } from './command-context.js';
 import {
   UsageError,
@@ -67,6 +68,7 @@ import {
 import {
   analyze,
   showUntilExit,
+  pageOpener,
   changeFiles,
   introOf,
   statsLine,
@@ -111,7 +113,10 @@ function libraryOf(ctx: CliContext): LibraryService {
 }
 
 /** `symbiote view [<base> [head]]`: the repository's pages served until Ctrl+C; its exit code. */
-export async function view(argv: string[], ctx: CliContext): Promise<number> {
+export async function view(argv: string[], given: CliContext): Promise<number> {
+  // The run's secrets (SC1): the page's, the bridge's (in the records below), Nucleus's.
+  const { keys, env } = runKeys(given.env);
+  const ctx: CliContext = { ...given, env };
   const { values, positionals } = parse(
     { args: argv, allowPositionals: true, options: { ...ANALYSIS_OPTIONS, ...SERVE_OPTIONS } },
     VIEW_HELP,
@@ -249,7 +254,10 @@ export async function view(argv: string[], ctx: CliContext): Promise<number> {
   // The branches hidden from Git's graph (decision 645): the listing, its search and the status's
   // version all leave them out, so a version read by one fits the others.
   const hidden = repositoryHiddenBranches(repo, cacheDir);
+  const opener = pageOpener(ctx, keys);
   const server = await startViewServer({
+    keys,
+    openAgain: () => opener.again(),
     port,
     viewerDir: viewerDir(ctx),
     repository: {
@@ -309,6 +317,8 @@ export async function view(argv: string[], ctx: CliContext): Promise<number> {
         env: ctx.env,
         terminals,
         hive: () => hive.on(),
+        // Its key, in its bridge's environment alone (SC1, decision 931).
+        nucleusKey: keys.nucleus,
       }),
       skills: skillsService(repo, {
         codexInstalled: async () => (await codexOf()) !== null,
@@ -375,6 +385,7 @@ export async function view(argv: string[], ctx: CliContext): Promise<number> {
     pid: process.pid,
     root: repo.root,
     started,
+    key: keys.bridge,
   });
   // Where Symbiote nexus finds this server (NX1): a record of its own, beside the others'; where
   // agents' hooks find it too (V94c), by the records' folder it serves.
@@ -385,6 +396,8 @@ export async function view(argv: string[], ctx: CliContext): Promise<number> {
     name: basename(repo.root),
     started,
     symbiote: symbioteFolder(await reviewPlace(repo, cacheDir)),
+    // The nexus asks for a frame's open token with it (SC1): never served by the nexus.
+    key: keys.bridge,
   });
 
   let url = server.url;
@@ -408,11 +421,12 @@ export async function view(argv: string[], ctx: CliContext): Promise<number> {
     { version, repo: repo.root, url, node: process.version, platform: process.platform },
     'view started',
   );
-  ctx.stdout(`Symbiote viewer: ${url}  (Ctrl+C to stop)\n`);
+  opener.at(url);
+  ctx.stdout(`Symbiote viewer: ${opener.address()}  (Ctrl+C to stop)\n`);
   for (const warning of first?.analysis.warnings ?? []) ctx.stderr(`warning: ${warning}\n`);
 
   try {
-    await showUntilExit(url, basename(repo.root), values, ctx);
+    await showUntilExit(opener, basename(repo.root), values, ctx);
   } finally {
     await removeViewRecord(viewRecord, process.pid);
     await withdraw(cacheDir, process.pid);

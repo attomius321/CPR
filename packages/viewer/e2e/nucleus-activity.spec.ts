@@ -51,6 +51,8 @@ const mcp = (name: string, args: Record<string, unknown>) =>
       'content-type': 'application/json',
       'x-symbiote': '1',
       'x-symbiote-caller': 'nucleus',
+      // Its keys (SC1): the bridge's, and Nucleus's own.
+      ...symbiote.nucleusBridge(),
     },
     body: JSON.stringify({
       jsonrpc: '2.0',

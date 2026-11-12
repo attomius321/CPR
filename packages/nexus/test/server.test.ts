@@ -89,6 +89,8 @@ const scanning: Scanning = {
   },
 };
 const nexusParts = {
+  // A frame's address (SC1): a running Symbiote's with a token; none at an address that runs none.
+  frameAddress: (url: string) => Promise.resolve(url === ky.url ? `${url}#k=frame-token` : null),
   repositories: () => Promise.resolve(known),
   checkouts: (path: string) => Promise.resolve(path === '/home/me/ky' ? checkouts : null),
   scanning,
@@ -399,6 +401,21 @@ describe('the nexus server: starting and stopping a Symbiote (NX2)', () => {
       body: JSON.stringify({ error: 'No Symbiote runs in /home/me/ky' }),
     });
     expect(asked).toEqual(['stop /home/me/ky', 'stop /home/me/ky']);
+  });
+
+  it("gives a frame a running Symbiote's address with its open token (SC1), as a write", async () => {
+    expect(await post('/api/symbiotes/open', { url: ky.url })).toMatchObject({
+      status: 200,
+      body: JSON.stringify({ url: `${ky.url}#k=frame-token` }),
+    });
+    expect(await post('/api/symbiotes/open', { url: 'http://127.0.0.1:1/' })).toMatchObject({
+      status: 404,
+    });
+    expect((await post('/api/symbiotes/open', {})).status).toBe(400);
+    expect((await post('/api/symbiotes/open', { url: ky.url }, { 'x-symbiote': '' })).status).toBe(
+      403,
+    );
+    expect((await get('/api/symbiotes/open')).status).toBe(405);
   });
 
   it('takes writes only from its own page: JSON, the custom header, its own origin', async () => {

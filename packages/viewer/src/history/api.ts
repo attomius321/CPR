@@ -9,11 +9,10 @@ import type {
   HistoryShape,
 } from '@symbiote/core';
 import { graphLoaded, type Loaded, type Pair } from './commits.js';
+import { write } from '../ui/http.js';
 
 /** History's API and the diffs it starts live at the server's root (`symbiote view`). */
 const API_ROOT = '/';
-
-const WRITE_HEADERS = { 'content-type': 'application/json', 'x-symbiote': '1' };
 
 /** The history changed since the page listed it (a branch moved): it must list it again. */
 export class StaleHistory extends Error {}
@@ -72,9 +71,7 @@ export async function fetchJson<T>(path: string): Promise<T> {
 /** Checks out a target; resolves with where HEAD is, or rejects with git's (or Symbiote's) words.
  * */
 export async function postCheckout(target: CheckoutTarget): Promise<CheckoutResult> {
-  const response = await fetch(`${API_ROOT}api/checkout`, {
-    method: 'POST',
-    headers: WRITE_HEADERS,
+  const response = await write(`${API_ROOT}api/checkout`, {
     body: JSON.stringify(target),
   });
   if (response.ok) return (await response.json()) as CheckoutResult;
@@ -90,9 +87,7 @@ export async function postCheckout(target: CheckoutTarget): Promise<CheckoutResu
 
 /** Starts analyzing a pair (or finds it analyzed); resolves with its page's URL. */
 export async function startDiff(pair: Pair): Promise<string> {
-  const response = await fetch(`${API_ROOT}api/diffs`, {
-    method: 'POST',
-    headers: WRITE_HEADERS,
+  const response = await write(`${API_ROOT}api/diffs`, {
     body: JSON.stringify(pair),
   });
   if (!response.ok) throw new Error(await response.text());
@@ -101,9 +96,7 @@ export async function startDiff(pair: Pair): Promise<string> {
 
 /** Starts reviewing a branch (V15); resolves with its page's URL, or rejects with why not. */
 export async function startReview(ref: string): Promise<string> {
-  const response = await fetch(`${API_ROOT}api/reviews`, {
-    method: 'POST',
-    headers: WRITE_HEADERS,
+  const response = await write(`${API_ROOT}api/reviews`, {
     body: JSON.stringify({ ref }),
   });
   if (!response.ok) throw new Error(await response.text());
@@ -111,9 +104,7 @@ export async function startReview(ref: string): Promise<string> {
 }
 
 export async function stopDiff(pair: Pair): Promise<void> {
-  await fetch(`${API_ROOT}api/diffs/stop`, {
-    method: 'POST',
-    headers: WRITE_HEADERS,
+  await write(`${API_ROOT}api/diffs/stop`, {
     body: JSON.stringify(pair),
   });
 }

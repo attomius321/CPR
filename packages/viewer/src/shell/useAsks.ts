@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { McpAsk, McpAsks } from '@symbiote/core';
-import { postJson } from '../ui/http.js';
+import { pageHeaders, postJson } from '../ui/http.js';
 import { readsHidden, reloadWorkspaces } from '../workspaces/useWorkspaces.js';
 import { pushed, type Parts, type Status } from './events.js';
 
@@ -29,7 +29,8 @@ function set(next: McpAsk[]): void {
 
 async function readAsks(): Promise<void> {
   try {
-    const response = await fetch('/api/mcp/asks');
+    // The page's alone (SC1): the Confirm's asks are read with its key.
+    const response = await fetch('/api/mcp/asks', { headers: await pageHeaders() });
     if (response.status === 404) none = true;
     if (response.ok) set(((await response.json()) as McpAsks).asks);
   } catch {
@@ -47,10 +48,13 @@ function schedule(): void {
   }, ASKS_MS);
 }
 
-/** The asks as the stream sends them (V94a); with no stream, read as before. */
+/**
+ * The asks read when the stream says they changed (V94a; SC1: it says no more, the asks are read
+ * with the page's key); with no stream, read as before.
+ */
 function onPushed(changed: Parts, status: Status): void {
   if (status === 'unavailable') void readAsks().then(schedule);
-  else if (changed.asks) set(changed.asks.asks);
+  else if (changed.asks) void readAsks();
 }
 let unsubscribe: (() => void) | null = null;
 

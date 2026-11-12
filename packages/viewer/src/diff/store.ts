@@ -1,6 +1,7 @@
 import type { Graph } from '@symbiote/core';
 import type { ReviewDraft } from './comments.js';
 import { reviewKey, type Marks } from './review.js';
+import { write } from '../ui/http.js';
 
 /** What the viewer keeps between sessions. */
 export type StateName = 'review' | 'drafts';
@@ -33,9 +34,8 @@ export function serverStore(): Store {
     const body = JSON.stringify(pending.get(name));
     pending.delete(name);
     const put = () =>
-      fetch(`./api/state/${name}`, {
+      write(`./api/state/${name}`, {
         method: 'PUT',
-        headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
         body,
         keepalive,
       }).catch(() => undefined);

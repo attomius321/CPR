@@ -164,7 +164,20 @@ test.describe('Symbiote nexus', () => {
     cleanup.push(() => again.stop());
     await expect(tab(page, /^gamma/)).toHaveText('gammamain', { timeout: 4000 });
     await expect(frameOf(page, 'gamma').locator('.overview')).toBeVisible();
-    await expect(page.locator('iframe[title="gamma"]')).toHaveAttribute('src', again.url);
+    const gammaFrame = page.locator('iframe[title="gamma"]');
+    await expect(gammaFrame).toHaveAttribute('data-url', again.url);
+    // Framed with an open token (SC1), traded by the framed page for its key: it writes.
+    await expect(gammaFrame).toHaveAttribute('src', new RegExp(`^${again.url}#k=[\\w-]{43}$`));
+    const framed = page.frame({ url: (url) => url.href.startsWith(again.url) });
+    await expect
+      .poll(() =>
+        framed?.evaluate(async () => {
+          const key = localStorage.getItem('symbiote.viewer.key') ?? '';
+          const res = await fetch('/api/session', { headers: { 'x-symbiote-key': key } });
+          return ((await res.json()) as { page: boolean }).page;
+        }),
+      )
+      .toBe(true);
 
     // alpha, never opened, stops: its tab just leaves.
     await alpha.stop();

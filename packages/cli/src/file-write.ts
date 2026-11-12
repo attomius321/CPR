@@ -16,14 +16,19 @@ export function onWritten(listener: (path: string) => void): () => void {
 
 /**
  * Writes `data` to `path` whole: to a hidden temporary file of its own beside it, then renamed
- * over it; its folder made first. Of two writes at once, the last renamed is the file.
+ * over it; its folder made first. Of two writes at once, the last renamed is the file. `mode`: a
+ * file holding a secret is the user's alone (0600, SC1).
  */
-export async function writeFileWhole(path: string, data: string | Uint8Array): Promise<void> {
-  await writeWhole(path, data);
+export async function writeFileWhole(
+  path: string,
+  data: string | Uint8Array,
+  mode?: number,
+): Promise<void> {
+  await writeWhole(path, data, mode);
   for (const listener of written) listener(path);
 }
 
-async function writeWhole(path: string, data: string | Uint8Array): Promise<void> {
+async function writeWhole(path: string, data: string | Uint8Array, mode?: number): Promise<void> {
   const folder = dirname(path);
   await mkdir(folder, { recursive: true });
   const temp = join(
@@ -31,7 +36,7 @@ async function writeWhole(path: string, data: string | Uint8Array): Promise<void
     `.${basename(path)}.${process.pid}.${randomBytes(6).toString('hex')}.tmp`,
   );
   try {
-    await writeFile(temp, data);
+    await writeFile(temp, data, mode === undefined ? undefined : { mode });
     await rename(temp, path);
   } catch (error) {
     await rm(temp, { force: true });

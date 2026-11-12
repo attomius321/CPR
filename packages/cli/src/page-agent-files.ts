@@ -6,6 +6,7 @@ import { MODEL_ID } from '@symbiote/core';
 import { prepareSymbioteFolder, type ReviewPlace } from './reviews.js';
 import { shellWord } from './claude-code.js';
 import { writeFileWhole } from './file-write.js';
+import { mcpFolder } from './mcp-bridge.js';
 import type { PageAgentRecord, ReadRecord, PageAgentContext } from './page-agent-context.js';
 import { isLevel } from './page-agent-levels.js';
 
@@ -68,9 +69,21 @@ export function pageAgentSettings(
   return `${JSON.stringify({ ...more, hooks }, null, 2)}\n`;
 }
 
-/** A page agent's MCP servers' file for Claude Code (MC1): Symbiote's, through its bridge. */
-export function symbioteMcpConfig(server: { command: string; args: readonly string[] }): string {
-  const symbiote = { type: 'stdio', command: server.command, args: server.args };
+/**
+ * A page agent's MCP servers' file for Claude Code (MC1): Symbiote's, through its bridge, with
+ * Nucleus's key in its environment (SC1).
+ */
+export function symbioteMcpConfig(server: {
+  command: string;
+  args: readonly string[];
+  env?: Readonly<Record<string, string>>;
+}): string {
+  const symbiote = {
+    type: 'stdio',
+    command: server.command,
+    args: server.args,
+    ...(server.env ? { env: server.env } : {}),
+  };
   return `${JSON.stringify({ mcpServers: { symbiote } }, null, 2)}\n`;
 }
 
@@ -82,6 +95,8 @@ export async function put(where: ReviewPlace, path: string, text: string): Promi
 
 /** The page agent's files. */
 export function pageAgentFiles({
+  cacheDir,
+  repo,
   folder,
   formerPaths,
   gate,
@@ -92,7 +107,16 @@ export function pageAgentFiles({
   symbioteServer,
 }: Pick<
   PageAgentContext,
-  'folder' | 'formerPaths' | 'gate' | 'node' | 'recordPath' | 'root' | 'spec' | 'symbioteServer'
+  | 'cacheDir'
+  | 'repo'
+  | 'folder'
+  | 'formerPaths'
+  | 'gate'
+  | 'node'
+  | 'recordPath'
+  | 'root'
+  | 'spec'
+  | 'symbioteServer'
 >) {
   /** Its record; while there is none, the one under its former name (decision 591). */
   async function readRecord(where: ReviewPlace): Promise<ReadRecord | null> {
@@ -159,13 +183,17 @@ export function pageAgentFiles({
 
   /**
    * Its MCP servers' file for Claude Code (MC1), written as the settings file is, before a start
-   * and each wake; its path, or undefined for an agent without Symbiote's server.
+   * and each wake; its path, or undefined for an agent without Symbiote's server. In the cache,
+   * the user's alone (SC1): it holds Nucleus's key; the one `symbiote/` held before goes.
    */
   async function mcpFile(where: ReviewPlace): Promise<string | undefined> {
     if (!spec.mcp || !symbioteServer) return undefined;
-    const path = join(folder(where), spec.mcp.file);
+    await rm(join(folder(where), spec.mcp.file), { force: true });
+    const path = join(mcpFolder(cacheDir, repo.commonDir), spec.mcp.file);
     const text = symbioteMcpConfig(symbioteServer);
-    if ((await readFile(path, 'utf8').catch(() => null)) !== text) await put(where, path, text);
+    if ((await readFile(path, 'utf8').catch(() => null)) !== text) {
+      await writeFileWhole(path, text, 0o600);
+    }
     return path;
   }
 

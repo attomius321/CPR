@@ -29,6 +29,7 @@ import {
   outsideAddress,
   parseAppArgs,
   staysInWindow,
+  withoutFragment,
 } from './policy.js';
 import { configDir, placeWindow, readChoices, readState, writeState, type Area } from './state.js';
 
@@ -148,12 +149,13 @@ function openServer(url: string, title: string): void {
   contents.on('did-finish-load', () => {
     if (shown) return;
     shown = true;
-    process.stdout.write(`Symbiote window: ${url}\n`);
+    process.stdout.write(`Symbiote window: ${withoutFragment(url)}\n`);
   });
   contents.on('did-fail-load', (_event, code, description, failed, isMainFrame) => {
     if (shown || !isMainFrame) return;
-    log.error({ url: failed, code, description }, 'page did not load');
-    process.stderr.write(`symbiote app: could not load ${failed}: ${description} (${code})\n`);
+    const at = withoutFragment(failed);
+    log.error({ url: at, code, description }, 'page did not load');
+    process.stderr.write(`symbiote app: could not load ${at}: ${description} (${code})\n`);
     app.exit(1);
   });
   show(window, url);
@@ -194,7 +196,7 @@ function openRepo(repo: string, into?: BrowserWindow): void {
       return;
     }
     entry.server = started.child;
-    log.info({ repo, url: started.url, pid: started.child.pid }, 'server started');
+    log.info({ repo, url: withoutFragment(started.url), pid: started.child.pid }, 'server started');
     started.child.once('exit', (code, signal) => {
       if (window.isDestroyed() || entry.server !== started.child) return;
       delete entry.server;
@@ -312,10 +314,11 @@ function createWindow(title: string): BrowserWindow {
   const home = () => windows.get(contents)?.home ?? startUrl;
   // The page's own process (LG1): its errors reach the server's lines, its death only these.
   contents.on('render-process-gone', (_event, { reason, exitCode }) => {
-    log.error({ url: contents.getURL(), reason, exitCode }, 'page process gone');
+    log.error({ url: withoutFragment(contents.getURL()), reason, exitCode }, 'page process gone');
   });
-  contents.on('unresponsive', () => log.warn({ url: contents.getURL() }, 'page unresponsive'));
-  contents.on('responsive', () => log.info({ url: contents.getURL() }, 'page responsive again'));
+  const at = () => withoutFragment(contents.getURL());
+  contents.on('unresponsive', () => log.warn({ url: at() }, 'page unresponsive'));
+  contents.on('responsive', () => log.info({ url: at() }, 'page responsive again'));
   contents.on('preload-error', (_event, path, err) => log.error({ path, err }, 'preload failed'));
 
   window.once('ready-to-show', () => {

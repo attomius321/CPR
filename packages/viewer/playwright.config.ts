@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
 import { defineConfig } from '@playwright/test';
+import { E2E_PAGE_KEY } from './e2e/page-key.js';
 
 // Containers with a preinstalled Chromium (whose revision may not match this Playwright) use it
 // directly; CI installs Playwright's own with `playwright install chromium`.
@@ -20,6 +21,8 @@ export default defineConfig({
   reporter: process.env.CI ? 'list' : 'line',
   use: {
     viewport: { width: 1440, height: 900 },
+    // Every page writes as the page Symbiote opened (SC1): the harness's servers take this key.
+    extraHTTPHeaders: { 'x-symbiote-key': E2E_PAGE_KEY },
     launchOptions: existsSync(preinstalled) ? { executablePath: preinstalled } : {},
   },
 });

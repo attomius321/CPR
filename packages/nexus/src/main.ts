@@ -15,6 +15,7 @@ import { pins, PINS_FILE } from './pins.js';
 import { knownRepositories, scanSummary, scanTree } from './repositories.js';
 import { scanner } from './scan.js';
 import { startNexusServer } from './server.js';
+import { frameAddress } from './frame-address.js';
 import { starter } from './start.js';
 import { liveSymbiotes, readStatus, type Probe } from './symbiotes.js';
 
@@ -173,6 +174,11 @@ export async function run(argv: string[], ctx: NexusContext): Promise<number> {
         };
       },
       checkouts: (path) => checkoutsOf(path, { leaveOut: [cache] }),
+      // A frame's address (SC1): only a live Symbiote's, with a token its record lets the nexus ask.
+      frameAddress: async (url) => {
+        const symbiote = (await live()).find((running) => running.url === url);
+        return symbiote ? frameAddress(cache, symbiote) : null;
+      },
       // Home is scanned at the start and on the button, never on a read (decision 925).
       scanning: { again: scanned, tree: async () => scanTree(await scans.current()) },
       pageDir: PAGE_DIR,

@@ -116,6 +116,11 @@ export interface PageAgentOptions {
   terminals?: Terminals;
   /** Whether Hive mode is on (V82): a spec with `hiveName` is called so meanwhile (decision 687). */
   hive?: () => Promise<boolean>;
+  /**
+   * Nucleus's key (SC1, decision 931): set as `SYMBIOTE_NUCLEUS_KEY` in its MCP server's
+   * environment alone, so its bridge's calls are Nucleus's; none, and they are an agent's.
+   */
+  nucleusKey?: string;
 }
 
 /**
@@ -137,6 +142,7 @@ export function pageAgent(
     bridge,
     terminals,
     hive,
+    nucleusKey,
   }: PageAgentOptions,
 ): PageAgent {
   const { name } = spec;
@@ -149,6 +155,7 @@ export function pageAgent(
       ? {
           command: node,
           args: [bridge, '--as', spec.mcp.as, '--view', viewFile(cacheDir, repo.commonDir)],
+          ...(nucleusKey ? { env: { SYMBIOTE_NUCLEUS_KEY: nucleusKey } } : {}),
         }
       : undefined;
   /**

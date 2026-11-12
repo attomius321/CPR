@@ -17,9 +17,9 @@ import type {
   SyncState,
   WorkingChanges,
 } from '@symbiote/core';
+import { write as post } from '../ui/http.js';
 
 const API = '/api/git';
-const WRITE_HEADERS = { 'content-type': 'application/json', 'x-symbiote': '1' };
 
 /** git (or Symbiote) refused a write; `only`: the commits an unmerged branch alone holds. */
 export class GitRefusal extends Error {
@@ -94,9 +94,7 @@ export async function findRows(
 
 /** A write (`POST /api/git/<kind>`): its answer, or a `GitRefusal` in git's words. */
 async function write<T>(kind: string, body: object = {}): Promise<T> {
-  const response = await fetch(`${API}/${kind}`, {
-    method: 'POST',
-    headers: WRITE_HEADERS,
+  const response = await post(`${API}/${kind}`, {
     body: JSON.stringify(body),
   });
   if (response.ok) return (await response.json()) as T;

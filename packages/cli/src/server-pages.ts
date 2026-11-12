@@ -75,7 +75,7 @@ const MAX_ISSUE_SEARCH = 200;
 /** The intro seen, and a file of the Monitor's map opened. */
 export function serverPages(
   { options }: { options: Pick<ViewServerOptions, 'open'> },
-  { writable, written }: Pick<ServerHttp, 'writable' | 'written'>,
+  { writable, refused, written }: Pick<ServerHttp, 'writable' | 'refused' | 'written'>,
 ) {
   /** `GET /api/intro`: `{ show }`; `POST`: the intro seen (V39). */
   async function introApi(
@@ -85,7 +85,7 @@ export function serverPages(
   ): Promise<void> {
     if (req.method === 'GET') return json(res, 200, { show: !(await intro.seen()) });
     if (req.method !== 'POST') return send(res, 405, 'method not allowed');
-    if (!writable(req)) return send(res, 403, 'forbidden');
+    if (!writable(req)) return refused(req, res);
     await intro.markSeen();
     res.writeHead(204, { 'cache-control': 'no-store' });
     res.end();

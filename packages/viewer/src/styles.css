@@ -20,6 +20,7 @@
 @import './ui/loading.css';
 @import './ui/Help.css';
 @import './ui/Tooltip.css';
+@import './ui/KeyNotice.css';
 @import './ui/MoreActions.css';
 @import './ui/ground.css';
 @import './graph/SymbolNode.css';

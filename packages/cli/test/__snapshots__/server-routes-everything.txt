@@ -69,7 +69,7 @@ GET /api/workspaces/findings → 200 {"graphs":[]}
 GET /api/diffs → 405 method not allowed
 GET /api/diffs/stop → 405 method not allowed
 GET /api/mcp → 405 method not allowed
-GET /api/mcp/asks → 200 {"asks":[]}
+GET /api/mcp/asks → 403 {"error":"Open from Symbiote to write or answer: its window, the nexus, or the address symbiote view
 GET /api/mcp/answer → 405 method not allowed
 GET /api/mcp/nope → 404 not found
 GET /api/nucleus/start-confirm → 200 {"withoutConfirm":false,"own":false,"hive":false}

@@ -4,15 +4,15 @@
 import { useEffect, useRef, useState } from 'react';
 import type { WorkspaceShell, WorkspaceShells } from '@symbiote/core';
 import { lastTerminalSize, toTerminal } from './AgentTerminal.js';
-import { postJson, serverWords } from '../ui/http.js';
+import { pageHeaders, postJson, serverWords } from '../ui/http.js';
 import { closeQuestion, withShell } from './shells.js';
 
 import type { Dispatch, SetStateAction } from 'react';
 
-/** A workspace's shells (V45): its terminals' IDs, so read with the page's header. */
+/** A workspace's shells (V45): its terminals' IDs, so read with the page's headers and key. */
 async function readShells(branch: string): Promise<WorkspaceShell[]> {
   const response = await fetch(`/api/workspaces/shells?branch=${encodeURIComponent(branch)}`, {
-    headers: { 'x-symbiote': '1' },
+    headers: await pageHeaders(),
   });
   const text = await response.text();
   if (!response.ok) throw new Error(serverWords(text));

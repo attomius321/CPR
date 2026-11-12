@@ -1,4 +1,4 @@
-import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { defaultCacheDir } from '@symbiote/core';
@@ -9,6 +9,7 @@ import {
   cacheDir,
   isRunning,
   readRecords,
+  recordKey,
   withdraw,
   type Running,
 } from '../src/registry.js';
@@ -41,6 +42,24 @@ describe('announce and withdraw', () => {
     expect(readdirSync(join(cache, 'running'))).toEqual([]);
     // Twice, or never written: nothing to do.
     await withdraw(cache, process.pid);
+  });
+
+  it('keeps the bridge key for the nexus alone: the user’s file, never in a read record (SC1)', async () => {
+    await announce(cache, { ...record(), key: 'b-key' });
+    const file = join(cache, 'running', `${process.pid}.json`);
+    expect(statSync(file).mode & 0o777).toBe(0o600);
+    expect(recordKey(cache, process.pid)).toBe('b-key');
+    expect(readRecords(cache)).toEqual([record()]);
+    expect(recordKey(cache, 999999)).toBeNull();
+    // A view record from before NX1 holds one too, never read as a Running's.
+    await writeViewRecord(viewFile(cache, '/home/me/old/.git'), {
+      url: 'http://127.0.0.1:4999/',
+      pid: 4999,
+      root: '/home/me/old',
+      started: 's',
+      key: 'old-key',
+    });
+    expect(readRecords(cache).some((r) => 'key' in r)).toBe(false);
   });
 
   it('keeps two servers of one repository apart (MC1 keeps the last one only)', async () => {
