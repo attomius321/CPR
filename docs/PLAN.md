@@ -38,7 +38,9 @@ Tie-breakers when trading off:
 
 Since HV4, a Hive workspace goes from its brief to landed, and pushed, with no step that waits for
 the person (decisions 767–775). HV5 and HV8 pace it and land it through a request; HV7 makes the
-loop steadier, from what the graph runs of 2026-11-02 found (Agents, below).
+loop steadier, from what the graph runs of 2026-11-02 found (Agents, below). HV9–HV13, planned,
+bring a forge's issues in, a classifier first: no workspace starts from an issue it has not
+passed ([what is left to build](journal/chore-hive-issue-loop-gaps.md)).
 
 ## How the plan is kept
 
@@ -268,6 +270,11 @@ What holds now: [Reviews](area/reviews.md) · its decisions: [the register](deci
 | [NU9](plan/nu9-nucleus-read-commands.md) | Nucleus's and Alpha Ceph's read commands: the shell's reads (`cat`, `grep`, `sed -n`, `find`, `jq`…) joined and piped, on the checkout and the open worktrees only; with the web on, `curl` GET, `gh`'s reads and `git ls-remote` | ✅ | 917–922 | [journal](journal/nu9-nucleus-read-commands.md) |
 | [Fix](plan/fix-mcp-annotations.md) | MCP tools say which are read-only and refuse unknown arguments | built in MC3, ready for review | 997 | [journal](journal/mc3-mcp-batch-confirm.md) |
 | [MC3](plan/mc3-mcp-batch-confirm.md) | Symbiote's MCP: one Confirm for many starts or clean-ups, ticked per item; `mark_merged`; an MCP Approve queues its merge, on any branch; `needsYou` without merged workspaces; a lapsed Confirm stays on the bar; `interrupted` only from Claude Code's record | built, ready for review | 987–997 | [journal](journal/mc3-mcp-batch-confirm.md) |
+| [HV9](plan/hv9-issue-classifier.md) | The classifier, the first step of Hive's loop from an issue: take, ask or refuse with why; the kind, size, model and effort; the brief the writer gets in place of the issue's text; no tools, no repository; recorded and on the Issues page; its precision measured on labelled and hostile issues before it starts work with no click | planned (rank 1 of the issue loop) | 1000–1010 | |
+| [HV10](plan/hv10-workspace-from-issue.md) | A Hive workspace from an issue the classifier took: Start in Hive and Nucleus's `start_from_issue`; the issue in the record and the branch; the writer without forge credentials or the web; a request by default, `Closes #n` | planned (rank 2) | 1011–1017 | |
+| [HV11](plan/hv11-issue-answered.md) | The issue answered on GitHub and GitLab: a comment and a label at each step, closed when landed; only Symbiote's fixed sentences and the classifier's cleaned question posted | planned (rank 3) | 1018–1023 | |
+| [HV12](plan/hv12-issue-loop-real-run.md) | Spike: a real run on private scratch forges, eight issues (two hostile) through both landing modes, to prove each step no real run has shown | planned (rank 4) | 1024–1026 | |
+| [HV13](plan/hv13-issue-intake.md) | Issues come in: a label watch that checks who set the label, a start queue, issues at once and a day, the classifier's cost; after HV12 and three of HV7's parts | planned (rank 6, after HV7) | 1027–1033 | |
 
 ### The merger
 
@@ -395,6 +402,7 @@ What holds now: [The merger](area/merger.md) · its decisions: [the register](de
 | ID | What | Status | Decisions | Journal |
 |---|---|---|---|---|
 | [IS1](plan/is1-issues-page.md) | An Issues page: origin's GitHub or GitLab issues, read only: the list (state, search on titles, 30 a page), one issue with its comments and its link | ✅ | 944–952 | [journal](journal/is1-issues-page.md) |
+| Chore | Hive's full loop from an issue, what is left to build: each step's code on `main`, what is missing and what no real run has shown; the classifier first; HV9–HV13 planned and ranked (Agents) | ready for review | | [journal](journal/chore-hive-issue-loop-gaps.md) |
 
 ### Logs
 
