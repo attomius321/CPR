@@ -1,14 +1,38 @@
-// The pages' calls to `symbiote view` (V18): reads, and writes with the header the server asks for.
+// The pages' calls to `symbiote view` (V18): reads, and writes with the headers the server asks
+// for: JSON, the custom header, and the page key (SC1, decision 930).
+import { noteKeyRefusal, pageKey } from './page-key.js';
 
-export const WRITE_HEADERS = { 'content-type': 'application/json', 'x-symbiote': '1' };
+/**
+ * What the page alone may ask with: `x-symbiote: 1` and the page key once the page has one; a
+ * read that only the page may make sends them too (the Confirm's asks, a workspace's shells).
+ */
+export async function pageHeaders(): Promise<Record<string, string>> {
+  const key = await pageKey();
+  return { 'x-symbiote': '1', ...(key ? { 'x-symbiote-key': key } : {}) };
+}
+
+/** What a write sends: JSON and `pageHeaders()`. */
+export async function writeHeaders(): Promise<Record<string, string>> {
+  return { 'content-type': 'application/json', ...(await pageHeaders()) };
+}
+
+/**
+ * A write to `symbiote view` (a POST unless `init` says otherwise) with `writeHeaders()`: its
+ * answer; a refusal for want of the page key is told to the page ("Open from Symbiote").
+ */
+export async function write(path: string, init: RequestInit = {}): Promise<Response> {
+  const response = await fetch(path, {
+    method: 'POST',
+    ...init,
+    headers: { ...(await writeHeaders()), ...(init.headers as Record<string, string>) },
+  });
+  noteKeyRefusal(response);
+  return response;
+}
 
 /** A write's answer, or the server's words (`{ error }` or text) as an error. */
 export async function postJson<T>(path: string, body: unknown): Promise<T> {
-  const response = await fetch(path, {
-    method: 'POST',
-    headers: WRITE_HEADERS,
-    body: JSON.stringify(body),
-  });
+  const response = await write(path, { body: JSON.stringify(body) });
   const text = await response.text();
   if (response.ok) return JSON.parse(text) as T;
   throw new Error(serverWords(text));

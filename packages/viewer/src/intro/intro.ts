@@ -3,7 +3,7 @@
 // storage is per origin, and each run has a port of its own). The engine, its rig and its images
 // are a chunk of their own (`play.ts`), loaded only when it plays.
 
-const WRITE_HEADERS = { 'content-type': 'application/json', 'x-symbiote': '1' };
+import { write } from '../ui/http.js';
 
 /** How long the page waits for the answer: no longer than it waits for its fonts. */
 export const INTRO_WAIT_MS = 1_000;
@@ -69,9 +69,7 @@ export function startIntro({ record }: { record: boolean }): void {
   overlay.setAttribute('aria-label', 'Symbiote: two koi form the S');
   document.body.append(overlay);
   if (record) {
-    void fetch('/api/intro', { method: 'POST', headers: WRITE_HEADERS, body: '{}' }).catch(
-      () => undefined,
-    );
+    void write('/api/intro', { body: '{}' }).catch(() => undefined);
   }
   import('./play.js').then(({ playIntro }) => playIntro(overlay)).catch(() => overlay.remove());
 }

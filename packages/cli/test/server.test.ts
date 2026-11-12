@@ -38,6 +38,7 @@ import type { CodeMap } from '@symbiote/monitor';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { tempDir } from '../../core/test/helpers/git-repo.js';
 import { sourceFiles, startViewServer, type ViewServer } from '../src/server.js';
+import { serverKeys } from '../src/server-keys.js';
 import { parseReview } from '../src/server-requests.js';
 import { fileStateStore, stateDir, type StateStore } from '../src/state.js';
 import { Diffs, type Pair, type RunDiff } from '../src/diffs.js';
@@ -57,6 +58,18 @@ import { type PromptSettingsService } from '../src/prompt-settings.js';
 import type { CheckSettingService } from '../src/check-setting.js';
 import { SkillRefused, type SkillOpen, type SkillsService } from '../src/skills.js';
 import { terminals as makeTerminals, type Pty, type SpawnPty } from '../src/terminal.js';
+
+/**
+ * The run's secrets of every server here (SC1): a page's write sends `PAGE`, its key with the
+ * custom header; a bridge's call `BRIDGE`.
+ */
+const KEYS = serverKeys();
+const PAGE = { 'x-symbiote': '1', 'x-symbiote-key': KEYS.page };
+const BRIDGE = { 'x-symbiote': '1', 'x-symbiote-key': KEYS.bridge };
+/** What Nucleus's bridge sends besides (decision 931): its name, and its key. */
+const NUCLEUS = { 'x-symbiote-caller': 'nucleus', 'x-symbiote-nucleus': KEYS.nucleus };
+const startTestServer = (options: Parameters<typeof startViewServer>[0]) =>
+  startViewServer({ keys: KEYS, ...options });
 
 const graph = JSON.parse(
   readFileSync(
@@ -102,7 +115,7 @@ describe('startViewServer', () => {
     mkdirSync(join(viewer, 'assets'));
     writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
     writeFileSync(join(viewer, 'assets', 'app.js'), 'console.log(1)');
-    server = await startViewServer({
+    server = await startTestServer({
       graph,
       viewerDir: viewer,
       readSource: (side, path) => {
@@ -213,13 +226,13 @@ describe('startViewServer', () => {
     });
     const response = await fetch(new URL('/api/review', server.url), {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+      headers: { 'content-type': 'application/json', ...PAGE },
       body: '{}',
     });
     expect(response.status).toBe(404);
     const open = await fetch(new URL('/api/open', server.url), {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+      headers: { 'content-type': 'application/json', ...PAGE },
       body: JSON.stringify({ side: 'head', file: 'src/math.ts', line: 1 }),
     });
     expect(open.status).toBe(404);
@@ -249,7 +262,7 @@ describe('the viewer it started with (fix/suggest-settings-models)', () => {
     mkdirSync(join(viewer, 'assets'));
     writeFileSync(join(viewer, 'index.html'), '<script src="./assets/index-old.js"></script>');
     writeFileSync(join(viewer, 'assets', 'index-old.js'), 'old');
-    server = await startViewServer({ viewerDir: viewer });
+    server = await startTestServer({ viewerDir: viewer });
   });
 
   afterAll(async () => {
@@ -282,7 +295,7 @@ describe('close (fix-ci-green)', () => {
     const held = new Promise<string>((resolve) => {
       answer = resolve;
     });
-    const server = await startViewServer({ graph, viewerDir: viewer, readSource: () => held });
+    const server = await startTestServer({ graph, viewerDir: viewer, readSource: () => held });
     // One kept-alive connection, as a browser's to its page's server.
     const agent = new Agent({ keepAlive: true, maxSockets: 1 });
     const ask = (path: string) =>
@@ -336,7 +349,7 @@ describe('GET /api/files and /api/file (V60)', () => {
 
   beforeAll(async () => {
     writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
-    server = await startViewServer({
+    server = await startTestServer({
       graph: changed,
       viewerDir: viewer,
       readSource: () => Promise.resolve(''),
@@ -439,7 +452,7 @@ describe('POST /api/review', () => {
 
   beforeAll(async () => {
     writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
-    server = await startViewServer({
+    server = await startTestServer({
       graph,
       viewerDir: viewer,
       readSource: () => Promise.resolve(''),
@@ -469,7 +482,7 @@ describe('POST /api/review', () => {
   const post = (headers: Record<string, string>, body: unknown = review) =>
     fetch(new URL('/api/review', server.url), {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-symbiote': '1', ...headers },
+      headers: { 'content-type': 'application/json', ...PAGE, ...headers },
       body: JSON.stringify(body),
     });
 
@@ -522,7 +535,7 @@ describe('/api/state', () => {
   beforeAll(async () => {
     writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
     store = fileStateStore(join(dir, 'nested'));
-    server = await startViewServer({
+    server = await startTestServer({
       graph,
       viewerDir: viewer,
       readSource: () => Promise.resolve(''),
@@ -539,7 +552,7 @@ describe('/api/state', () => {
   const put = (name: string, value: unknown, headers: Record<string, string> = {}) =>
     fetch(new URL(`/api/state/${name}`, server.url), {
       method: 'PUT',
-      headers: { 'content-type': 'application/json', 'x-symbiote': '1', ...headers },
+      headers: { 'content-type': 'application/json', ...PAGE, ...headers },
       body: JSON.stringify(value),
     });
   const read = async (name: string) =>
@@ -600,7 +613,7 @@ describe('POST /api/open', () => {
 
   beforeAll(async () => {
     writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
-    server = await startViewServer({
+    server = await startTestServer({
       graph: {
         ...graph,
         revisions: {
@@ -614,7 +627,7 @@ describe('POST /api/open', () => {
       open,
     });
     // Two folders compared: no commit to map lines from.
-    folders = await startViewServer({
+    folders = await startTestServer({
       graph,
       viewerDir: viewer,
       readSource: () => Promise.resolve(''),
@@ -631,7 +644,7 @@ describe('POST /api/open', () => {
   const post = (body: unknown, headers: Record<string, string> = {}, to = server) =>
     fetch(new URL('/api/open', to.url), {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-symbiote': '1', ...headers },
+      headers: { 'content-type': 'application/json', ...PAGE, ...headers },
       body: JSON.stringify(body),
     });
 
@@ -815,7 +828,7 @@ describe('symbiote view: commits and diffs', () => {
     mkdirSync(join(viewer, 'assets'));
     writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
     writeFileSync(join(viewer, 'assets', 'app.js'), 'console.log(1)');
-    server = await startViewServer({
+    server = await startTestServer({
       viewerDir: viewer,
       repository: {
         name: 'widgets',
@@ -891,7 +904,7 @@ describe('symbiote view: commits and diffs', () => {
   const post = (path: string, body: unknown, headers: Record<string, string> = {}) =>
     fetch(new URL(path, server.url), {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-symbiote': '1', ...headers },
+      headers: { 'content-type': 'application/json', ...PAGE, ...headers },
       body: JSON.stringify(body),
     });
   const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -1289,7 +1302,7 @@ describe('symbiote view: commits and diffs', () => {
   it('keeps review state per diff', async () => {
     const put = await fetch(new URL(`/diff/${A}..${B}/api/state/review`, server.url), {
       method: 'PUT',
-      headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+      headers: { 'content-type': 'application/json', ...PAGE },
       body: JSON.stringify({ 'src/math.ts#add': 'x' }),
     });
     expect(put.status).toBe(204);
@@ -1403,7 +1416,7 @@ describe('symbiote view: branch reviews', () => {
   beforeAll(async () => {
     mkdirSync(join(viewer, 'assets'));
     writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
-    server = await startViewServer({
+    server = await startTestServer({
       viewerDir: viewer,
       open: (request, worktree) => {
         opens.push(worktree ? { ...request, worktree } : request);
@@ -1458,7 +1471,7 @@ describe('symbiote view: branch reviews', () => {
   ) =>
     fetch(new URL(path, server.url), {
       method,
-      headers: { 'content-type': 'application/json', 'x-symbiote': '1', ...headers },
+      headers: { 'content-type': 'application/json', ...PAGE, ...headers },
       body: JSON.stringify(body),
     });
   const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -1904,8 +1917,8 @@ describe('symbiote view: workspaces (V18)', () => {
 
   beforeAll(async () => {
     writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
-    server = await startViewServer({ viewerDir: viewer, repository: repository(true) });
-    bare = await startViewServer({ viewerDir: viewer, repository: repository(false) });
+    server = await startTestServer({ viewerDir: viewer, repository: repository(true) });
+    bare = await startTestServer({ viewerDir: viewer, repository: repository(false) });
   });
   afterAll(async () => {
     await server.close();
@@ -1917,7 +1930,7 @@ describe('symbiote view: workspaces (V18)', () => {
   const post = (path: string, body: unknown, headers: Record<string, string> = {}) =>
     fetch(new URL(path, server.url), {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-symbiote': '1', ...headers },
+      headers: { 'content-type': 'application/json', ...PAGE, ...headers },
       body: JSON.stringify(body),
     });
   const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -2485,7 +2498,7 @@ describe('symbiote view: merges (V26a)', () => {
   let server: ViewServer;
   beforeAll(async () => {
     writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
-    server = await startViewServer({
+    server = await startTestServer({
       viewerDir: viewer,
       repository: {
         history: new Histories({
@@ -2512,7 +2525,7 @@ describe('symbiote view: merges (V26a)', () => {
   const post = (path: string, body: unknown, headers: Record<string, string> = {}) =>
     fetch(new URL(path, server.url), {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-symbiote': '1', ...headers },
+      headers: { 'content-type': 'application/json', ...PAGE, ...headers },
       body: JSON.stringify(body),
     });
 
@@ -2711,7 +2724,7 @@ describe('symbiote view: settings (V28)', () => {
   let server: ViewServer;
   beforeAll(async () => {
     writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
-    server = await startViewServer({
+    server = await startTestServer({
       viewerDir: viewer,
       repository: {
         history: new Histories({
@@ -2737,7 +2750,7 @@ describe('symbiote view: settings (V28)', () => {
   const post = (body: unknown, headers: Record<string, string> = {}) =>
     fetch(new URL('/api/settings/prompts', server.url), {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-symbiote': '1', ...headers },
+      headers: { 'content-type': 'application/json', ...PAGE, ...headers },
       body: JSON.stringify(body),
     });
 
@@ -2800,7 +2813,7 @@ describe('symbiote view: the check in Settings (fix/settings-page)', () => {
   let server: ViewServer;
   beforeAll(async () => {
     writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
-    server = await startViewServer({
+    server = await startTestServer({
       viewerDir: viewer,
       repository: {
         history: new Histories({
@@ -2826,7 +2839,7 @@ describe('symbiote view: the check in Settings (fix/settings-page)', () => {
   const post = (body: unknown) =>
     fetch(new URL('/api/settings/checks', server.url), {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+      headers: { 'content-type': 'application/json', ...PAGE },
       body: JSON.stringify(body),
     });
 
@@ -2882,7 +2895,7 @@ describe('symbiote view: skills (V41)', () => {
   let server: ViewServer;
   beforeAll(async () => {
     writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
-    server = await startViewServer({
+    server = await startTestServer({
       viewerDir: viewer,
       repository: {
         history: new Histories({
@@ -2908,7 +2921,7 @@ describe('symbiote view: skills (V41)', () => {
   const post = (body: unknown, headers: Record<string, string> = {}) =>
     fetch(new URL('/api/skills', server.url), {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-symbiote': '1', ...headers },
+      headers: { 'content-type': 'application/json', ...PAGE, ...headers },
       body: JSON.stringify(body),
     });
 
@@ -2938,7 +2951,7 @@ describe('symbiote view: skills (V41)', () => {
     const open = (body: unknown) =>
       fetch(new URL('/api/skills/open', server.url), {
         method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+        headers: { 'content-type': 'application/json', ...PAGE },
         body: JSON.stringify(body),
       });
     const done = await open({ path: '.claude/skills/a/SKILL.md', line: 3 });
@@ -2991,7 +3004,7 @@ describe('symbiote view: the Monitor page (RM1)', () => {
   let server: ViewServer;
   beforeAll(async () => {
     writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
-    server = await startViewServer({
+    server = await startTestServer({
       viewerDir: viewer,
       repository: {
         history: new Histories({
@@ -3021,7 +3034,7 @@ describe('symbiote view: the Monitor page (RM1)', () => {
   const open = (body: unknown, headers: Record<string, string> = {}) =>
     fetch(new URL('/api/monitor/open', server.url), {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-symbiote': '1', ...headers },
+      headers: { 'content-type': 'application/json', ...PAGE, ...headers },
       body: JSON.stringify(body),
     });
 
@@ -3032,7 +3045,7 @@ describe('symbiote view: the Monitor page (RM1)', () => {
     expect(await response.json()).toEqual(map);
     const post = await fetch(new URL('/api/monitor', server.url), {
       method: 'POST',
-      headers: { 'x-symbiote': '1' },
+      headers: { ...PAGE },
     });
     expect(post.status).toBe(405);
   });
@@ -3072,7 +3085,7 @@ describe('symbiote view: the Issues page (IS1)', () => {
   let server: ViewServer;
   beforeAll(async () => {
     writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
-    server = await startViewServer({
+    server = await startTestServer({
       viewerDir: viewer,
       repository: {
         history: new Histories({
@@ -3142,7 +3155,7 @@ describe('symbiote view: the Issues page (IS1)', () => {
     ]) {
       expect((await get(path)).status, path).toBe(400);
     }
-    const post = await get('/api/issues', { method: 'POST', headers: { 'x-symbiote': '1' } });
+    const post = await get('/api/issues', { method: 'POST', headers: { ...PAGE } });
     expect(post.status).toBe(405);
     expect(asked).toEqual([]);
   });
@@ -3166,7 +3179,7 @@ describe('symbiote view: usage (V29c)', () => {
   let server: ViewServer;
   beforeAll(async () => {
     writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
-    server = await startViewServer({
+    server = await startTestServer({
       viewerDir: viewer,
       repository: {
         history: new Histories({
@@ -3203,7 +3216,7 @@ describe('symbiote view: usage (V29c)', () => {
     expect(await response.json()).toEqual(report);
     const post = await fetch(new URL('/api/usage', server.url), {
       method: 'POST',
-      headers: { 'x-symbiote': '1' },
+      headers: { ...PAGE },
     });
     expect(post.status).toBe(405);
     expect(asked).toBe(1);
@@ -3242,14 +3255,14 @@ describe('/api/intro (V39)', () => {
     rmSync(viewer, { recursive: true, force: true });
   });
   const start = async (options: Partial<Parameters<typeof startViewServer>[0]>) => {
-    const server = await startViewServer({ viewerDir: viewer, ...options });
+    const server = await startTestServer({ viewerDir: viewer, ...options });
     servers.push(server);
     return server;
   };
   const mark = (server: ViewServer, headers: Record<string, string> = {}) =>
     fetch(new URL('/api/intro', server.url), {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-symbiote': '1', ...headers },
+      headers: { 'content-type': 'application/json', ...PAGE, ...headers },
       body: '{}',
     });
 
@@ -3281,7 +3294,7 @@ describe('/api/intro (V39)', () => {
     expect((await mark(server, { 'content-type': 'text/plain' })).status).toBe(403);
     const put = await fetch(new URL('/api/intro', server.url), {
       method: 'PUT',
-      headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+      headers: { 'content-type': 'application/json', ...PAGE },
     });
     expect(put.status).toBe(405);
     expect(seen).toBe(false);
@@ -3345,14 +3358,14 @@ describe('/api/hive (V82)', () => {
     rmSync(viewer, { recursive: true, force: true });
   });
   const start = async (options: Partial<Parameters<typeof startViewServer>[0]>) => {
-    const server = await startViewServer({ viewerDir: viewer, ...options });
+    const server = await startTestServer({ viewerDir: viewer, ...options });
     servers.push(server);
     return server;
   };
   const turn = (server: ViewServer, body: string, headers: Record<string, string> = {}) =>
     fetch(new URL('/api/hive', server.url), {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-symbiote': '1', ...headers },
+      headers: { 'content-type': 'application/json', ...PAGE, ...headers },
       body,
     });
   const page = async (server: ViewServer, path: string) =>
@@ -3408,7 +3421,7 @@ describe('/api/hive (V82)', () => {
     expect((await turn(server, '{}')).status).toBe(400);
     const put = await fetch(new URL('/api/hive', server.url), {
       method: 'PUT',
-      headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+      headers: { 'content-type': 'application/json', ...PAGE },
     });
     expect(put.status).toBe(405);
     expect(on).toBe(false);
@@ -3569,14 +3582,14 @@ describe('/api/nucleus/start-confirm (NU8, decisions 782, 783)', () => {
     rmSync(viewer, { recursive: true, force: true });
   });
   const start = async (options: Partial<Parameters<typeof startViewServer>[0]>) => {
-    const server = await startViewServer({ viewerDir: viewer, repository, ...options });
+    const server = await startTestServer({ viewerDir: viewer, repository, ...options });
     servers.push(server);
     return server;
   };
   const turn = (server: ViewServer, body: string) =>
     fetch(new URL('/api/nucleus/start-confirm', server.url), {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+      headers: { 'content-type': 'application/json', ...PAGE },
       body,
     });
   const read = async (server: ViewServer) =>
@@ -3587,8 +3600,8 @@ describe('/api/nucleus/start-confirm (NU8, decisions 782, 783)', () => {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        'x-symbiote': '1',
-        ...(caller ? { 'x-symbiote-caller': caller } : {}),
+        ...BRIDGE,
+        ...(caller === 'nucleus' ? NUCLEUS : caller ? { 'x-symbiote-caller': caller } : {}),
       },
       body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} }),
     });
@@ -3686,7 +3699,7 @@ describe("Nucleus's conversation follows Hive (V86, decision 750)", () => {
     enqueue: () => Promise.resolve({ id: 'm1' }),
   } as unknown as Merger;
   const start = async (nucleus: PageAgent) => {
-    const server = await startViewServer({
+    const server = await startTestServer({
       viewerDir: viewer,
       hive,
       repository: {
@@ -3712,7 +3725,7 @@ describe("Nucleus's conversation follows Hive (V86, decision 750)", () => {
   const post = (server: ViewServer, path: string, body: unknown, headers = {}) =>
     fetch(new URL(path, server.url), {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-symbiote': '1', ...headers },
+      headers: { 'content-type': 'application/json', ...PAGE, ...headers },
       body: JSON.stringify(body),
     });
   beforeAll(() => writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>'));
@@ -3768,11 +3781,11 @@ describe("Nucleus's conversation follows Hive (V86, decision 750)", () => {
         method: 'tools/call',
         params: { name: 'queue_merge', arguments: { branch: 'feature/csv' } },
       },
-      { 'x-symbiote-caller': 'nucleus' },
+      { ...BRIDGE, ...NUCLEUS },
     );
     const asks = async () =>
       (
-        (await (await fetch(new URL('/api/mcp/asks', server.url))).json()) as {
+        (await (await fetch(new URL('/api/mcp/asks', server.url), { headers: PAGE })).json()) as {
           asks: { id: string }[];
         }
       ).asks;
@@ -3879,7 +3892,7 @@ describe('symbiote view: terminals (V21)', () => {
 
   beforeAll(async () => {
     writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
-    server = await startViewServer({
+    server = await startTestServer({
       viewerDir: viewer,
       repository: {
         history: new Histories({
@@ -3907,7 +3920,7 @@ describe('symbiote view: terminals (V21)', () => {
   const post = (path: string, body: unknown, headers: Record<string, string> = {}) =>
     fetch(new URL(path, server.url), {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-symbiote': '1', ...headers },
+      headers: { 'content-type': 'application/json', ...PAGE, ...headers },
       body: JSON.stringify(body),
     });
   const open = async (branch = 'feature/csv') => {
@@ -3983,7 +3996,7 @@ describe('symbiote view: terminals (V21)', () => {
 
     const list = (query: string, headers: Record<string, string> = {}) =>
       fetch(new URL(`/api/workspaces/shells${query}`, server.url), {
-        headers: { 'x-symbiote': '1', ...headers },
+        headers: { ...PAGE, ...headers },
       });
     const listed = await list('?branch=feature/files');
     expect(listed.status).toBe(200);
@@ -4152,7 +4165,7 @@ describe('symbiote view: terminals (V21)', () => {
   });
 
   it('hangs its terminals up and ends their streams when it closes', async () => {
-    const other = await startViewServer({
+    const other = await startTestServer({
       viewerDir: viewer,
       repository: {
         history: new Histories({
@@ -4200,7 +4213,7 @@ describe('symbiote view: terminals (V21)', () => {
         },
       };
     };
-    const other = await startViewServer({
+    const other = await startTestServer({
       viewerDir: viewer,
       repository: {
         history: new Histories({
@@ -4308,7 +4321,7 @@ describe("symbiote view: Symbiote's MCP (MC1)", () => {
   beforeAll(async () => {
     mkdirSync(join(viewer, 'assets'));
     writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
-    server = await startViewServer({
+    server = await startTestServer({
       viewerDir: viewer,
       repository: {
         history: new Histories({
@@ -4332,7 +4345,8 @@ describe("symbiote view: Symbiote's MCP (MC1)", () => {
     await server.close();
     rmSync(viewer, { recursive: true, force: true });
   });
-  const get = (path: string) => fetch(new URL(path, server.url));
+  const get = (path: string) => fetch(new URL(path, server.url), { headers: PAGE });
+  /** A write: `/api/mcp` a bridge's (its key), the rest the page's (SC1). */
   const post = (
     path: string,
     body: unknown,
@@ -4341,7 +4355,11 @@ describe("symbiote view: Symbiote's MCP (MC1)", () => {
   ) =>
     fetch(new URL(path, server.url), {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-symbiote': '1', ...headers },
+      headers: {
+        'content-type': 'application/json',
+        ...(path === '/api/mcp' ? BRIDGE : PAGE),
+        ...headers,
+      },
       body: typeof body === 'string' ? body : JSON.stringify(body),
       ...(signal ? { signal } : {}),
     });
@@ -4382,7 +4400,7 @@ describe("symbiote view: Symbiote's MCP (MC1)", () => {
         method: 'tools/call',
         params: { name: 'queue_merge', arguments: { branch: 'feature/csv' } },
       },
-      { 'x-symbiote-caller': 'nucleus' },
+      NUCLEUS,
     );
     await expect.poll(async () => (await asks()).length).toBe(1);
     const [ask] = await asks();
@@ -4406,7 +4424,7 @@ describe("symbiote view: Symbiote's MCP (MC1)", () => {
         method: 'tools/call',
         params: { name: 'queue_merge', arguments: { branch: 'feature/csv' } },
       },
-      { 'x-symbiote-caller': 'nucleus' },
+      NUCLEUS,
     );
     await expect.poll(async () => (await asks()).length).toBe(1);
     const [ask] = await asks();
@@ -4431,7 +4449,7 @@ describe("symbiote view: Symbiote's MCP (MC1)", () => {
     expect((await get('/api/nucleus/activity/export?format=pdf')).status).toBe(400);
   });
 
-  it('takes a bridge from before NU1, which says scout, for Nucleus (decision 590)', async () => {
+  it("takes a bridge that names Nucleus (or Scout, decision 590) without Nucleus's key for an agent's (decision 931)", async () => {
     const call = post(
       '/api/mcp',
       {
@@ -4444,7 +4462,7 @@ describe("symbiote view: Symbiote's MCP (MC1)", () => {
     );
     await expect.poll(async () => (await asks()).length).toBe(1);
     const [ask] = await asks();
-    expect(ask?.by).toEqual({ via: 'nucleus' });
+    expect(ask?.by).toMatchObject({ via: 'mcp' });
     await post('/api/mcp/answer', { id: ask?.id, yes: false });
     await call;
   });
@@ -4492,7 +4510,7 @@ describe('/api/workspaces/hive/log (decision 695)', () => {
   };
   beforeAll(async () => {
     writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
-    server = await startViewServer({
+    server = await startTestServer({
       viewerDir: viewer,
       repository: {
         history: new Histories({
@@ -4583,7 +4601,7 @@ describe('/api/workspaces/day (V91, decision 852) and /overview', () => {
   };
   beforeAll(async () => {
     writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
-    server = await startViewServer({
+    server = await startTestServer({
       viewerDir: viewer,
       repository: {
         history: new Histories({
@@ -4646,7 +4664,7 @@ describe("symbiote view: the page's stream, /api/events (V94a)", () => {
   let server: ViewServer;
   beforeAll(async () => {
     writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
-    server = await startViewServer({
+    server = await startTestServer({
       viewerDir: viewer,
       repository: {
         history: new Histories({
@@ -4699,13 +4717,13 @@ describe("symbiote view: the page's stream, /api/events (V94a)", () => {
       () =>
         fetch(new URL('/api/workspaces/stop', server.url), {
           method: 'POST',
-          headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+          headers: { 'content-type': 'application/json', ...PAGE },
           body: JSON.stringify({ branch: 'feature/x' }),
         }),
     );
     expect(text).toMatch(/^retry: 1000\n\nevent: id\n/);
     expect(text).toContain(
-      'event: state\ndata: {"parts":{"workspaces":{"place":"repository","workspaces":[{"branch":"feature/x","agent":{"state":"working"}}]},"reviews":null,"merges":null,"nucleus":null,"scribe":null,"asks":{"asks":[]}}}',
+      'event: state\ndata: {"parts":{"workspaces":{"place":"repository","workspaces":[{"branch":"feature/x","agent":{"state":"working"}}]},"reviews":null,"merges":null,"nucleus":null,"scribe":null,"asks":{"changes":0}}}',
     );
     expect(text).toContain(
       'event: change\ndata: {"parts":{"workspaces":{"place":"repository","workspaces":[{"branch":"feature/x","agent":{"state":"stopped"}}]}}}',
@@ -4715,7 +4733,7 @@ describe("symbiote view: the page's stream, /api/events (V94a)", () => {
   it('is a GET of this site only', async () => {
     const posted = await fetch(new URL('/api/events', server.url), {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+      headers: { 'content-type': 'application/json', ...PAGE },
       body: '{}',
     });
     expect(posted.status).toBe(405);
@@ -4726,7 +4744,7 @@ describe("symbiote view: the page's stream, /api/events (V94a)", () => {
   });
 
   it('is not served without a repository (symbiote pr): the page polls', async () => {
-    const pr = await startViewServer({ viewerDir: viewer });
+    const pr = await startTestServer({ viewerDir: viewer });
     try {
       expect((await fetch(new URL('/api/events', pr.url))).status).toBe(404);
     } finally {

@@ -83,6 +83,24 @@ export const TYPES: Record<string, string> = {
   '.woff2': 'font/woff2',
 };
 
+/** What a refusal for want of the page key says (SC1); the page knows it by its header. */
+export const KEY_REFUSED = {
+  error:
+    'Open from Symbiote to write or answer: its window, the nexus, or the address symbiote view printed',
+  refused: 'key',
+};
+
+/** Answers a request that lacks the page key: 403, `KEY_REFUSED`, `x-symbiote-refused: key`. */
+export function refuseKey(res: ServerResponse): void {
+  answers.set(res, KEY_REFUSED.error);
+  res.writeHead(403, {
+    'content-type': TYPES['.json'],
+    'cache-control': 'no-store',
+    'x-symbiote-refused': 'key',
+  });
+  res.end(JSON.stringify(KEY_REFUSED));
+}
+
 /** Largest review or state the viewer may send. */
 export const MAX_BODY_BYTES = 1 << 20;
 
@@ -192,7 +210,8 @@ export function serverHttp({
   hosts,
   busy,
   streams,
-}: Pick<ServerContext, 'hosts' | 'busy' | 'streams'>) {
+  keys,
+}: Pick<ServerContext, 'hosts' | 'busy' | 'streams' | 'keys'>) {
   /**
    * A log as server-sent events (V46a; Hive's runs, decision 695): `lines` from `from` and the
    * offset to read on from, then each time it grows, read every 250 ms; `gone` once `read` finds
@@ -252,7 +271,7 @@ export function serverHttp({
     act: (branch: string) => Promise<void>,
   ): Promise<void> {
     if (req.method !== 'POST') return send(res, 405, 'method not allowed');
-    if (!writable(req)) return send(res, 403, 'forbidden');
+    if (!writable(req)) return refused(req, res);
     let branch: string;
     try {
       const value = JSON.parse(await readBody(req, MAX_BODY_BYTES)) as { branch?: unknown } | null;
@@ -272,8 +291,23 @@ export function serverHttp({
     act: (request: T) => Promise<void>,
     limit = MAX_BODY_BYTES,
   ): Promise<void> {
+    if (req.method === 'POST' && !writable(req)) return refused(req, res);
+    return writtenOpen(req, res, parse, act, limit);
+  }
+
+  /**
+   * `written` without the page key (SC1): for what any local process may write, a hook's ping
+   * (decision 905) and a page's errors; still JSON, the custom header, our own origin.
+   */
+  async function writtenOpen<T>(
+    req: IncomingMessage,
+    res: ServerResponse,
+    parse: (text: string) => T,
+    act: (request: T) => Promise<void>,
+    limit = MAX_BODY_BYTES,
+  ): Promise<void> {
     if (req.method !== 'POST') return send(res, 405, 'method not allowed');
-    if (!writable(req)) return send(res, 403, 'forbidden');
+    if (!pageShaped(req)) return send(res, 403, 'forbidden');
     let request: T;
     try {
       request = parse(await readBody(req, limit));
@@ -318,8 +352,29 @@ export function serverHttp({
     return oneAtATime(res, 'a workspace is being started', task);
   }
 
-  /** A write from the viewer itself: JSON, the custom header, and (if sent) our own origin. */
+  /**
+   * A write from the viewer itself: JSON, the custom header, (if sent) our own origin, and the page
+   * key (SC1, decision 930), which only a page Symbiote opened holds.
+   */
   function writable(req: IncomingMessage): boolean {
+    return pageShaped(req) && keys.isPage(req);
+  }
+
+  /**
+   * A write `writable` refused: for want of the page key alone, `KEY_REFUSED` (the page then says
+   * "Open from Symbiote"); else, as before, forbidden.
+   */
+  function refused(req: IncomingMessage, res: ServerResponse): void {
+    if (pageShaped(req) && !keys.isPage(req)) return refuseKey(res);
+    return send(res, 403, 'forbidden');
+  }
+
+  /**
+   * A write shaped as a page sends one, with or without the page key: JSON, the custom header, and
+   * (if sent) our own origin. Enough for what any local process may ask (SC1): a hook's ping, a
+   * token's trade.
+   */
+  function pageShaped(req: IncomingMessage): boolean {
     return (
       req.headers['x-symbiote'] === '1' &&
       !!req.headers['content-type']?.startsWith('application/json') &&
@@ -333,7 +388,21 @@ export function serverHttp({
     return origin === undefined || hosts.has(origin.replace(/^http:\/\//, ''));
   }
 
-  return { writable, sameSite, written, onBranch, oneAtATime, exclusive, startingOne, streamLog };
+  return {
+    writable,
+    refused,
+    /** Whether a request holds the page key (SC1): a read only the page may make. */
+    keyed: (req: IncomingMessage) => keys.isPage(req),
+    writtenOpen,
+    pageShaped,
+    sameSite,
+    written,
+    onBranch,
+    oneAtATime,
+    exclusive,
+    startingOne,
+    streamLog,
+  };
 }
 
 export type ServerHttp = ReturnType<typeof serverHttp>;

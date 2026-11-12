@@ -19,7 +19,7 @@ import { folderName } from './home-view.js';
 import { stripView } from './strip-view.js';
 import { stoppedView } from './stopped-view.js';
 import { homePage } from './home.js';
-import { nexusActions } from './actions.js';
+import { frameAddress, nexusActions } from './actions.js';
 import { fieldKeys } from './field.js';
 import { nexusReads } from './reads.js';
 
@@ -136,7 +136,10 @@ function show(): void {
  */
 async function address(frame: HTMLIFrameElement, url: string): Promise<void> {
   await reached(url, browserReach);
-  if (frame.isConnected && frame.dataset.url === url) frame.src = url;
+  if (!frame.isConnected || frame.dataset.url !== url) return;
+  // With its open token (SC1): the framed page trades it for its page key, and writes.
+  const opened = await frameAddress(url);
+  if (frame.isConnected && frame.dataset.url === url) frame.src = opened;
 }
 
 function render(): void {

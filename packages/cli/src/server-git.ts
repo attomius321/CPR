@@ -118,7 +118,7 @@ export async function historyRowsOf(
 const MAX_HISTORY_ROWS = 500;
 
 /** Git's page, and a checkout, one at a time. */
-export function serverGit({ writable }: Pick<ServerHttp, 'writable'>) {
+export function serverGit({ writable, refused }: Pick<ServerHttp, 'writable' | 'refused'>) {
   let checkingOut = false;
   /**
    * Git's page (V66): `GET` a commit (`commit`, `commit/lines`, `commit/file`), the changes
@@ -143,7 +143,7 @@ export function serverGit({ writable }: Pick<ServerHttp, 'writable'>) {
     // A file's diff opened in VS Code (V70): asked by the page, not one of git's writes.
     if (name === 'open') {
       if (req.method !== 'POST') return send(res, 405, 'method not allowed');
-      if (!writable(req)) return send(res, 403, 'forbidden');
+      if (!writable(req)) return refused(req, res);
       let request: GitOpen;
       try {
         request = parseGitOpen(await readBody(req, MAX_BODY_BYTES));
@@ -162,7 +162,7 @@ export function serverGit({ writable }: Pick<ServerHttp, 'writable'>) {
     // `commit` is read with GET and written with POST.
     if (req.method === 'POST') {
       if (!GIT_WRITES.includes(name)) return send(res, 404, 'not found');
-      if (!writable(req)) return send(res, 403, 'forbidden');
+      if (!writable(req)) return refused(req, res);
       let request: GitWrite;
       try {
         request = parseGitWrite(name, await readBody(req, MAX_BODY_BYTES));
@@ -246,7 +246,7 @@ export function serverGit({ writable }: Pick<ServerHttp, 'writable'>) {
     repo: RepositoryOptions,
   ): Promise<void> {
     if (req.method !== 'POST') return send(res, 405, 'method not allowed');
-    if (!writable(req)) return send(res, 403, 'forbidden');
+    if (!writable(req)) return refused(req, res);
     let target: CheckoutTarget;
     try {
       target = parseCheckoutTarget(await readBody(req, MAX_BODY_BYTES));

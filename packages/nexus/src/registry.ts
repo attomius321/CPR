@@ -56,7 +56,7 @@ export function isRunning(pid: number): boolean {
  */
 export async function announce(
   cache: string,
-  record: Running,
+  record: Running & { key?: string },
   alive: (pid: number) => boolean = isRunning,
 ): Promise<void> {
   const dir = runningDir(cache);
@@ -69,8 +69,18 @@ export async function announce(
   }
   const file = join(dir, `${record.pid}.json`);
   const temp = `${file}.${process.pid}.tmp`;
-  await writeFile(temp, `${JSON.stringify(record, null, 2)}\n`);
+  // The user's alone: it holds the server's bridge key (SC1).
+  await writeFile(temp, `${JSON.stringify(record, null, 2)}\n`, { mode: 0o600 });
   await rename(temp, file);
+}
+
+/**
+ * The bridge key of the server `pid` (SC1), from its own record: what the nexus asks a frame's
+ * open token with. Never part of a `Running`, so nothing the nexus serves holds it.
+ */
+export function recordKey(cache: string, pid: number): string | null {
+  const value = readJson(join(runningDir(cache), `${pid}.json`)) as { key?: unknown } | null;
+  return typeof value?.key === 'string' && value.key !== '' ? value.key : null;
 }
 
 /** Says that a server stopped: its record removed. */

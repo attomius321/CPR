@@ -1,6 +1,7 @@
 import type { GraphNode } from '@symbiote/core';
 import type { Anchor, Side } from './comments.js';
 import type { DiffRow } from './detail.js';
+import { write } from '../ui/http.js';
 
 /** A line of one side's file to open in VS Code (`POST ./api/open`). */
 export interface OpenTarget {
@@ -57,9 +58,7 @@ export function describeOpen(target: OpenTarget, answer: OpenAnswer): string {
 export async function openInEditor(target: OpenTarget): Promise<OpenAnswer> {
   let response: Response;
   try {
-    response = await fetch('./api/open', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+    response = await write('./api/open', {
       body: JSON.stringify(target),
     });
   } catch {

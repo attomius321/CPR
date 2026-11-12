@@ -19,17 +19,30 @@ export interface ViewRecord {
   pid: number;
   root: string;
   started: string;
+  /** The bridge key (SC1): `/api/mcp` takes a call that sends it. Absent before SC1. */
+  key?: string;
 }
+
+/** A repository's name in the cache's folders: one per repository, whichever worktree asks. */
+const repositoryHash = (commonDir: string) =>
+  createHash('sha256').update(commonDir).digest('hex').slice(0, 16);
 
 /** The record's file for a repository: one per repository, whichever of its worktrees asks. */
 export function viewFile(cacheDir: string, commonDir: string): string {
-  const hash = createHash('sha256').update(commonDir).digest('hex').slice(0, 16);
-  return join(cacheDir, 'views', `${hash}.json`);
+  return join(cacheDir, 'views', `${repositoryHash(commonDir)}.json`);
 }
 
-/** Writes the record whole (a bridge may read it at any time). */
+/**
+ * Where a repository's page agents' MCP files are (SC1): in the cache, not `symbiote/`, since
+ * Nucleus's holds its key (decision 931).
+ */
+export function mcpFolder(cacheDir: string, commonDir: string): string {
+  return join(cacheDir, 'mcp', repositoryHash(commonDir));
+}
+
+/** Writes the record whole (a bridge may read it at any time), the user's alone: it holds a key. */
 export async function writeViewRecord(path: string, record: ViewRecord): Promise<void> {
-  await writeFileWhole(path, `${JSON.stringify(record, null, 2)}\n`);
+  await writeFileWhole(path, `${JSON.stringify(record, null, 2)}\n`, 0o600);
 }
 
 /** The record, or null when there is none or it is not one. */
@@ -45,7 +58,13 @@ export function readViewRecord(path: string): ViewRecord | null {
     return null;
   }
   if (typeof v.pid !== 'number' || typeof v.root !== 'string') return null;
-  return { url: v.url, pid: v.pid, root: v.root, started: String(v.started ?? '') };
+  return {
+    url: v.url,
+    pid: v.pid,
+    root: v.root,
+    started: String(v.started ?? ''),
+    ...(typeof v.key === 'string' && v.key !== '' ? { key: v.key } : {}),
+  };
 }
 
 /**
@@ -70,12 +89,24 @@ export interface BridgeOptions {
   output: Writable;
   /** The folder the agent runs in: who asks, and the words when no record names the repository. */
   folder: string;
+  /**
+   * Nucleus's key (SC1, decision 931), from `SYMBIOTE_NUCLEUS_KEY` in its own environment: with it
+   * the call is Nucleus's; `as` alone no longer says so.
+   */
+  nucleusKey?: string;
 }
 
 type Id = string | number;
 
 /** Forwards `input`'s messages until it ends and every answer is written. */
-export async function runBridge({ view, as, input, output, folder }: BridgeOptions): Promise<void> {
+export async function runBridge({
+  view,
+  as,
+  input,
+  output,
+  folder,
+  nucleusKey,
+}: BridgeOptions): Promise<void> {
   let client: string | undefined;
   /** Calls under way, by ID: what cancels one. */
   const inflight = new Map<Id, () => void>();
@@ -125,6 +156,9 @@ export async function runBridge({ view, as, input, output, folder }: BridgeOptio
           'content-length': Buffer.byteLength(body),
           'x-symbiote': '1',
           'x-symbiote-caller': as ?? 'mcp',
+          // The record's bridge key, and Nucleus's own (SC1); a record from before SC1 has none.
+          ...(record.key ? { 'x-symbiote-key': record.key } : {}),
+          ...(nucleusKey ? { 'x-symbiote-nucleus': nucleusKey } : {}),
           ...(client ? { 'x-symbiote-client': client } : {}),
           'x-symbiote-folder': encodeURIComponent(folder),
         },

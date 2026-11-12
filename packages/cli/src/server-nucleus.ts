@@ -11,7 +11,7 @@ import {
 } from './server-requests.js';
 import type { PageAgent } from './page-agent.js';
 import { McpRefused, type SymbioteMcp } from './mcp.js';
-import { bridgeCaller } from './mcp-bridge.js';
+import type { ServerKeys } from './server-keys.js';
 import type { ServerContext } from './server-context.js';
 import {
   read,
@@ -25,15 +25,19 @@ import {
   BodyTooLarge,
   badBody,
   readBody,
+  refuseKey,
   type ServerHttp,
 } from './server-http.js';
 import type { ServerSites } from './server-sites.js';
 import type { ServerHive } from './server-hive.js';
 
-/** Who calls Symbiote's MCP, as its bridge says (MC1): Nucleus, or an agent through `symbiote mcp`. */
-function callerOf(req: IncomingMessage): McpCaller {
-  // `scout`: a bridge started from an MCP file written before NU1 (decision 590).
-  if (bridgeCaller(req.headers['x-symbiote-caller'])) return { via: 'nucleus' };
+/**
+ * Who calls Symbiote's MCP (MC1): Nucleus when its bridge sends Nucleus's key (SC1, decision 931:
+ * `x-symbiote-caller` alone, which any agent can send, no longer says so); else an agent through
+ * `symbiote mcp`, as its bridge names it.
+ */
+function callerOf(req: IncomingMessage, keys: ServerKeys): McpCaller {
+  if (keys.isNucleus(req)) return { via: 'nucleus' };
   const header = (name: string) => {
     const value = req.headers[name];
     return typeof value === 'string' && value !== '' ? value : undefined;
@@ -54,16 +58,18 @@ function callerOf(req: IncomingMessage): McpCaller {
 
 /** A page agent's routes, and Symbiote's MCP. */
 export function serverNucleus(
-  { root }: Pick<ServerContext, 'root'>,
-  uses: Pick<ServerHttp, 'written' | 'oneAtATime' | 'writable'> &
+  { root, keys }: Pick<ServerContext, 'root' | 'keys'>,
+  uses: Pick<ServerHttp, 'written' | 'oneAtATime' | 'pageShaped' | 'keyed'> &
     Pick<ServerSites, 'serveSite'> &
     Pick<ServerHive, 'hiveOn'>,
 ) {
-  const { written, oneAtATime, writable, serveSite, hiveOn } = uses;
+  const { written, oneAtATime, pageShaped, keyed, serveSite, hiveOn } = uses;
   /**
    * `/api/mcp` (MC1): one JSON-RPC message of an agent's, answered when its tool is done — an asked
    * one once the person answered —, and dropped when the agent hangs up; `/api/mcp/asks`, what waits
-   * for the person; `/api/mcp/answer { id, yes }`, their answer from a page.
+   * for the person; `/api/mcp/answer { id, yes }`, their answer from a page. The asks and the
+   * answer are the page's (its key, SC1); `/api/mcp` is a bridge's (the bridge key in the view
+   * record), which answers no Confirm.
    */
   async function mcpRoute(
     req: IncomingMessage,
@@ -71,7 +77,10 @@ export function serverNucleus(
     url: URL,
     mcp: SymbioteMcp,
   ): Promise<void> {
-    if (url.pathname === '/api/mcp/asks') return read(req, res, () => Promise.resolve(mcp.asks()));
+    if (url.pathname === '/api/mcp/asks') {
+      if (req.method === 'GET' && !keyed(req)) return refuseKey(res);
+      return read(req, res, () => Promise.resolve(mcp.asks()));
+    }
     if (url.pathname === '/api/mcp/answer') {
       return written(req, res, parseMcpAnswer, async (answer) => {
         try {
@@ -84,7 +93,7 @@ export function serverNucleus(
     }
     if (url.pathname !== '/api/mcp') return send(res, 404, 'not found');
     if (req.method !== 'POST') return send(res, 405, 'method not allowed');
-    if (!writable(req)) return send(res, 403, 'forbidden');
+    if (!pageShaped(req) || !keys.isBridge(req)) return send(res, 403, 'forbidden');
     let message: unknown;
     try {
       message = JSON.parse(await readBody(req, MAX_BODY_BYTES));
@@ -100,7 +109,7 @@ export function serverNucleus(
     res.on('close', () => {
       if (!res.writableEnded) hungUp.abort();
     });
-    const answer = await mcp.handle(message, callerOf(req), hungUp.signal);
+    const answer = await mcp.handle(message, callerOf(req, keys), hungUp.signal);
     if (hungUp.signal.aborted) return;
     if (answer) return json(res, 200, answer);
     // A notification has no answer; a call ended without one, by the server closing.

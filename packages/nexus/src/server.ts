@@ -35,6 +35,11 @@ export interface NexusServerOptions {
    * the folder chosen; with the pins and the scan's facts.
    */
   repositories: () => Promise<RepositoriesAnswer>;
+  /**
+   * A frame's address for the Symbiote serving at `url` (SC1, decision 930): with a one-time open
+   * token; null when no live Symbiote serves there.
+   */
+  frameAddress: (url: string) => Promise<string | null>;
   /** A repository's checkouts (NX5, decision 914); null for a folder that is no repository. */
   checkouts: (path: string) => Promise<Found[] | null>;
   /** Home scanned again on the button, and the last scan's tree (NX6, decisions 925, 926). */
@@ -70,9 +75,16 @@ const FILE_NAME = /^[\w-][\w.-]*$/;
 
 /**
  * The routes that write: they start or stop a Symbiote (NX2, decision 543), and with it `git init`
- * a folder (NX6, decision 928), pin a folder (NX4), scan home again (NX6, decision 925).
+ * a folder (NX6, decision 928), pin a folder (NX4), scan home again (NX6, decision 925); and give a
+ * frame its Symbiote's address with an open token (SC1), a write so that NX7's secret covers it.
  */
-const WRITES = new Set(['/api/symbiotes', '/api/symbiotes/stop', '/api/pinned', '/api/scan']);
+const WRITES = new Set([
+  '/api/symbiotes',
+  '/api/symbiotes/stop',
+  '/api/symbiotes/open',
+  '/api/pinned',
+  '/api/scan',
+]);
 
 /** The most a write's body may hold. */
 const BODY_LIMIT = 64 * 1024;
@@ -202,6 +214,13 @@ export async function startNexusServer(options: NexusServerOptions): Promise<Nex
       return sendJson(res, 200, answer);
     }
     if (path === '/api/scan') return sendJson(res, 200, { scan: await options.scanning.again() });
+    if (path === '/api/symbiotes/open') {
+      if (typeof value?.url !== 'string') return send(res, 400, 'expected { url }');
+      const address = await options.frameAddress(value.url);
+      if (address === null)
+        return sendJson(res, 404, { error: `No Symbiote runs at ${value.url}` });
+      return sendJson(res, 200, { url: address });
+    }
     if (typeof value?.root !== 'string') return send(res, 400, 'expected { root }');
     if (await options.starter.stop(value.root)) {
       res.writeHead(204, { 'cache-control': 'no-store' });

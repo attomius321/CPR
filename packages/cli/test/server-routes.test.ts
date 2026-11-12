@@ -11,6 +11,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import type { HiveRecord } from '../src/hive.js';
 import type { RepositoryOptions, ViewServerOptions } from '../src/server-context.js';
 import { startViewServer } from '../src/server.js';
+import { serverKeys } from '../src/server-keys.js';
 
 const SHA = 'a'.repeat(40);
 const HEAD = 'b'.repeat(40);
@@ -329,8 +330,17 @@ const PATHS = [
   '/api/terminals/abc123/nope',
 ];
 
-/** A page's write: JSON, the custom header, from its own origin. */
-const WRITE = { 'content-type': 'application/json', 'x-symbiote': '1' };
+/** The servers' secrets (SC1): a page's write sends its page key, a bridge's call its own. */
+const KEYS = serverKeys();
+
+/** A page's write: JSON, the custom header, the page key, from its own origin. */
+const WRITE = {
+  'content-type': 'application/json',
+  'x-symbiote': '1',
+  'x-symbiote-key': KEYS.page,
+};
+/** A bridge's call to `/api/mcp`, the one route the bridge key opens. */
+const BRIDGE = { ...WRITE, 'x-symbiote-key': KEYS.bridge };
 
 /** One request's line in the table: its status, and its body's first words or its stream's type. */
 function ask(
@@ -367,11 +377,13 @@ const isStream = (headers: IncomingHttpHeaders) =>
 
 /** The table of one server: each path asked with GET, then POSTed as a page's write. */
 async function table(options: ViewServerOptions): Promise<string> {
-  const server = await startViewServer(options);
+  const server = await startViewServer({ keys: KEYS, ...options });
   try {
     const lines: string[] = [];
     for (const path of PATHS) lines.push(await ask(server.url, 'GET', path));
-    for (const path of PATHS) lines.push(await ask(server.url, 'POST', path, WRITE, '{}'));
+    for (const path of PATHS) {
+      lines.push(await ask(server.url, 'POST', path, path === '/api/mcp' ? BRIDGE : WRITE, '{}'));
+    }
     lines.push(await ask(server.url, 'PUT', '/api/state/review', WRITE, '{}'));
     lines.push(await ask(server.url, 'PUT', `/diff/${SHA}..${HEAD}/api/state/review`, WRITE, '{}'));
     // Refused before any route: another host, another site's request, a write without the header.

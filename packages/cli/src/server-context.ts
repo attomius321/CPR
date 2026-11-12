@@ -45,6 +45,7 @@ import type { PageAgent } from './page-agent.js';
 import type { SkillsService } from './skills.js';
 import type { SymbioteMcp } from './mcp.js';
 import type { IssuesService } from './issues.js';
+import type { ServerKeys } from './server-keys.js';
 
 /** Posts reviews to the change request being viewed (`symbiote pr` only). */
 export interface ReviewTarget {
@@ -197,6 +198,13 @@ export interface ViewServerOptions {
   log?: Log;
   /** Symbiote's version, as its MCP introduces itself (MC1). */
   version?: string;
+  /** The run's secrets (SC1, decisions 930–932); made by the server when none are given. */
+  keys?: ServerKeys;
+  /**
+   * Enables `POST /api/session/again` (SC1): a tab without the page key asks for a fresh address,
+   * opened or printed as the run opened its first.
+   */
+  openAgain?: () => void;
 }
 
 /** A graph served with its sources, review state and reviews. */
@@ -239,4 +247,6 @@ export interface ServerContext {
   log: Log;
   viewerFiles: Map<string, Buffer>;
   mcp: SymbioteMcp | undefined;
+  /** The run's secrets (SC1). */
+  keys: ServerKeys;
 }

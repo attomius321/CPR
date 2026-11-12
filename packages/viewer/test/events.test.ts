@@ -88,7 +88,7 @@ const STATE = {
     merges: { merges: [] },
     nucleus: null,
     scribe: null,
-    asks: { asks: [] },
+    asks: { changes: 0 },
   },
 };
 
@@ -350,10 +350,10 @@ describe('one stream per browser (V94b)', () => {
     expect(second.store.role()).toBe('holder');
     expect(FakeSource.made).toHaveLength(2);
     FakeSource.made[1]!.emit('state', {
-      parts: { ...STATE.parts, asks: { asks: [{ id: 'a1' }] } },
+      parts: { ...STATE.parts, asks: { changes: 1 } },
     });
     await b.flush();
-    expect(third.store.parts().asks).toEqual({ asks: [{ id: 'a1' }] });
+    expect(third.store.parts().asks).toEqual({ changes: 1 });
     expect(third.store.role()).toBe('follower');
   });
 

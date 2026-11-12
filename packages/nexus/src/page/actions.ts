@@ -17,6 +17,22 @@ function post(path: string, value: unknown): Promise<Response> {
   });
 }
 
+/**
+ * A frame's address for the Symbiote at `url` (SC1, decision 930): with the one-time token the
+ * nexus asked it for, which the framed page trades for its page key; bare when none is given (a
+ * Symbiote from before SC1, or one that stopped meanwhile), where it reads but cannot write.
+ */
+export async function frameAddress(url: string): Promise<string> {
+  try {
+    const res = await post('/api/symbiotes/open', { url });
+    if (!res.ok) return url;
+    const answer = (await res.json()) as { url?: unknown };
+    return typeof answer.url === 'string' ? answer.url : url;
+  } catch {
+    return url;
+  }
+}
+
 /** A start's answer for a folder that is no repository: `git init` may make it one (decision 927). */
 const INIT = Symbol('init');
 

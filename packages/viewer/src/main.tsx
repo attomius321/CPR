@@ -10,7 +10,12 @@ import { App } from './diff/App.js';
 import { askIntro, startIntro } from './intro/intro.js';
 import { isHive, showTabIcon } from './shell/hive.js';
 import { reportPageErrors } from './ui/report.js';
+import { pageKey } from './ui/page-key.js';
 import { Tooltips } from './ui/Tooltip.js';
+import { KeyNotice } from './ui/KeyNotice.js';
+
+// The open token out of the address first (SC1): traded for the page key before any write waits.
+void pageKey();
 
 // The page's errors go to Symbiote's logs (LG1), from its first script on; a `?graph=` page (a
 // graph file, the measure scripts) has no server to tell.
@@ -52,6 +57,7 @@ void Promise.all([
     <StrictMode>
       <App />
       <Tooltips />
+      <KeyNotice />
     </StrictMode>,
   );
 });

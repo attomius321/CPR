@@ -31,6 +31,8 @@ import type {
 } from './server-context.js';
 import { read, answer, fromAnotherSite, redirect, send, serverHttp } from './server-http.js';
 import { serverLogs } from './server-logs.js';
+import { serverKeys, type ServerKeys } from './server-keys.js';
+import { serverSession } from './server-session.js';
 import { siteFiles, serverSites } from './server-sites.js';
 import { historyRows, historyShape, historyRefs, historyRowsOf, serverGit } from './server-git.js';
 import { serverWorkspaces } from './server-workspaces.js';
@@ -44,6 +46,8 @@ export { sourceFiles } from './server-requests.js';
 
 export interface ViewServer {
   url: string;
+  /** The run's secrets (SC1): the ones given, or made at the start. */
+  keys: ServerKeys;
   close(): Promise<void>;
 }
 
@@ -107,8 +111,9 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
   const busy = new Set<string>();
   /** Terminals' output streams (V21), ended when the server closes. */
   const streams = new Set<ServerResponse>();
-  const http = serverHttp({ hosts, busy, streams });
-  const { sameSite, written, exclusive } = http;
+  const keys = options.keys ?? serverKeys();
+  const http = serverHttp({ hosts, busy, streams, keys });
+  const { sameSite, written, writtenOpen, exclusive } = http;
   /** Nucleus's start without a Confirm (NU8): the person's setting with Hive mode over it. */
   const startSetting = options.nucleusStart
     ? nucleusStart(options.nucleusStart, options.hive)
@@ -118,10 +123,18 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
    * once the MCP is, whose asks it sends.
    */
   let events: EventStream | undefined;
+  /**
+   * How many times the asks changed: what the stream says of them (SC1). The asks themselves are
+   * the page's, read with its key (`/api/mcp/asks`); `/api/events` is a read anyone may open.
+   */
+  let asksChanged = 0;
   /** Symbiote's MCP (MC1): its tools over the repository's services; the asks it holds. */
   const mcp: SymbioteMcp | undefined = repository
     ? symbioteMcp(repository, {
-        onAsks: () => events?.changed(['asks'], 'asks'),
+        onAsks: () => {
+          asksChanged += 1;
+          events?.changed(['asks'], 'asks');
+        },
         ...(options.version ? { version: options.version } : {}),
         ...(options.askMs ? { askMs: options.askMs } : {}),
         url: () => address,
@@ -143,7 +156,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         ...(merges ? { merges: () => merges.list() } : {}),
         ...(nucleus ? { nucleus: () => nucleus.state() } : {}),
         ...(scribe ? { scribe: () => scribe.state() } : {}),
-        ...(mcp ? { asks: () => Promise.resolve(mcp.asks()) } : {}),
+        ...(mcp ? { asks: () => Promise.resolve({ changes: asksChanged }) } : {}),
       },
       ...(repository.recordFolders ? { roots: repository.recordFolders } : {}),
       // Terminals' output on the browser's one stream (V94b, decision 903).
@@ -170,6 +183,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     log,
     viewerFiles,
     mcp,
+    keys,
   };
   const { requestLine, pageError } = serverLogs(ctx, http);
   const hive = serverHive(ctx, http);
@@ -182,6 +196,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
   const { pageAgentRoute, mcpRoute } = serverNucleus(ctx, { ...http, ...sitesOf, ...hive });
   const { mergesRoute } = serverMerges(ctx, { ...http, ...sitesOf });
   const { terminalApi } = serverTerminals(ctx, http);
+  const { sessionRoute } = serverSession(ctx, http);
   /** Set once `close` starts: from then on the server answers nothing more (fix-ci-green). */
   let closing = false;
   const server = createServer((req, res) => {
@@ -218,15 +233,17 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     if (fromAnotherSite(req)) return send(res, 403, "forbidden: another site's request");
     const url = new URL(req.url ?? '/', 'http://localhost');
     if (url.pathname === '/api/logs') return pageError(req, res);
+    if (url.pathname.startsWith('/api/session')) return sessionRoute(req, res, url);
     if (events && url.pathname === '/api/events') {
       if (req.method !== 'GET') return send(res, 405, 'method not allowed');
       if (!sameSite(req)) return send(res, 403, 'forbidden');
       return events.open(req, res);
     }
-    // A hook wrote (V94c, decision 905): a bare POST, its answer never waited for.
+    // A hook wrote (V94c, decision 905): a bare POST, its answer never waited for; from an agent's
+    // shell, so without the page key (SC1): it only wakes the stream.
     if (events && url.pathname === '/api/events/ping') {
       const stream = events;
-      return written(req, res, parseEventsPing, ({ kind }) => {
+      return writtenOpen(req, res, parseEventsPing, ({ kind }) => {
         stream.pinged(kind);
         res.writeHead(204);
         res.end();
@@ -488,6 +505,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
   address = `http://127.0.0.1:${port}/`;
   return {
     url: address,
+    keys,
     close: async () => {
       closing = true;
       // A held call or wait would keep its connection, and the server, open.

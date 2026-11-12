@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { tempDir } from '../../core/test/helpers/git-repo.js';
 import { logProcess, run } from '../src/main.js';
 import { startViewServer, type ViewServer } from '../src/server.js';
+import { serverKeys } from '../src/server-keys.js';
 import { fileStateStore } from '../src/state.js';
 
 const graph = JSON.parse(
@@ -28,7 +29,13 @@ function lines(dir: string): Record<string, unknown>[] {
   );
 }
 
-const WRITE = { 'content-type': 'application/json', 'x-symbiote': '1' };
+/** The servers' secrets (SC1): a page's write sends the page key. */
+const KEYS = serverKeys();
+const WRITE = {
+  'content-type': 'application/json',
+  'x-symbiote': '1',
+  'x-symbiote-key': KEYS.page,
+};
 
 describe("the logs' folder", () => {
   it("is logs in the CLI's cache folder", () => {
@@ -71,6 +78,7 @@ describe("the view server's lines", () => {
     mkdirSync(join(viewer, 'assets'));
     writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
     server = await startViewServer({
+      keys: KEYS,
       graph,
       viewerDir: viewer,
       readSource: () => Promise.resolve('// source'),
@@ -211,6 +219,7 @@ describe("the pages' errors, at most 60 a minute", () => {
     writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
     const dir = folder();
     const server = await startViewServer({
+      keys: KEYS,
       graph,
       viewerDir: viewer,
       readSource: () => Promise.resolve(''),

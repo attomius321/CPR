@@ -53,6 +53,15 @@ function parse(value: string): URL | null {
   }
 }
 
+/**
+ * `url` without its fragment (SC1): the open token a server's address carries is the window's
+ * alone, never a log's or another process's output.
+ */
+export function withoutFragment(url: string): string {
+  const at = url.indexOf('#');
+  return at < 0 ? url : url.slice(0, at);
+}
+
 /** Whether `target` loads in the window that shows `home`: the same server's pages only. */
 export function staysInWindow(target: string, home: string): boolean {
   const url = parse(target);

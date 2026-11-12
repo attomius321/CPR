@@ -21,7 +21,7 @@ const TERMINAL_ID = /^(\/api\/terminals\/[0-9a-z]{8})[0-9a-z]+/;
 /** A request's line, and `POST /api/logs`; the pages' errors counted a minute. */
 export function serverLogs(
   { log }: Pick<ServerContext, 'log'>,
-  { written }: Pick<ServerHttp, 'written'>,
+  { writtenOpen }: Pick<ServerHttp, 'writtenOpen'>,
 ) {
   // The pages' errors, as they sent them: `err` is theirs, not an Error for pino to read.
   const pageLog = log.as('viewer').child({}, { serializers: { err: (err: unknown) => err } });
@@ -61,7 +61,8 @@ export function serverLogs(
       req.resume();
       return send(res, 413, `a page's error of at most ${MAX_PAGE_ERROR / 1024} KB`);
     }
-    return written(
+    // Without the page key (SC1): a tab that reads only reports its errors too.
+    return writtenOpen(
       req,
       res,
       parsePageError,

@@ -28,6 +28,7 @@ import { codeQualityReport } from './codequality.js';
 import { formatAnalysis } from './format.js';
 import { frameworkHints, loadPlugins } from './plugins.js';
 import { startViewServer } from './server.js';
+import { addressWith, runKeys, type ServerKeys } from './server-keys.js';
 import type { ChangeFiles, ReviewTarget } from './server-context.js';
 import { introRecord, symbioteConfigDir, type IntroRecord } from './intro.js';
 import { repositoryHive } from './hive.js';
@@ -115,18 +116,48 @@ export async function analyze(
 }
 
 /**
- * Shows the viewer at `url`: in Symbiote's window when the app is set up (N1), else, or with
- * `--browser`, in the browser; nowhere with `--no-open`. Then waits for Ctrl+C or, in the
- * window, for it to close.
+ * How a run's page is opened (SC1, decision 930): each address it opens or prints with a one-time
+ * token of its own in its fragment. A tab without the page key asks for another
+ * (`/api/session/again`): opened in the browser when the run opened the browser, else printed.
+ */
+export function pageOpener(ctx: CliContext, keys: ServerKeys) {
+  let url = '';
+  let browser = false;
+  const address = () => addressWith(url, keys.open());
+  return {
+    /** The page every address opens: the server's, or the first diff's. */
+    at(page: string): void {
+      url = page;
+    },
+    address,
+    /** The address in the browser, from now on how a fresh one is opened too. */
+    browse(): void {
+      browser = true;
+      ctx.openUrl(address());
+    },
+    again(): void {
+      const fresh = address();
+      ctx.stdout(`Symbiote viewer: ${fresh}\n`);
+      if (browser) ctx.openUrl(fresh);
+    },
+  };
+}
+
+export type PageOpener = ReturnType<typeof pageOpener>;
+
+/**
+ * Shows the viewer at a fresh address of `opener`'s: in Symbiote's window when the app is set up
+ * (N1), else, or with `--browser`, in the browser; nowhere with `--no-open`. Then waits for Ctrl+C
+ * or, in the window, for it to close.
  */
 export async function showUntilExit(
-  url: string,
+  opener: PageOpener,
   title: string,
   args: ServeArgs,
   ctx: CliContext,
 ): Promise<void> {
   if (args['no-open']) return ctx.waitForExit();
-  const shown = args.browser ? null : await ctx.openApp?.(url, title);
+  const shown = args.browser ? null : await ctx.openApp?.(opener.address(), title);
   if (shown && 'closed' in shown) {
     ctx.stdout("Symbiote's window is open: close it, or Ctrl+C, to stop\n");
     await Promise.race([ctx.waitForExit(), shown.closed]);
@@ -135,7 +166,7 @@ export async function showUntilExit(
   }
   if (shown)
     ctx.stderr(`symbiote: Symbiote's window did not open (${shown.error}); opening the browser\n`);
-  ctx.openUrl(url);
+  opener.browse();
   return ctx.waitForExit();
 }
 
@@ -186,14 +217,20 @@ export async function serve(
   analysis: Analysis,
   graph: Graph,
   args: ServeArgs,
-  ctx: CliContext,
+  given: CliContext,
   help: string,
   review?: ReviewTarget,
 ): Promise<number> {
+  // The run's secrets (SC1), out of the environment of what it starts.
+  const { keys, env } = runKeys(given.env);
+  const ctx: CliContext = { ...given, env };
   const port = checkPort(args.port, help);
   const repo = await openRepo(ctx.cwd);
   const shas = { base: analysis.revisions.from, head: analysis.revisions.head.sha };
+  const opener = pageOpener(ctx, keys);
   const server = await startViewServer({
+    keys,
+    openAgain: () => opener.again(),
     graph,
     port,
     viewerDir: viewerDir(ctx),
@@ -211,10 +248,11 @@ export async function serve(
     ...(ctx.log ? { log: ctx.log } : {}),
   });
   ctx.log?.log.info({ version, repo: repo.root, url: server.url }, 'serving one graph');
-  ctx.stdout(`${statsLine(graph)}\nSymbiote viewer: ${server.url}  (Ctrl+C to stop)\n`);
+  opener.at(server.url);
+  ctx.stdout(`${statsLine(graph)}\nSymbiote viewer: ${opener.address()}  (Ctrl+C to stop)\n`);
   for (const warning of analysis.warnings) ctx.stderr(`warning: ${warning}\n`);
 
-  await showUntilExit(server.url, basename(repo.root), args, ctx);
+  await showUntilExit(opener, basename(repo.root), args, ctx);
   await server.close();
   return 0;
 }

@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createServer, type IncomingHttpHeaders, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { join } from 'node:path';
@@ -57,12 +57,19 @@ afterEach(() => {
 });
 
 /** A bridge on a view file: write lines to it, read its answers. */
-function bridge(view: string, as?: 'nucleus') {
+function bridge(view: string, as?: 'nucleus', nucleusKey?: string) {
   const input = new PassThrough();
   const output = new PassThrough();
   let out = '';
   output.on('data', (chunk: Buffer) => (out += chunk.toString()));
-  const done = runBridge({ view, input, output, folder: '/home/p/trial', ...(as ? { as } : {}) });
+  const done = runBridge({
+    view,
+    input,
+    output,
+    folder: '/home/p/trial',
+    ...(as ? { as } : {}),
+    ...(nucleusKey ? { nucleusKey } : {}),
+  });
   return {
     send: (message: unknown) =>
       input.write(`${typeof message === 'string' ? message : JSON.stringify(message)}\n`),
@@ -240,5 +247,53 @@ describe("symbiote view's record for the bridge", () => {
     expect(existsSync(file)).toBe(false);
     writeFileSync(file, '{"url": 5}');
     expect(readViewRecord(file)).toBeNull();
+  });
+
+  it('holds the bridge key, readable by the user alone (SC1)', async () => {
+    const dir = tempDir();
+    dirs.push(dir);
+    const file = join(dir, 'views', 'x.json');
+    const record = { url: 'http://127.0.0.1:5/', pid: 42, root: '/r', started: 's', key: 'b-key' };
+    await writeViewRecord(file, record);
+    expect(readViewRecord(file)).toEqual(record);
+    expect(statSync(file).mode & 0o777).toBe(0o600);
+  });
+});
+
+describe("the bridge's keys (SC1, decisions 930, 931)", () => {
+  it("sends the record's bridge key, and Nucleus's key when it was given one", async () => {
+    const dir = tempDir();
+    dirs.push(dir);
+    const view = await fakeView();
+    const file = join(dir, 'view.json');
+    const at = { url: view.url, pid: process.pid, root: '/r', started: 'now', key: 'b-key' };
+    await writeViewRecord(file, at);
+    const agent = bridge(file);
+    agent.send({ jsonrpc: '2.0', id: 1, method: 'tools/list' });
+    agent.end();
+    await agent.done;
+    const nucleus = bridge(file, 'nucleus', 'n-key');
+    nucleus.send({ jsonrpc: '2.0', id: 1, method: 'tools/list' });
+    nucleus.end();
+    await nucleus.done;
+    await view.close();
+    expect(view.seen[0]?.headers['x-symbiote-key']).toBe('b-key');
+    expect(view.seen[0]?.headers['x-symbiote-nucleus']).toBeUndefined();
+    expect(view.seen[1]?.headers['x-symbiote-key']).toBe('b-key');
+    expect(view.seen[1]?.headers['x-symbiote-nucleus']).toBe('n-key');
+  });
+
+  it('sends no key to a server from before SC1, whose record has none', async () => {
+    const dir = tempDir();
+    dirs.push(dir);
+    const view = await fakeView();
+    const file = join(dir, 'view.json');
+    await writeViewRecord(file, { url: view.url, pid: process.pid, root: '/r', started: 'now' });
+    const agent = bridge(file);
+    agent.send({ jsonrpc: '2.0', id: 1, method: 'tools/list' });
+    agent.end();
+    await agent.done;
+    await view.close();
+    expect(view.seen[0]?.headers['x-symbiote-key']).toBeUndefined();
   });
 });

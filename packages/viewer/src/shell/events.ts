@@ -13,13 +13,8 @@
 // that hears nothing for 30 s (a frozen holder) opens a stream of its own. Terminals' output rides
 // the same stream: a tab listens to a terminal by the stream's ID, and the holder relays it.
 import { useSyncExternalStore } from 'react';
-import type {
-  BranchReviewList,
-  McpAsks,
-  MergeList,
-  PageAgentState,
-  WorkspaceList,
-} from '@symbiote/core';
+import { write } from '../ui/http.js';
+import type { BranchReviewList, MergeList, PageAgentState, WorkspaceList } from '@symbiote/core';
 
 /** The shell's state, as the stream sends it: each part as its own read answers it. */
 export interface Parts {
@@ -28,7 +23,8 @@ export interface Parts {
   merges?: MergeList | null;
   nucleus?: PageAgentState | null;
   scribe?: PageAgentState | null;
-  asks?: McpAsks | null;
+  /** That the asks changed (SC1): the page reads them with its key, `/api/mcp/asks`. */
+  asks?: { changes: number } | null;
 }
 export type PartName = keyof Parts;
 
@@ -445,9 +441,7 @@ export function pushed(): PushStore {
     setTimeout: (run, ms) => globalThis.setTimeout(run, ms) as unknown as number,
     clearTimeout: (id) => globalThis.clearTimeout(id),
     post: (path, body) =>
-      fetch(path, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+      write(path, {
         body: JSON.stringify(body),
       }).then((response) => response.status),
   });

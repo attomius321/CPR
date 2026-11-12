@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { IBufferRange, ILink, Terminal } from '@xterm/xterm';
 import type { WorkspaceTerminalOpened } from '@symbiote/core';
-import { fileBase64, postJson } from '../ui/http.js';
+import { fileBase64, postJson, write } from '../ui/http.js';
 import { ImageIcon } from '../ui/icons.js';
 import {
   cellRange,
@@ -26,7 +26,6 @@ import { holdReads } from './useWorkspaces.js';
 import { terminalOutput } from '../shell/events.js';
 import { tip } from '../ui/tip.js';
 
-const WRITE_HEADERS = { 'content-type': 'application/json', 'x-symbiote': '1' };
 /** Where ⌘V pastes and Ctrl+V stays the agent's (V36). */
 const MAC = /Mac|iPhone|iPad/.test(navigator.userAgent);
 const ONLY_IMAGES = 'Only images can be attached: PNG, JPEG, GIF or WebP.';
@@ -58,9 +57,7 @@ interface Hint {
 
 /** A write to a terminal (`…/in`, `…/resize`, `…/close`): no answer but its status. */
 export async function toTerminal(id: string, action: string, body: unknown): Promise<void> {
-  const response = await fetch(`/api/terminals/${id}/${action}`, {
-    method: 'POST',
-    headers: WRITE_HEADERS,
+  const response = await write(`/api/terminals/${id}/${action}`, {
     body: JSON.stringify(body),
     // A close sent while the page goes still reaches the server.
     keepalive: action === 'close',

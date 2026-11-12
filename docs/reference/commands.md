@@ -26,11 +26,32 @@ from the job.
 
 To see a command's options, run `symbiote <command> --help`.
 
+## The address it prints
+
+`symbiote view`, `symbiote diff` and `symbiote pr` print the address they serve. Its end is a key
+that opens it once:
+
+```
+Symbiote viewer: http://127.0.0.1:41234/#k=Xq3v…  (Ctrl+C to stop)
+```
+
+The page trades the part after `#k=` for the run's page key, takes it out of the address and keeps
+the key in that browser. A reload and another tab of the same browser can still write. Symbiote's
+window and the browser tab Symbiote opens get an address of their own, so the printed one is still
+unused. Symbiote nexus gets a new one for each Symbiote it shows.
+
+A tab opened without it, such as a bookmark, the address typed without its end, or another
+browser, shows Symbiote but cannot change anything or answer a **Confirm**. It says **Open from
+Symbiote**. Its **Open again** asks `symbiote view` for a new address: Symbiote opens it in your
+browser if it opened the browser at the start, and prints it otherwise. See
+[What keeps other programs out](configuration.md#what-keeps-other-programs-out).
+
 ## How the app stays up to date
 
 `symbiote view` tells its pages what changed as it changes: an agent's state, a commit, a review,
 an ask, a merge's steps. Each browser gets one stream of these changes, `GET /api/events`
-(server-sent events). Its first event is the whole state, then only what changed. One tab of the
+(server-sent events). Its first event is the whole state, then only what changed. Of the asks it
+says only that they changed: the page reads them with its key. One tab of the
 browser holds the stream and passes it to the other tabs, terminals' output included. Chrome
 gives a site 6 connections, and one stream per tab would take them all.
 
@@ -122,7 +143,7 @@ says how many it left out, and `symbiote activity` gives all of it.
 | `--no-merge-base` | diff, view | Compares with `base` itself. |
 | `--port <n>` | view, pr, symbiote-nexus | The app's port. Default: any free port; 7347 for `symbiote-nexus` (`0` for any free one). When a nexus already serves on the port, `symbiote-nexus` opens it; when another program does, it says so and ends. |
 | `--browser` | view, pr, symbiote-nexus | Opens your browser instead of Symbiote's window. |
-| `--no-open` | view, pr, symbiote-nexus | Opens neither. Open the address it prints yourself. |
+| `--no-open` | view, pr, symbiote-nexus | Opens neither. Open the address it prints yourself: its end opens it once (see [The address it prints](#the-address-it-prints)). |
 | `--summary` | pr | Prints the summary instead of opening the app. |
 | `--post-findings <level>` | pr | Posts new findings at or above the level as comments on their lines, instead of opening the app. A finding posted by an earlier run is not posted again. |
 | `--forge <name>` | pr | `github` or `gitlab`, for a host whose name does not say which it is. |

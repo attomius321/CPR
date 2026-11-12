@@ -100,7 +100,8 @@ export function startView(repo: string, cache: string): Promise<Served> {
     [cli, 'view', '--no-open'],
     repo,
     { SYMBIOTE_CACHE_DIR: cache },
-    /Symbiote viewer: (\S+)/,
+    // The bare address: the printed one's open token (SC1) is not the specs'.
+    /Symbiote viewer: ([^\s#]+)/,
   );
 }
 

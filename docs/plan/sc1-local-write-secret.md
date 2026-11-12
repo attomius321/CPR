@@ -2,8 +2,10 @@
 
 [Index](../PLAN.md) · [Journal](../journal/sc1-local-write-secret.md)
 
-**Status:** planned (2026-11-06), to be built on branch `feature/sc1-local-write-secret` in its own
-workspace; written by the improvement audit (`chore/improvement-audit`). Not started.
+**Status:** built, ready for review (2026-11-12), on branch `feature/sc1-local-write-secret` (the
+workspace's, from `main` at d2abb65); planned 2026-11-06 by the improvement audit
+(`chore/improvement-audit`). Decision 930 as built differs from its first text: a header and the
+page's storage, not a cookie (the person's choice, 2026-11-12); see "As built".
 
 ## The brief
 
@@ -149,9 +151,85 @@ one route family at a time (SC1b). Nucleus's identity last (SC1c).
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 930 | How the page proves it is the page | **A per-run page secret, handed out only in the opened address's fragment, traded once for an HttpOnly, SameSite=Strict cookie; writes and the Confirm's routes need it** | The audit's `curl` reached `/api/mcp/answer` with no Origin; a fragment is never sent or logged, and a cookie needs no change to the page's fetches |
+| 930 | How the page proves it is the page | **A per-run page key, handed out only by trading a one-time token from the opened address's fragment; kept in the origin's storage and sent as `x-symbiote-key` with every write and the Confirm's reads** (as built; first written: an HttpOnly, SameSite=Strict cookie) | The audit's `curl` reached `/api/mcp/answer` with no Origin; a fragment is never sent or logged. A cookie of `127.0.0.1` goes to every port of it (RFC 6265 §8.5): a dev server an agent runs, opened in the same browser, would get it; storage is per origin, port included |
 | 931 | Who is Nucleus | **The caller whose bridge sends the Nucleus secret, given to Nucleus's process alone; `x-symbiote-caller` no longer decides** | `nucleus-mcp.json` with `--as nucleus` is readable and runnable by any agent |
 | 932 | What SC1 protects | **The API: no documented or discoverable HTTP call answers a Confirm or acts as Nucleus. A same-user process that reads files, process arguments or memory is not kept out, and the docs say so** | Agents run as the person's user; full isolation needs another user or a sandbox, a later step |
 
 **Not in SC1 (later)**: running agents as another user or in a sandbox that cannot reach
 127.0.0.1; the nexus (NX7); signing the records Symbiote writes in `symbiote/`.
+
+## As built (SC1)
+
+The person's choices at the plan's OK (2026-11-12): Q1 a header, not a cookie; Q2 a known key
+for the e2e harness; Q3 the nexus's frames through a write of the nexus's, its gap until NX7 said.
+
+- **A header and the page's storage, not a cookie (decision 930 as built).** Cookies are not kept
+  apart by port, so an agent's dev server on `127.0.0.1` opened in the same browser would receive
+  a cookie of Symbiote's. The page trades the fragment's token (`POST /api/session {k}`) for the
+  page key, keeps it in `localStorage` (per origin, so per port) and sends it as `x-symbiote-key`
+  through one `write()`/`pageHeaders()` in `ui/http.ts`; the ten files that built their own
+  headers use it. A failed trade (a reload of the opened address) keeps the stored key.
+- **Tokens, one each.** `server-keys.ts` keeps at most 20 open tokens, each traded once. The
+  window or browser tab Symbiote opens and the printed line each get their own; a tab's
+  **Open again** (`POST /api/session/again`, bare, once per 3 s) opens a fresh one in the
+  browser when the run opened the browser, else prints it. `GET /api/session` says `{ page }`.
+- **The refusal says why.** A write shaped as the page's (JSON, `x-symbiote: 1`, own origin) but
+  without the key answers 403 with `x-symbiote-refused: key`; the page shows **Open from
+  Symbiote** (`ui/KeyNotice.tsx`), on load when `GET /api/session` says `page: false` too. Any
+  other refusal stays a bare `forbidden`.
+- **Open without a key**: `/api/events/ping` (the hooks) and `/api/logs` (a tab that reads only
+  reports its errors too), through `writtenOpen`. Reads stay open, but for `/api/mcp/asks` and
+  `/api/workspaces/shells` (which already needed the page's header).
+- **The stream no longer carries the asks.** `/api/events` is a read anyone may open; its `asks`
+  part is now `{ changes: n }`, and the page reads `/api/mcp/asks` with its key when it changes.
+  Decision 996 (MC3) said the asks go "through `/api/mcp/asks` and the stream"; the stream now
+  only signals them.
+- **The bridge key** is in both records, `<cache>/views/<hash>.json` and
+  `<cache>/running/<pid>.json`, written 0600. `/api/mcp` needs it and nothing else takes it. The
+  nexus reads it from the running record only (`recordKey`), never as part of a `Running`, so
+  `GET /api/symbiotes` never serves it. The nexus asks a view for a frame's token with
+  `POST /api/session/open` (a POST, not the plan's `GET ?bridge=`: no key in a URL), behind its
+  own write `POST /api/symbiotes/open {url}`, listed in `WRITES` so NX7's key covers it.
+- **Nucleus's key** goes to its bridge in the MCP server's `env` (`SYMBIOTE_NUCLEUS_KEY`): in
+  Claude Code's MCP file, now `<cache>/mcp/<hash>/nucleus-mcp.json` (0600; the old
+  `symbiote/nucleus-mcp.json` is removed at the next start), and in Codex's `mcp_servers`. The
+  bridge sends it as `x-symbiote-nucleus`. `x-symbiote-caller` no longer decides (a bridge from
+  before NU1 saying `scout` is an agent's now, decision 590's reading ends here).
+- **The e2e harness (Q2).** `startSymbiote` gives every server `SYMBIOTE_PAGE_KEY` and
+  `SYMBIOTE_NUCLEUS_KEY`; the viewer's Playwright config sends the page key with every request,
+  so 75 specs are unchanged. `symbiote view` reads both at start and takes them out of its
+  environment and `process.env` (`runKeys`): no agent or terminal it starts inherits them.
+  The real path is the specs': `page-key.spec.ts` (the bare tab, the opened address, its token
+  used once), the window's `app.spec.ts` (opened with a fresh token, its key checked), the
+  nexus's frames (`nexus.spec.ts` checks a framed page holds a key), `nucleus.spec.ts` (the MCP
+  file in the cache, 0600, with the key).
+- **Logs and output carry no token**: the window's `Symbiote window:` line and its log lines strip
+  the fragment (`withoutFragment` in `policy.ts`); `symbiote view` logs the bare address.
+  `scripts/viewer/diverged-diffs.mjs` trades its printed token before it posts.
+
+## Results (SC1)
+
+- **The audit's lines, on this branch's own `symbiote view`** (a scratch repository, its own
+  cache; main measured the same way first, 2026-11-12):
+
+  | Request | main d2abb65 | this branch |
+  |---|---|---|
+  | `GET /api/mcp/asks` | 200 | 403 |
+  | `POST /api/mcp/answer`, `x-symbiote: 1`, no Origin | 404 (through the gate) | 403 |
+  | the same with `origin: http://evil.example` | 403 | 403 |
+  | `POST /api/mcp`, `x-symbiote-caller: nucleus` | 200, as Nucleus | 403 |
+  | the same with the bridge key | — | 200, an agent's call |
+  | `POST /api/mcp/answer` with the bridge key | — | 403 |
+  | `POST /api/events/ping` (the hooks) | 204 | 204 |
+
+  `GET /api/events` sends `"asks":{"changes":0}`. Both records are `-rw-------`.
+- **Tests**: 3,684 unit tests (`pnpm check`), new: `server-keys`, `server-session` (10, the three
+  refusal families red first with the refusals switched off), `page-opener`, `frame-address`,
+  `page-key` (viewer), the bridge's headers, the records' key and mode, Nucleus's MCP file.
+  `pnpm test:e2e`: viewer 488 passed (`app.spec.ts` and the new `page-key.spec.ts` included),
+  nexus 32 passed. The route table changed by one row in each table with an MCP:
+  `GET /api/mcp/asks → 403`.
+- **Not verified**: a real Nucleus, Claude Code or Codex, reaching its tools with the new MCP file
+  (it writes main's `symbiote/`; the fake Claude Code's start and the real bridge in `mcp.spec.ts`
+  with the key cover the path); a browser on Windows framing a WSL view through the nexus.
+

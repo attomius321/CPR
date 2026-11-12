@@ -4,9 +4,20 @@ import {
   keyAction,
   outsideAddress,
   parseAppArgs,
+  withoutFragment,
   staysInWindow,
   type KeyInput,
 } from '../src/policy.js';
+
+describe('the open token (SC1)', () => {
+  it('opens the address with its fragment, and logs or prints it without', () => {
+    expect(parseAppArgs(['--url', 'http://127.0.0.1:4100/git#k=tok'])).toEqual({
+      url: 'http://127.0.0.1:4100/git#k=tok',
+    });
+    expect(withoutFragment('http://127.0.0.1:4100/git#k=tok')).toBe('http://127.0.0.1:4100/git');
+    expect(withoutFragment('http://127.0.0.1:4100/')).toBe('http://127.0.0.1:4100/');
+  });
+});
 
 describe('parseAppArgs', () => {
   it('reads the server to show and the first title, in either form', () => {

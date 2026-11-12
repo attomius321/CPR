@@ -42,6 +42,16 @@ const url = await new Promise((resolve, reject) => {
   server.on('exit', (code) => reject(new Error(`symbiote view exited with ${code}: ${output}`)));
 });
 
+// The page key (SC1), traded for the printed address's token as the page does: the script writes.
+const key = await (async () => {
+  const response = await fetch(new URL('api/session', url), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+    body: JSON.stringify({ k: new URL(url).hash.slice('#k='.length) }),
+  });
+  return (await response.json()).key;
+})();
+
 const get = async (path) => {
   const response = await fetch(new URL(path, url));
   if (!response.ok) throw new Error(`${path}: ${response.status} ${await response.text()}`);
@@ -82,7 +92,7 @@ async function compare(picks) {
 async function analyze(pair) {
   const response = await fetch(new URL('api/diffs', url), {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+    headers: { 'content-type': 'application/json', 'x-symbiote': '1', 'x-symbiote-key': key },
     body: JSON.stringify(pair),
   });
   if (!response.ok) throw new Error(`POST /api/diffs: ${await response.text()}`);

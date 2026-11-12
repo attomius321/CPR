@@ -16,6 +16,12 @@ describe('readyUrl', () => {
     expect(readyUrl('hint: x\nSymbiote viewer: http://127.0.0.1:1/\n')).toBe('http://127.0.0.1:1/');
   });
 
+  it('keeps the open token in its fragment, which the window opens with (SC1)', () => {
+    expect(readyUrl('Symbiote viewer: http://127.0.0.1:41234/#k=a-B_9  (Ctrl+C to stop)\n')).toBe(
+      'http://127.0.0.1:41234/#k=a-B_9',
+    );
+  });
+
   it('waits for the whole line, and takes no other server', () => {
     expect(readyUrl('Symbiote viewer: http://127.0.0.1:41')).toBeNull();
     expect(readyUrl('Symbiote viewer: http://example.com/  (Ctrl+C to stop)\n')).toBeNull();

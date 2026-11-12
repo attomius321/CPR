@@ -1,7 +1,8 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { E2E_NUCLEUS_KEY } from './page-key.js';
 import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 import { textAt } from './terminal.js';
 
@@ -75,10 +76,21 @@ test("opens as Nucleus's terminal, from the sidenav and by its key: started in t
     'dontAsk',
     '--strict-mcp-config',
     '--mcp-config',
-    join(symbiote.repo, 'symbiote', 'nucleus-mcp.json'),
+    expect.stringMatching(/\/mcp\/[0-9a-f]{16}\/nucleus-mcp\.json$/) as unknown as string,
     '--settings',
     join(symbiote.repo, 'symbiote', 'nucleus-settings.json'),
   ]);
+  // Its MCP file in the cache, the user's alone, Nucleus's key in its bridge's environment (SC1).
+  const mcpConfig = args[9] ?? '';
+  expect(mcpConfig.startsWith(join(symbiote.cache, 'mcp'))).toBe(true);
+  expect(statSync(mcpConfig).mode & 0o777).toBe(0o600);
+  const server = (
+    JSON.parse(readFileSync(mcpConfig, 'utf8')) as {
+      mcpServers: { symbiote: { env: Record<string, string> } };
+    }
+  ).mcpServers.symbiote;
+  expect(server.env.SYMBIOTE_NUCLEUS_KEY).toBe(E2E_NUCLEUS_KEY);
+  expect(existsSync(join(symbiote.repo, 'symbiote', 'nucleus-mcp.json'))).toBe(false);
   // Its instructions are its system prompt, and nothing follows: no prompt (decision 383).
   expect(args.at(-2)).toBe('--append-system-prompt');
   expect(args.at(-1)).toContain('You are Nucleus');

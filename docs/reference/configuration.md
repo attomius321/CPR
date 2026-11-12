@@ -536,9 +536,40 @@ Nucleus starts a workspace only after you click **Confirm**. To let it start one
 { "on": true, "since": "2026-11-02T08:00:00.000Z" }
 ```
 
-Symbiote knows Nucleus's calls by the `--as nucleus` its bridge is started with. Any program on
-your machine can start a bridge that way. With the setting on, such a program can start a
-workspace without asking you, and the start is recorded in Nucleus's activity.
+Symbiote knows Nucleus's calls by a key that only Nucleus's bridge is given, in its environment
+(`SYMBIOTE_NUCLEUS_KEY`). A program that names itself Nucleus without that key is treated as an
+agent of yours: its start waits for your **Confirm**. See
+[What keeps other programs out](#what-keeps-other-programs-out) for what the key does not cover.
+
+## What keeps other programs out
+
+`symbiote view` serves on `127.0.0.1`, where every program on your machine can reach it. Your
+agents run as you and can run `curl`. Three keys, made at each start, keep its writes for you:
+
+| Key | Who has it | What it lets through |
+|---|---|---|
+| The page key | The page Symbiote opened: its window, the tab it opened, the address it printed, a frame of the nexus. Traded once for the `#k=` at the address's end, then kept in that browser. | Every change the page makes, the list of what waits for your **Confirm**, and your answer to it. |
+| The bridge key | `symbiote mcp` and Nucleus's bridge, from the server's record in the cache. | Symbiote's tools (`/api/mcp`) only: no change of the page's, no answer to a **Confirm**. |
+| Nucleus's key | Nucleus's bridge alone, in its environment, from its MCP file in the cache. | A tool call counted as Nucleus's, which **Start workspaces without a Confirm** lets start at once. |
+
+A request without the right key is refused (403). An agent's hooks tell `symbiote view` that they
+wrote with no key: that only wakes the page's stream.
+
+What the keys do not keep out:
+
+- **A program that reads your files.** The records that hold the bridge key
+  (`<cache>/views/*.json`, `<cache>/running/*.json`) and Nucleus's MCP file
+  (`<cache>/mcp/*/nucleus-mcp.json`) are readable by you alone (mode 0600), so any program running
+  as you can read them, your agents too. With the bridge key a program can get the page key, as
+  the nexus does for its frames. The browser keeps the page key in its profile.
+- **A program that reads other processes' arguments or memory.** Symbiote's window gets its
+  address, the key's end included, as an argument. That end opens once and is used as the window
+  loads.
+- **Symbiote nexus, until it has keys of its own.** It gives a frame an address with a key, and
+  any program can ask it for one.
+
+The keys stop a call that anything can find by using Symbiote's API. Keeping your own agents out
+completely needs them to run as another user or in a sandbox that cannot reach `127.0.0.1`.
 
 ## Branches hidden from Git, `symbiote/git.json`
 
@@ -618,6 +649,8 @@ the same files aside.
 | `SYMBIOTE_FORGE` | `github` or `gitlab`, as `--forge` does. |
 | `SYMBIOTE_HIVE_REQUEST_MS` | How often Hive reads a pull or merge request it waits on, in milliseconds. Default: 60000. |
 | `SYMBIOTE_ASK_MS` | How long a tool's **Confirm** waits before it lapses onto the bar, in milliseconds. Default: 600000 (10 minutes). The viewer's end-to-end tests shorten it. |
+| `SYMBIOTE_NUCLEUS_KEY` | Nucleus's key. Symbiote sets it in the environment of Nucleus's bridge alone: with it, the bridge's calls are Nucleus's. Given to `symbiote view`, it is that run's key instead of a new one (the end-to-end tests set it); Symbiote takes it out of its environment, so nothing it starts inherits it. See [What keeps other programs out](#what-keeps-other-programs-out). |
+| `SYMBIOTE_PAGE_KEY` | The page key of a `symbiote view`, `diff` or `pr` run instead of a new one. The end-to-end tests set it. Symbiote takes it out of its environment, so nothing it starts inherits it. |
 
 The CI templates read a few more variables. The [review guide](../guide/review-and-ci.md#run-in-ci)
 lists them.

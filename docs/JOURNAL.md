@@ -475,3 +475,4 @@ merge commit.
 - 2026-11-11 [MC3 spike — what Nucleus's 15 workspaces asked of the person](journal/mc3-mcp-batch-confirm.md)
 - 2026-11-11 [MC3 — one Confirm for many actions, mark merged, and the gaps Nucleus hit](journal/mc3-mcp-batch-confirm.md)
 - 2026-11-12 [V107 — Back in the panel; its rows on one line](journal/v107-back-in-the-panel.md)
+- 2026-11-12 [SC1 — a key for the page, the bridge and Nucleus](journal/sc1-local-write-secret.md)

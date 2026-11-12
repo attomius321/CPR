@@ -23,6 +23,8 @@ import {
   type FakeAppServer,
 } from '../../cli/test/fake-app-server.js';
 
+import { E2E_NUCLEUS_KEY, E2E_PAGE_KEY } from './page-key.js';
+
 const root = fileURLToPath(new URL('../../..', import.meta.url));
 const fixtures = join(root, 'packages/core/test/fixtures/diff');
 const cli = join(root, 'packages/cli/dist/bin.js');
@@ -38,8 +40,14 @@ const env = {
 };
 
 export interface Running {
+  /** The server's address, bare: every spec's page writes with `E2E_PAGE_KEY` (SC1). */
   readonly url: string;
   stop(): void;
+}
+
+/** A `symbiote view` that gives a fresh address with an open token (SC1): Symbiote's window's. */
+export interface Opens {
+  freshAddress: () => Promise<string>;
 }
 
 /** A fixture file's head version. */
@@ -94,12 +102,27 @@ export async function showGraph(page: Page): Promise<void> {
   await page.locator('.page-switch').getByRole('tab', { name: 'Graph' }).click();
 }
 
-/** Runs the built CLI until it prints the viewer's URL. */
+/**
+ * A server's started symbiote view (SC1): its bare address (`url`), the one it printed with an
+ * open token (`printed`), and a fresh such address asked for with its record's bridge key
+ * (`freshAddress`; a `symbiote view` with `SYMBIOTE_CACHE_DIR` only), each usable once.
+ */
+interface Started {
+  url: string;
+  printed: string;
+  child: ChildProcess;
+  freshAddress: () => Promise<string>;
+}
+
+/**
+ * Runs the built CLI until it prints the viewer's URL. Its page key is `E2E_PAGE_KEY` (SC1), which
+ * every spec's page sends (`playwright.config.ts`); a spec of the key itself passes another.
+ */
 async function startSymbiote(
   args: string[],
   cwd: string,
   extraEnv: Record<string, string>,
-): Promise<{ url: string; child: ChildProcess }> {
+): Promise<Started> {
   const child = spawn(process.execPath, [cli, ...args, '--no-open'], {
     cwd,
     // Never a real agent: a spec that wants one passes a fake (V26c's merger would find yours).
@@ -115,10 +138,12 @@ async function startSymbiote(
       ...(extraEnv.SYMBIOTE_CACHE_DIR || extraEnv.SYMBIOTE_LOG_DIR ? {} : { SYMBIOTE_LOG: 'off' }),
       // A config folder of its own: never your skill library (SK1); a spec may pass its own.
       XDG_CONFIG_HOME: mkdtempSync(join(tmpdir(), 'symbiote-e2e-config-')),
+      SYMBIOTE_PAGE_KEY: E2E_PAGE_KEY,
+      SYMBIOTE_NUCLEUS_KEY: E2E_NUCLEUS_KEY,
       ...extraEnv,
     },
   });
-  const url = await new Promise<string>((resolve, reject) => {
+  const printed = await new Promise<string>((resolve, reject) => {
     let output = '';
     child.stdout?.on('data', (data: Buffer) => {
       output += data.toString();
@@ -128,7 +153,26 @@ async function startSymbiote(
     child.stderr?.on('data', (data: Buffer) => (output += data.toString()));
     child.on('exit', (code) => reject(new Error(`symbiote exited with ${code}:\n${output}`)));
   });
-  return { url, child };
+  const url = printed.replace(/#.*$/, '');
+  const cache = extraEnv.SYMBIOTE_CACHE_DIR;
+  async function freshAddress(): Promise<string> {
+    if (!cache) throw new Error('a fresh address needs the server’s SYMBIOTE_CACHE_DIR');
+    const record = JSON.parse(
+      readFileSync(join(cache, 'running', `${child.pid}.json`), 'utf8'),
+    ) as { key: string };
+    const res = await fetch(new URL('api/session/open', url), {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-symbiote': '1',
+        'x-symbiote-key': record.key,
+      },
+      body: '{}',
+    });
+    const { token } = (await res.json()) as { token: string };
+    return `${url}#k=${token}`;
+  }
+  return { url, printed, child, freshAddress };
 }
 
 export interface RunningFixture extends Running {
@@ -163,7 +207,7 @@ export async function serveFixture(
   };
 }
 
-export interface RunningCommits extends Running {
+export interface RunningCommits extends Running, Opens {
   /** The commits, oldest first. */
   shas: string[];
   /** The repository's folder (V11's tests change its working tree). */
@@ -355,12 +399,13 @@ export async function serveCommits(extraEnv: Record<string, string> = {}): Promi
   git(repo, 'tag', 'v0', aside(base, 6, 'Old release'));
   git(repo, 'checkout', '-q', 'main');
   const cache = mkdtempSync(join(tmpdir(), 'symbiote-e2e-cache-'));
-  const { url, child } = await startSymbiote(['view'], repo, {
+  const { url, child, freshAddress } = await startSymbiote(['view'], repo, {
     SYMBIOTE_CACHE_DIR: cache,
     ...extraEnv,
   });
   return {
     url,
+    freshAddress,
     shas,
     repo,
     stop() {
@@ -614,7 +659,7 @@ export interface FakeClaudeCall {
   cwd: string;
 }
 
-export interface RunningWorkspaces extends Running {
+export interface RunningWorkspaces extends Running, Opens {
   repo: string;
   /** Symbiote's config folder for it (`XDG_CONFIG_HOME/symbiote`): the skill library's record. */
   config: string;
@@ -680,6 +725,11 @@ export interface RunningWorkspaces extends Running {
   hook(branch: string, input: Record<string, unknown>): void;
   /** Runs Nucleus's session's hooks for one event, as Claude Code runs them (NU2). */
   nucleusHook(input: Record<string, unknown>): void;
+  /**
+   * What Nucleus's bridge sends besides a call (SC1): the bridge key from the view's record and
+   * Nucleus's key from its MCP file in the cache (once Nucleus started).
+   */
+  nucleusBridge(): Record<string, string>;
   /**
    * Stops `symbiote view` and starts it again on the same repository; its new address (NU2). On
    * the same port with `samePort` (V94), after `downMs` down.
@@ -1333,6 +1383,7 @@ export async function serveWorkspaces({
     get url() {
       return running.url;
     },
+    freshAddress: () => running.freshAddress(),
     repo,
     config: join(fake, 'config', 'symbiote'),
     cache,
@@ -1379,6 +1430,19 @@ export async function serveWorkspaces({
         newest(branch, () => {}),
         input,
       );
+    },
+    nucleusBridge() {
+      const record = JSON.parse(
+        readFileSync(join(cache, 'running', `${running.child.pid}.json`), 'utf8'),
+      ) as { key: string };
+      const [folder = ''] = readdirSync(join(cache, 'mcp'));
+      const config = JSON.parse(
+        readFileSync(join(cache, 'mcp', folder, 'nucleus-mcp.json'), 'utf8'),
+      ) as { mcpServers: { symbiote: { env: { SYMBIOTE_NUCLEUS_KEY: string } } } };
+      return {
+        'x-symbiote-key': record.key,
+        'x-symbiote-nucleus': config.mcpServers.symbiote.env.SYMBIOTE_NUCLEUS_KEY,
+      };
     },
     nucleusHook(input) {
       const sessions = JSON.parse(

@@ -1,0 +1,44 @@
+/* "Open from Symbiote" (SC1): a tab without the page key, over the page's bottom right. */
+.key-notice {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 50;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  max-width: min(480px, 100% - 32px);
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: var(--shadow-floating);
+  color: var(--text);
+  font: var(--size-body) / 1.45 var(--sans);
+}
+
+.key-notice > .icon {
+  flex: none;
+  margin-top: 2px;
+  color: var(--muted);
+}
+
+.key-notice-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.key-notice-text strong {
+  font-weight: 600;
+}
+
+.key-notice-text span {
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.key-notice .button {
+  flex: none;
+}
