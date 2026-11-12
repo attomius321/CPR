@@ -438,7 +438,7 @@ What holds now: [The merger](area/merger.md) · its decisions: [the register](de
 | Chore | Improvement audit: every app and page verified on `main` (checks, both themes, real graphs, the CLI, MCP, nexus, window, install, logs), 43 numbered findings with their evidence, a top 10 | ✅ | | [journal](journal/chore-improvement-audit.md) |
 | Chore | One copy of each small helper: core's symbol hash, the viewer's choices kept in the browser and its `plural` | ✅ | | [journal](journal/chore-dedupe-helpers.md) |
 | Chore | refactor/layout-flow and refactor/workspace-tabs landed on `main` with their history | ✅ | | [journal](journal/chore-land-layout-and-tabs.md) |
-| [SC1](plan/sc1-local-write-secret.md) | A per-run secret for symbiote view's writes, the Confirm and Nucleus's identity | planned | 930–932 | [journal](journal/sc1-local-write-secret.md) |
+| [SC1](plan/sc1-local-write-secret.md) | A per-run secret for symbiote view's writes, the Confirm and Nucleus's identity | built, ready for review | 930–932 | [journal](journal/sc1-local-write-secret.md) |
 | [Fix](plan/fix-view-help.md) | `symbiote view --help` and `symbiote --help` name the Overview | planned | | |
 | [Fix](plan/fix-cli-usage-errors.md) | A mistyped option prints its error and where help is, not the whole help | planned | | |
 | [Refactor](plan/refactor-network-shapes.md) | Shape checks where JSON enters: forge answers, SSE, the viewer's reads | planned | | |
