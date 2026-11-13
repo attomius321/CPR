@@ -279,6 +279,9 @@ as `hive.issues.about`, Claude Code 2.1.325, Opus at `high`:
   branch broke the harness's TypeScript at load time ("Unexpected token").
 - **A textarea with `field-sizing: content` widened its row** for a word longer than the field:
   the flex item's minimum width is its content's. `min-width: 0` on the form and the field holds it.
+- **Two guards counted what HV9c adds.** The e2e MCP spec counts Nucleus's tools (25, now 26),
+  and V25's naming guard refuses a `feature` key outside the kind's own places: the writer's line
+  capitalizes the kind instead of a map. The first full e2e run's one failure was the count.
 - **A tab opened without the page's key reads only**: the real run's light screenshots came from a
   second browser context, which showed "Open from Symbiote" over Settings. Reading needs no key;
   the classifications were made in the first context.
@@ -312,7 +315,8 @@ as `hive.issues.about`, Claude Code 2.1.325, Opus at `high`:
   open), held, asked, refused, failed, classifying, a refusal while one runs, changed, Hive off
   (classified and not), no `hive.issues.about`, Settings without and with the text, and a text too
   long.
-- `pnpm check`, `pnpm build` and `pnpm test:e2e`: see the last line of this entry.
+- `pnpm check` (272 files, 3,753 tests), `pnpm build`, and `pnpm test:e2e` (491 viewer and 32
+  nexus tests) pass.
 
 Not verified:
 
