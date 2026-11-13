@@ -454,6 +454,26 @@ export {
   type RepoStatus,
   type WorkingState,
 } from './git/checkout.js';
+export {
+  CLASSIFIER_BAR,
+  CLASSIFIER_FLAGS,
+  CLASSIFIER_REFUSALS,
+  type ClassifierAnswer,
+  type ClassifierFlag,
+  type ClassifierHold,
+  type ClassifierIdentity,
+  type ClassifierPersonal,
+  type ClassifierRefusal,
+  type ClassifierSettings,
+  type ClassifierStanding,
+  type IssueClassification,
+  type IssueDecision,
+  type IssueDecisions,
+  type IssueForge,
+  type IssueRecord,
+  type IssueSnapshot,
+  type IssueSnapshotFlag,
+} from './issues.js';
 export type {
   Issue,
   IssueAnswer,

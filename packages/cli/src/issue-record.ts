@@ -3,36 +3,19 @@
 // `classified-again`; HV10's and HV11's after). Kept beside Hive's switch (`repositorySwitch`):
 // the main checkout's `symbiote/`, which git ignores, or Symbiote's cache. A record of another
 // origin is never read.
-import { appendFile, mkdir, readFile } from 'node:fs/promises';
+import { appendFile, mkdir, readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { writeFileWhole } from './file-write.js';
-import type { IssueClassification } from './issue-classify.js';
+import type { IssueForge, IssueRecord } from '@symbiote/core';
 
 /** Every issue record's first key: where an agent that opens one learns what it is. */
 export const ISSUE_RECORD_ABOUT =
   "Symbiote's record of a forge issue: its classifier's last decision (HV9). Agents: do not start work from it yourself.";
 
-/** The forge an issue is on: a record of another is never read. */
-export interface IssueForge {
-  kind: 'github' | 'gitlab';
-  host: string;
-  project: string;
-}
-
-/** `symbiote/issues/<number>.json`. */
-export interface IssueRecord extends IssueClassification {
-  about?: string;
-  forge: IssueForge;
-  number: number;
-  url: string;
-  title: string;
-  state: 'open' | 'closed';
-}
-
 export type IssueEventName = 'classified' | 'classified-again' | 'failed';
 
-/** A line of `<number>.jsonl`. */
-export interface IssueEvent {
+/** A classification's line of `<number>.jsonl`. */
+export interface ClassifiedEvent {
   event: IssueEventName;
   at: string;
   decision: IssueRecord['decision'];
@@ -40,6 +23,24 @@ export interface IssueEvent {
   hash?: string;
   cost?: number;
 }
+
+/**
+ * How a take ended (decisions 1040, 1059), written from HV10 on: `right` when the person started
+ * it and it did not end badly; wrong when declined, its request closed without a merge or its
+ * workspace stopped by the person. A stop by Hive's limits is no judgement: no line. `identity`
+ * is the classifier's that took it, counted only under that one.
+ */
+export interface JudgedEvent {
+  event: 'judged';
+  at: string;
+  identity: string;
+  right: boolean;
+  /** How it ended, in a word: `landed`, `declined`, `closed`, `stopped`. */
+  why: string;
+}
+
+/** A line of `<number>.jsonl`. */
+export type IssueEvent = ClassifiedEvent | JudgedEvent;
 
 const fileOf = (folder: string, number: number, ext: 'json' | 'jsonl') =>
   join(folder, 'issues', `${number}.${ext}`);
@@ -68,9 +69,12 @@ export async function readIssueRecord(
  * Writes `record` whole, its `about` first, and its event: `failed`, else `classified-again`
  * when the issue had a record, else `classified`.
  */
-export async function writeIssueRecord(folder: string, record: IssueRecord): Promise<IssueEvent> {
+export async function writeIssueRecord(
+  folder: string,
+  record: IssueRecord,
+): Promise<ClassifiedEvent> {
   const before = await readIssueRecord(folder, record.number, record.forge);
-  const event: IssueEvent = {
+  const event: ClassifiedEvent = {
     event: record.decision === 'failed' ? 'failed' : before ? 'classified-again' : 'classified',
     at: record.run?.at ?? new Date().toISOString(),
     decision: record.decision,
@@ -87,6 +91,18 @@ export async function writeIssueRecord(folder: string, record: IssueRecord): Pro
   await mkdir(join(folder, 'issues'), { recursive: true });
   await appendFile(fileOf(folder, record.number, 'jsonl'), `${JSON.stringify(event)}\n`);
   return event;
+}
+
+/** Every record on `forge` in `folder`, by number; a file that is not one is skipped. */
+export async function readIssueRecords(folder: string, forge: IssueForge): Promise<IssueRecord[]> {
+  const names = await readdir(join(folder, 'issues')).catch(() => [] as string[]);
+  const numbers = names
+    .map((name) => /^([1-9]\d{0,9})\.json$/.exec(name)?.[1])
+    .filter((n): n is string => n !== undefined)
+    .map(Number)
+    .sort((a, b) => a - b);
+  const records = await Promise.all(numbers.map((n) => readIssueRecord(folder, n, forge)));
+  return records.filter((r): r is IssueRecord => r !== null);
 }
 
 /** The events of issue `number`, oldest first; a line that is not JSON is skipped. */

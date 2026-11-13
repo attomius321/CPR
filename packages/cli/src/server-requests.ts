@@ -409,6 +409,16 @@ export function parseModelChange(text: string): ModelChange {
   return { model };
 }
 
+/** `{ about }` (HV9c): `hive.issues.about`'s text, or null to remove it. */
+export function parseAboutChange(text: string): { about: string | null } {
+  const value = JSON.parse(text) as Record<string, unknown> | null;
+  const about = value?.about;
+  if (about !== null && typeof about !== 'string') {
+    throw new Error("about: the project's text, or null to remove it");
+  }
+  return { about };
+}
+
 /** `{ cols, rows }`: a terminal on Nucleus's session (V35). */
 export function parsePageAgentTerminal(text: string): PageAgentTerminalRequest {
   const size = terminalSize(JSON.parse(text) as Record<string, unknown> | null);

@@ -4,6 +4,7 @@ import { GitHubForge, GitLabForge, type Env } from '@symbiote/forge';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createRepo, type TestRepo } from '../../core/test/helpers/git-repo.js';
 import { mockApi, type Reply } from '../../forge/test/mock-api.js';
+import { issueSnapshot } from '../src/issue-snapshot.js';
 import { issuesService } from '../src/issues.js';
 
 const repos: TestRepo[] = [];
@@ -77,7 +78,8 @@ describe('the Issues page’s service (IS1)', () => {
         expect.objectContaining({ number: 3, author: { login: 'ada', role: 'owner' } }) as unknown,
       ],
     });
-    expect(await issues.one(3)).toEqual({
+    const one = await issues.one(3);
+    expect(one).toEqual({
       forge: FORGE,
       token: true,
       issue: expect.objectContaining({
@@ -86,7 +88,10 @@ describe('the Issues page’s service (IS1)', () => {
         thread: [],
         moreComments: 0,
       }) as unknown,
+      snapshot: expect.stringMatching(/^[0-9a-f]{64}$/) as unknown,
     });
+    // The classifier's own hash of what it would read now (HV9c, decision 1057).
+    expect(one.snapshot).toBe(issueSnapshot(one.issue!, '2026-11-14T00:00:00.000Z').hash);
   });
 
   it('reads public issues without a token, and says what to set', async () => {

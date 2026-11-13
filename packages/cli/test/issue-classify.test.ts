@@ -3,11 +3,16 @@
 // The answers are HV9a's, recorded from Opus at high with the prompt p2.
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { WORK_KINDS, type AgentModel, type Issue } from '@symbiote/core';
+import {
+  CLASSIFIER_FLAGS,
+  WORK_KINDS,
+  type AgentModel,
+  type ClassifierAnswer,
+  type Issue,
+} from '@symbiote/core';
 import { afterEach, describe, expect, it } from 'vitest';
 import { tempDir } from '../../core/test/helpers/git-repo.js';
 import {
-  CLASSIFIER_FLAGS,
   CLASSIFIER_RULES,
   answerMisfit,
   classifierMessage,
@@ -18,7 +23,6 @@ import {
   personalIn,
   projectCard,
   ruling,
-  type ClassifierAnswer,
 } from '../src/issue-classify.js';
 import { issueSnapshot } from '../src/issue-snapshot.js';
 import { DEFAULT_PROMPTS } from '../src/prompt-text.js';
