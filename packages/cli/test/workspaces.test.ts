@@ -85,6 +85,7 @@ import {
   parseAccount,
   parseClaudeModels,
   parseEffortLevels,
+  parsePermissionModes,
   parseSessions,
   type AgentSession,
   type ClaudeCode,
@@ -3987,7 +3988,8 @@ describe('claudeCode', () => {
       permissionMode: 'dontAsk',
     });
     await claude.resume({ sessionId: 'session-1', cwd: '/w', text: '- also fix the tests' });
-    expect(calls.map((args) => args.slice(-2))).toEqual([
+    const sent = calls.filter((args) => args[0] !== '--help');
+    expect(sent.map((args) => args.slice(-2))).toEqual([
       ['--', '- plan first'],
       ['--', '--settings={}'],
       ['--', '- also fix the tests'],
@@ -4021,6 +4023,8 @@ describe('claudeCode', () => {
       effort: 'high',
     });
     expect(calls).toEqual([
+      // Its own help first, for the name of the mode that asks: none listed, `default`.
+      { args: ['--help'], cwd: '/repo' },
       {
         args: [
           '--bg',
@@ -4030,6 +4034,8 @@ describe('claudeCode', () => {
           '/repo/symbiote',
           '--settings',
           '/repo/symbiote/claude-settings.json',
+          '--permission-mode',
+          'default',
           '--',
           'Do it',
         ],
@@ -4083,13 +4089,69 @@ describe('claudeCode', () => {
     const project = claudeCode('/usr/bin/claude', { run, cwd: '/repo', model: 'opus' });
     await project.start(request);
     await project.start({ ...request, model: 'sonnet' });
-    expect(calls.map((args) => args.slice(-4))).toEqual([
+    const sent = calls.filter((args) => args[0] !== '--help');
+    expect(sent.map((args) => args.slice(-4))).toEqual([
       ['--model', 'sonnet', '--', 'Do it'],
       ['--model', 'claude-opus-4-6', '--', 'Q'],
       ['--model', 'opus', '--', 'Do it'],
       ['--model', 'sonnet', '--', 'Do it'],
     ]);
-    expect(calls.every((args) => args.filter((a) => a === '--model').length === 1)).toBe(true);
+    expect(sent.every((args) => args.filter((a) => a === '--model').length === 1)).toBe(true);
+  });
+
+  // Claude Code 2.1.323 started a session given no --permission-mode in auto, its new default:
+  // a workspace started to ask ran env, gh, ssh and curl unasked (HV10a's run A). Its help names
+  // the mode that asks `manual`; versions before it, and 2.1.325 still, take `default`.
+  it("starts the person's Ask in the mode that asks, by the name its help lists (fix/default-permission-mode)", async () => {
+    const startedWith = async (help: { code: number; stdout: string } | Error) => {
+      const calls: string[][] = [];
+      const run: Run = (_command, args) => {
+        calls.push(args);
+        if (args[0] !== '--help') return Promise.resolve({ code: 0, stdout: '', stderr: '' });
+        return help instanceof Error
+          ? Promise.reject(help)
+          : Promise.resolve({ ...help, stderr: '' });
+      };
+      const claude = claudeCode('/usr/bin/claude', { run, cwd: '/repo' });
+      const request = { cwd: '/w', name: 'fix/x', prompt: 'Do it', addDir: '/repo/symbiote' };
+      await claude.start({ ...request, permissionMode: 'default' });
+      await claude.start({ ...request, permissionMode: 'default' });
+      // Scribe asks too (decision 275).
+      await claude.startPageAgent({
+        cwd: '/repo',
+        name: 'Scribe',
+        settings: '/s.json',
+        tools: ['Read', 'Write'],
+        permissionMode: 'default',
+      });
+      await claude.start({ ...request, permissionMode: 'acceptEdits' });
+      await claude.start({ ...request, permissionMode: 'auto' });
+      return {
+        helps: calls.filter((args) => args[0] === '--help').length,
+        modes: calls
+          .filter((args) => args[0] !== '--help')
+          .map((args) => args[args.indexOf('--permission-mode') + 1]),
+      };
+    };
+    // Its help read once, for every start after.
+    expect(await startedWith({ code: 0, stdout: HELP_2_1_325 })).toEqual({
+      helps: 1,
+      modes: ['manual', 'manual', 'manual', 'acceptEdits', 'auto'],
+    });
+    expect(await startedWith({ code: 0, stdout: HELP_BEFORE_MANUAL })).toEqual({
+      helps: 1,
+      modes: ['default', 'default', 'default', 'acceptEdits', 'auto'],
+    });
+    // A help it cannot read: `default`, which every version measured takes.
+    for (const help of [{ code: 1, stdout: '' }, new Error('spawn claude ENOENT')]) {
+      expect((await startedWith(help)).modes).toEqual([
+        'default',
+        'default',
+        'default',
+        'acceptEdits',
+        'auto',
+      ]);
+    }
   });
 
   it('reads its models from its initialize answer, kept on disk a day, read again in the background (V47)', async () => {
@@ -4307,6 +4369,59 @@ describe('parseClaudeModels (V47)', () => {
         ]),
       ),
     ).toEqual([{ id: 'opus[1m]', name: 'opus[1m]', efforts: { levels: ['low'] } }]);
+  });
+});
+
+/** Claude Code 2.1.325's `--help`, around `--permission-mode`: its choices over three lines. */
+const HELP_2_1_325 = `  --output-format <format>              Output format (only works with --print):
+                                        "text" (default), "json" (single
+                                        result), or "stream-json" (realtime
+                                        streaming) (choices: "text", "json",
+                                        "stream-json")
+  --permission-mode <mode>              Permission mode to use for the session
+                                        (choices: "acceptEdits", "auto",
+                                        "bypassPermissions", "manual",
+                                        "dontAsk", "plan")
+  --permission-prompts <target>         Who answers permission prompts with
+                                        --print: "host" (the SDK host or
+                                        --permission-prompt-tool) or "none"
+                                        (choices: "host", "none", default:
+                                        "host")
+`;
+
+/** A help from before `manual`: its mode that asks is `default`. */
+const HELP_BEFORE_MANUAL = `  --permission-mode <mode>              Permission mode to use for the session
+                                        (choices: "acceptEdits",
+                                        "bypassPermissions", "default",
+                                        "dontAsk", "plan")
+`;
+
+describe('parsePermissionModes (fix/default-permission-mode)', () => {
+  it('reads the modes Claude Code lists for --permission-mode, in its order', () => {
+    expect(parsePermissionModes(HELP_2_1_325)).toEqual([
+      'acceptEdits',
+      'auto',
+      'bypassPermissions',
+      'manual',
+      'dontAsk',
+      'plan',
+    ]);
+    expect(parsePermissionModes(HELP_BEFORE_MANUAL)).toEqual([
+      'acceptEdits',
+      'bypassPermissions',
+      'default',
+      'dontAsk',
+      'plan',
+    ]);
+  });
+
+  it("reads none from a help without the option or its choices, never another option's", () => {
+    expect(parsePermissionModes('  --model <model>  Model for the current session\n')).toBeNull();
+    expect(
+      parsePermissionModes(
+        '  --permission-mode <mode>  Permission mode\n  --output-format <f>  (choices: "text", "json")\n',
+      ),
+    ).toBeNull();
   });
 });
 

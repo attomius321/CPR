@@ -87,6 +87,32 @@ export function parseEffortLevels(help: string): string[] | null {
 }
 
 /**
+ * The modes `claude --help` lists for `--permission-mode`, in its order: the quoted words in its
+ * `(choices: …)`, which may run over several lines until the next option. Null when there is no
+ * such option or list.
+ */
+export function parsePermissionModes(help: string): string[] | null {
+  const lines = help.split('\n');
+  const at = lines.findIndex((line) => /^\s*--permission-mode\b/.test(line));
+  if (at < 0) return null;
+  const rest = lines.slice(at + 1);
+  const next = rest.findIndex((line) => /^\s*-/.test(line));
+  const description = [lines[at], ...(next < 0 ? rest : rest.slice(0, next))].join(' ');
+  const list = /\(choices:([^)]*)\)/.exec(description)?.[1];
+  const modes = list ? [...list.matchAll(/"([A-Za-z]+)"/g)].map((m) => m[1] ?? '') : [];
+  return modes.length > 0 ? modes : null;
+}
+
+/**
+ * The name Claude Code takes for the mode that asks, Symbiote's `default`: `manual` where its
+ * help lists it (2.1.319 to 2.1.325 do), else `default`, its name before, which 2.1.325 still
+ * takes for `manual` (fix/default-permission-mode).
+ */
+export function askingMode(listed: readonly string[] | null): 'manual' | 'default' {
+  return listed?.includes('manual') ? 'manual' : 'default';
+}
+
+/**
  * Claude Code's models from its answer to `initialize` (V47): the `models` of its
  * `control_response`, as its SDK's `supportedModels()` reads them — each one's `value` (what
  * `--model` takes), `displayName`, `description` and `supportedEffortLevels`. Its own "default"
@@ -394,7 +420,7 @@ export function claudeCode(
 ): ClaudeCode {
   let sessions: { at: number; list: Promise<AgentSession[] | null>; keepMs: number } | null = null;
   let account: { at: number; text: Promise<string | undefined> } | null = null;
-  let efforts: Promise<string[] | null> | null = null;
+  let help: Promise<string | null> | null = null;
   let kept: { at: number; models: AgentModel[] } | null = null;
   let reading: Promise<AgentModel[] | null> | null = null;
   /** Asks Claude Code, one read at a time; keeps what it answers. A failure keeps the old list. */
@@ -428,13 +454,27 @@ export function claudeCode(
     const picked = args.find((value) => value !== undefined);
     return picked ? ['--model', picked] : [];
   };
+  /** `claude --help`, read once: its effort levels and its permission modes' names. */
+  const readHelp = () => {
+    help ??= run(command, ['--help'], { cwd, timeoutMs: 20_000 })
+      .then((result) => (result.code === 0 ? result.stdout : null))
+      .catch(() => null);
+    return help;
+  };
+  /**
+   * `--permission-mode`, always: given none, Claude Code 2.1.323 started in `auto`, its new
+   * default, where a workspace started to ask asked nothing (HV10a). `default` goes by this
+   * Claude Code's name for the mode that asks.
+   */
+  const permission = async (mode: string) => {
+    if (mode !== 'default') return ['--permission-mode', mode];
+    const text = await readHelp();
+    return ['--permission-mode', askingMode(text === null ? null : parsePermissionModes(text))];
+  };
   return {
     command,
     efforts() {
-      efforts ??= run(command, ['--help'], { cwd, timeoutMs: 20_000 })
-        .then((result) => (result.code === 0 ? parseEffortLevels(result.stdout) : null))
-        .catch(() => null);
-      return efforts;
+      return readHelp().then((text) => (text === null ? null : parseEffortLevels(text)));
     },
     models() {
       // Another view may have read them since: the file first, when the list in hand is old.
@@ -454,9 +494,7 @@ export function claudeCode(
         '--add-dir',
         request.addDir,
         ...(request.settings ? ['--settings', request.settings] : []),
-        ...(request.permissionMode === 'default'
-          ? []
-          : ['--permission-mode', request.permissionMode]),
+        ...(await permission(request.permissionMode)),
         ...choose(request.model, model),
         ...(request.effort ? ['--effort', request.effort] : []),
         // After `--`, whatever it starts with: "- plan first" was read as an unknown option.
@@ -478,8 +516,7 @@ export function claudeCode(
         request.name,
         '--tools',
         request.tools.join(','),
-        '--permission-mode',
-        request.permissionMode,
+        ...(await permission(request.permissionMode)),
         '--strict-mcp-config',
         ...(request.mcpConfig ? ['--mcp-config', request.mcpConfig] : []),
         ...(request.addDirs ?? []).flatMap((dir) => ['--add-dir', dir]),
