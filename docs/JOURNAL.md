@@ -480,3 +480,4 @@ merge commit.
 - 2026-11-13 [HV9a — the classifier's eval: three models, 80 issues and three hostile sets](journal/hv9-issue-classifier.md)
 - 2026-11-13 [HV9b — the classifier in the CLI: snapshot, run, rules, record, endpoint](journal/hv9-issue-classifier.md)
 - 2026-11-13 [HV10a — the writer's reach, measured: the daemon's environment, the sandbox's leaks, the hosts per ecosystem](journal/hv10-workspace-from-issue.md)
+- 2026-11-14 [Fix — normal mode's Ask asks: the permission mode passed to Claude Code by its name](journal/fix-default-permission-mode.md)

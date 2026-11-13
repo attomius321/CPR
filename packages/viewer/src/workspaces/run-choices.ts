@@ -11,11 +11,27 @@ import type {
 } from '@symbiote/core';
 import { AGENT_NAMES } from './workspaces.js';
 
-/** The permission modes the start page offers, as it names them. */
+/**
+ * The permission modes the start page offers, as it names them. `default` is the mode that asks,
+ * Claude Code's `manual`: no longer Claude Code's default, which is `auto` in 2.1.319 to 2.1.325
+ * (fix/default-permission-mode).
+ */
 export const PERMISSION_LABELS: Record<PermissionMode, string> = {
-  default: "Claude Code's default",
+  default: 'Ask',
   acceptEdits: 'Accept edits',
   auto: 'Auto',
+};
+
+/**
+ * What each permission mode lets Claude Code do, for the Permissions choice's tip, as Claude Code
+ * 2.1.325 does it: Accept edits also runs mkdir, touch, rm, rmdir, mv, cp and sed unasked.
+ */
+export const PERMISSION_WORDS: Record<PermissionMode, string> = {
+  default:
+    "Claude Code's Manual mode: it asks you before each edit and each command your Claude Code settings do not allow",
+  acceptEdits:
+    'It edits files and runs mkdir, touch, rm, rmdir, mv, cp and sed without asking; it asks you before other commands',
+  auto: "Claude Code's classifier runs what it judges low-risk and blocks the rest: it rarely asks you",
 };
 
 /** A Model choice (V47): a model's ID (`''` for the agent's default), its name, its words. */

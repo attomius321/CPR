@@ -27,7 +27,7 @@ the merger, Nucleus and Scribe, and leaves the rest of the file as it is.
 | `workspaces.branchPrefixes` | `feature/`, `fix/`, `refactor/`, `chore/`, `spike/` | The start of a new workspace's branch name, for each kind of work. Give only the kinds you change. |
 | `workspaces.worktrees` | `../{repo}.worktrees` | Where workspaces' worktrees go, relative to the checkout. `{repo}` is the checkout's folder name. |
 | `agent.kind` | `claude` | The agent offered first, if it is installed: `claude` or `codex`. |
-| `agent.permissionMode` | `default` | The permission mode offered first for Claude Code: `default`, `acceptEdits` or `auto`. |
+| `agent.permissionMode` | `default` | The permission mode offered first for Claude Code: `default` (**Ask**), `acceptEdits` or `auto`. Symbiote always passes it to Claude Code; `default` goes as `manual`, Claude Code's mode that asks, on versions that list that name. |
 | `agent.model` | Claude Code's own | The model Claude Code starts on. Codex uses its own configuration's model. |
 | `nucleus.model`, `scribe.model` | `agent.model`, else the agent's own | The model each Nucleus or Scribe conversation starts on, if the agent offers it. |
 | `nucleus.effort`, `scribe.effort` | the agent's own | The effort level each Nucleus or Scribe conversation starts at, if the agent offers it. |

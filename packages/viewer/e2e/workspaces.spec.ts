@@ -73,6 +73,10 @@ test('starts a workspace from the header: its branch, its worktree, the agent th
   await expect(startPage(page).locator('.start-value')).toHaveText('Claude Code');
   await expect(startPage(page)).toContainText('your Pro subscription');
   await expect(startPage(page).getByLabel('Plan first and wait for my OK')).toBeChecked();
+  // Permissions: Ask, the project's default, and what it does in its tip.
+  const permissions = startPage(page).getByLabel('Permissions');
+  await expect(permissions.locator('option:checked')).toHaveText('Ask');
+  expect(await permissions.getAttribute('data-tip')).toContain("Claude Code's Manual mode");
   await startPage(page).getByRole('button', { name: 'Start workspace' }).click();
 
   // The new workspace opens (V29a), and the status bar says where the agent works.
@@ -105,6 +109,9 @@ test('starts a workspace from the header: its branch, its worktree, the agent th
     '# Feature: Add a half function\n\n## Goal\nReturn a / 2, and test it.\n',
   );
   expect(call?.args.at(-1)).toContain("then stop and wait for the person's OK");
+  // Ask, by the name its help lists: given no mode, Claude Code 2.1.323 started in auto
+  // (fix/default-permission-mode).
+  expect(call?.args).toEqual(expect.arrayContaining(['--permission-mode', 'manual']));
   // The record, beside the reviews.
   const record = JSON.parse(
     readFileSync(

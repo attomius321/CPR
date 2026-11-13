@@ -464,6 +464,7 @@ test('Scribe: its pane is its terminal, Claude Code opened writing skills only; 
   const [call] = scribeCalls();
   expect(call?.cwd).toBe(symbiote.repo);
   const args = call?.args ?? [];
+  // The mode that asks, by the name the agent's help lists (fix/default-permission-mode).
   expect(args.slice(0, 9)).toEqual([
     '--bg',
     '--name',
@@ -471,7 +472,7 @@ test('Scribe: its pane is its terminal, Claude Code opened writing skills only; 
     '--tools',
     'Read,Grep,Glob,Bash,Write,Edit',
     '--permission-mode',
-    'default',
+    'manual',
     '--strict-mcp-config',
     '--settings',
   ]);
