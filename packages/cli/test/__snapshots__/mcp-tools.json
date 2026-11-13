@@ -318,6 +318,28 @@
             }
           },
           {
+            "name": "classify_issue",
+            "description": "Classifies an issue of origin's GitHub or GitLab for Hive, as Classify on the Issues page: take, ask or refuse, with its reasons; for a take, the work's kind, title and size, the writer's model and effort, and the brief a writer would get in place of the issue's text; flags for what the issue asks beyond a change to the code. Runs one turn of the classifier (Opus at high unless Settings say otherwise, about $0.03 and 10 to 20 s) on the person's subscription, records the decision and starts nothing. Only with Hive mode on and the project's text (hive.issues.about) written. Call it only when the person asks for an issue's classification.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "number": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "The issue's number, as the Issues page shows it (#12)"
+                }
+              },
+              "required": [
+                "number"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
+            }
+          },
+          {
             "name": "reply",
             "description": "Sends a message to a workspace's agent (an OK on its plan, an answer); stop: interrupts its turn first.",
             "inputSchema": {
@@ -1094,6 +1116,28 @@
             }
           },
           {
+            "name": "classify_issue",
+            "description": "Classifies an issue of origin's GitHub or GitLab for Hive, as Classify on the Issues page: take, ask or refuse, with its reasons; for a take, the work's kind, title and size, the writer's model and effort, and the brief a writer would get in place of the issue's text; flags for what the issue asks beyond a change to the code. Runs one turn of the classifier (Opus at high unless Settings say otherwise, about $0.03 and 10 to 20 s) on the person's subscription, records the decision and starts nothing. Only with Hive mode on and the project's text (hive.issues.about) written. Call it only when the person asks for an issue's classification.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "number": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "The issue's number, as the Issues page shows it (#12)"
+                }
+              },
+              "required": [
+                "number"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
+            }
+          },
+          {
             "name": "reply",
             "description": "Sends a message to a workspace's agent (an OK on its plan, an answer); stop: interrupts its turn first.",
             "inputSchema": {
@@ -1862,6 +1906,28 @@
                   }
                 }
               },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
+            }
+          },
+          {
+            "name": "classify_issue",
+            "description": "Classifies an issue of origin's GitHub or GitLab for Hive, as Classify on the Issues page: take, ask or refuse, with its reasons; for a take, the work's kind, title and size, the writer's model and effort, and the brief a writer would get in place of the issue's text; flags for what the issue asks beyond a change to the code. Runs one turn of the classifier (Opus at high unless Settings say otherwise, about $0.03 and 10 to 20 s) on the person's subscription, records the decision and starts nothing. Only with Hive mode on and the project's text (hive.issues.about) written. Call it only when the person asks for an issue's classification.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "number": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "The issue's number, as the Issues page shows it (#12)"
+                }
+              },
+              "required": [
+                "number"
+              ],
               "additionalProperties": false
             },
             "annotations": {
@@ -2704,6 +2770,28 @@
             }
           },
           {
+            "name": "classify_issue",
+            "description": "Classifies an issue of origin's GitHub or GitLab for Hive, as Classify on the Issues page: take, ask or refuse, with its reasons; for a take, the work's kind, title and size, the writer's model and effort, and the brief a writer would get in place of the issue's text; flags for what the issue asks beyond a change to the code. Runs one turn of the classifier (Opus at high unless Settings say otherwise, about $0.03 and 10 to 20 s) on the person's subscription, records the decision and starts nothing. Only with Hive mode on and the project's text (hive.issues.about) written. Call it only when the person asks for an issue's classification.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "number": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "The issue's number, as the Issues page shows it (#12)"
+                }
+              },
+              "required": [
+                "number"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
+            }
+          },
+          {
             "name": "reply",
             "description": "Sends a message to a workspace's agent (an OK on its plan, an answer); stop: interrupts its turn first.",
             "inputSchema": {
@@ -3480,6 +3568,28 @@
             }
           },
           {
+            "name": "classify_issue",
+            "description": "Classifies an issue of origin's GitHub or GitLab for Hive, as Classify on the Issues page: take, ask or refuse, with its reasons; for a take, the work's kind, title and size, the writer's model and effort, and the brief a writer would get in place of the issue's text; flags for what the issue asks beyond a change to the code. Runs one turn of the classifier (Opus at high unless Settings say otherwise, about $0.03 and 10 to 20 s) on the person's subscription, records the decision and starts nothing. Only with Hive mode on and the project's text (hive.issues.about) written. Call it only when the person asks for an issue's classification.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "number": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "The issue's number, as the Issues page shows it (#12)"
+                }
+              },
+              "required": [
+                "number"
+              ],
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
+            }
+          },
+          {
             "name": "reply",
             "description": "Sends a message to a workspace's agent (an OK on its plan, an answer); stop: interrupts its turn first.",
             "inputSchema": {
@@ -4248,6 +4358,28 @@
                   }
                 }
               },
+              "additionalProperties": false
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": false
+            }
+          },
+          {
+            "name": "classify_issue",
+            "description": "Classifies an issue of origin's GitHub or GitLab for Hive, as Classify on the Issues page: take, ask or refuse, with its reasons; for a take, the work's kind, title and size, the writer's model and effort, and the brief a writer would get in place of the issue's text; flags for what the issue asks beyond a change to the code. Runs one turn of the classifier (Opus at high unless Settings say otherwise, about $0.03 and 10 to 20 s) on the person's subscription, records the decision and starts nothing. Only with Hive mode on and the project's text (hive.issues.about) written. Call it only when the person asks for an issue's classification.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "number": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "The issue's number, as the Issues page shows it (#12)"
+                }
+              },
+              "required": [
+                "number"
+              ],
               "additionalProperties": false
             },
             "annotations": {

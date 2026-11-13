@@ -28,6 +28,7 @@ import { mcpOverview } from './mcp-overview.js';
 import { mcpWorkspaces } from './mcp-workspaces.js';
 import { mcpReviews } from './mcp-reviews.js';
 import { mcpMerges } from './mcp-merges.js';
+import { mcpIssues } from './mcp-issues.js';
 
 /** The protocol version answered to a client that names none. */
 const LATEST_PROTOCOL = '2025-06-18';
@@ -128,6 +129,7 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
     mcpWorkspaces(ctx, lookup),
     mcpReviews(ctx, lookup),
     mcpMerges(ctx, lookup),
+    mcpIssues(ctx, lookup),
   ];
 
   /** A held ask by its ID, while it is held. */

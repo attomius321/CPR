@@ -32,6 +32,7 @@ const everything: McpServices = {
   reviews: fake(),
   merges: fake(),
   usage: fake(),
+  issueClassifier: fake(),
   monitor: fake(),
   nucleus: fake(),
   // mark_merged's commands named (MC3): listed.
@@ -120,7 +121,7 @@ describe('What each tool is, and its arguments refused when unknown (fix-mcp-ann
 
   it('says of every tool whether it only reads; those that remove something are destructive', async () => {
     const tools = await everyTool();
-    expect(tools).toHaveLength(26);
+    expect(tools).toHaveLength(27);
     for (const tool of tools) {
       expect(typeof tool.annotations?.readOnlyHint, tool.name).toBe('boolean');
       expect(tool.annotations?.readOnlyHint, tool.name).toBe(READS.includes(tool.name));
