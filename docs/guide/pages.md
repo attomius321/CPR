@@ -147,6 +147,25 @@ only reads them: nothing is written to the forge.
 
 If `origin` is missing, or is on neither GitHub nor GitLab, the page says so.
 
+**Hive's decision on an issue.** Hive's classifier reads an issue and answers take, ask or refuse
+(see [Classifying an issue](../reference/configuration.md#classifying-an-issue)). Its decision
+shows in two places:
+
+- **A row** carries a chip: **Taken**, **Held** (taken, but waiting for your click: it adds a
+  dependency, weakens a check, held hidden text, was cut, or its brief names your email or a folder
+  of this machine), **Asked**, **Refused** or **Failed**.
+  An issue never classified has none.
+- **The issue** gets a **Hive** card above its text: the decision in a line, its reasons, the
+  question for an ask, the flags, the writer's kind, size, model and effort, the classifier's
+  model, cost and time, what it read, and **The brief it would start**, folded. A refusal by
+  Symbiote's own rules says so, whatever the classifier decided.
+
+While Hive is on, **Classify** runs the classifier on an issue never classified, in 10 to 20
+seconds. **Classify again** shows once the issue changed since, the classifier changed, or the
+last one failed; the card says which. Without the project's text (`hive.issues.about`), the card
+says to write it in Settings first. With Hive off, the page shows past decisions and offers no
+**Classify**.
+
 ## Settings
 
 **Settings** (`s`) lists what you set, the same way in both modes. Type in **Find a setting**
@@ -157,7 +176,11 @@ to narrow the list: an entry's name, an agent's prompt, or a config key such as 
   serves both modes. Add, remove or reorder the commands and save them as `merge.checks`. With none
   set, the page shows the check Symbiote finds, and **Reset to found** goes back to it. **Hive
   mode** is Hive's switch and its settings (see [Hive
-  mode](../reference/configuration.md#hive-mode)); its row **The check** opens **Checks**.
+  mode](../reference/configuration.md#hive-mode)); its row **The check** opens **Checks**. Its
+  **Issues** group sets what the classifier reads of the project (**The project**, at most 4,000
+  characters), its model and effort, and shows the repository's **Standing**: what was classified
+  under the current classifier, the takes judged, and whether Hive may start work from an issue
+  without your click.
 - **Agents**: Nucleus (Alpha Ceph while Hive is on), the merger, Scribe, Hive's running reviewer
   while Hive is on, and **Suggest settings**. Each page has the agent's model, its effort and its
   prompts. These are set only here; the agents' own pages have no such choices.

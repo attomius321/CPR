@@ -47,8 +47,8 @@ the merger, Nucleus and Scribe, and leaves the rest of the file as it is.
 | `hive.budget` | none | Dollars a workspace Hive drives may spend, by Claude Code's own count: its agent's sessions and its running reviews. Reached, Hive stops the workspace. See [Pacing: usage and budget](#pacing-usage-and-budget). |
 | `hive.reviewer.model` | `opus` | The model [Hive's running reviewer](#the-running-reviewer) is asked on. Set it in Settings' **Hive mode** page, under **Running reviewer**. |
 | `hive.reviewer.effort` | `high` | The effort level the running reviewer is asked at, if its model takes it. |
-| `hive.issues.about` | none | What the project is and what Hive may take on, in your words, at most 4,000 characters. The classifier reads it on each issue; without it, classifying is refused. See [Classifying an issue](#classifying-an-issue). |
-| `hive.classifier.model` | `opus` | The model [the classifier](#classifying-an-issue) runs on, if Claude Code lists it. |
+| `hive.issues.about` | none | What the project is and what Hive may take on, in your words, at most 4,000 characters. The classifier reads it on each issue; without it, classifying is refused. See [Classifying an issue](#classifying-an-issue). Set it in Settings' **Hive mode** page, under **Issues**: it refuses to save a longer text. |
+| `hive.classifier.model` | `opus` | The model [the classifier](#classifying-an-issue) runs on, if Claude Code lists it. Set it in Settings' **Hive mode** page, under **Issues**. |
 | `hive.classifier.effort` | `high` | The effort level the classifier runs at, if its model takes it. |
 | `prompts` | Symbiote's text | The text Symbiote gives its agents. See [Prompts](#prompts). |
 
@@ -483,7 +483,9 @@ With Hive off, a workspace Hive drove is reviewed and landed as any other, from 
 Before Hive starts anything from an issue of `origin`'s GitHub or GitLab, a classifier reads it
 and answers **take**, **ask** or **refuse**, with its reasons. For a take, it writes the brief a
 writer would get in place of the issue's text. Nothing starts from an issue yet: that is a later
-step. `POST /api/issues/<number>/classify` runs it, from a page Symbiote opened, while Hive is on.
+step. While Hive is on, **Classify** on the Issues page runs it (see
+[Issues](../guide/pages.md#issues)), and so does Nucleus's `classify_issue`, with no **Confirm**:
+it records a decision and starts nothing. `POST /api/issues/<number>/classify` is the page's call.
 
 - **What it reads**: the issue's title, author's role, labels, body, and the comments of the
   project's members and of the issue's author. On GitLab, a member has the Developer role or
@@ -506,10 +508,25 @@ step. `POST /api/issues/<number>/classify` runs it, from a page Symbiote opened,
 
 Symbiote keeps the last decision in `symbiote/issues/<number>.json`, beside `hive.json`, and each
 step, one line an event, in `symbiote/issues/<number>.jsonl` (`classified`, `classified-again`,
-`failed`). `GET /api/issues/<number>/classification` reads it back. The record holds the snapshot
-(its hash, its text, what was read and left out, Symbiote's flags), the answer, the decision, the
+`failed`). `GET /api/issues/<number>/classification` reads it back, and `GET
+/api/issues/classifications` lists every record's decision. The record holds the snapshot (its
+hash, its text, what was read and left out, Symbiote's flags), the answer, the decision, the
 brief, the time and the cost, and the classifier's identity: Claude Code's version, the model, the
 effort, and hashes of the prompt and of the card. A record of another `origin` is never read.
+
+**When to classify again.** The Issues page offers **Classify again** when the issue changed since
+its snapshot (its title, body, labels, author's role or the comments it read), when the classifier
+changed (its prompt, model, effort, the project's text or check, or Symbiote's rules), or when the last
+classification failed. With Hive off, the page shows past decisions and offers neither.
+
+**The standing.** Before Hive may start work from an issue without your click, a repository must
+earn it: at least 20 takes judged under one classifier identity, at least 95 % of them right, and
+none of a set of hostile test issues taken with its project's text. A take is right when the work
+started from it lands; wrong when you decline it, its request is closed without a merge, or you
+stop its workspace. Settings' **Hive mode** page shows the count under **Issues**, **Standing**: what
+was classified under the current identity, the takes judged, and the hostile test issues. A
+change to the prompt, the model, the effort, or the project's text or check starts a new count. Nothing
+judges a take or runs the hostile test issues yet, and nothing starts without a click.
 
 ### Where Hive keeps its state
 

@@ -236,3 +236,88 @@ Not verified:
   enforce it.
 - A GitLab issue classified for real: the run was on vite only.
 - Run-to-run variation: each issue ran once.
+
+## HV9c — the classifier on the Issues page, in Nucleus and in Settings (2026-11-14, branch `feature/hv9c-classifier-page`)
+
+Built: a chip on each row of the Issues page (Taken, Held, Asked, Refused, Failed), a Hive card on
+an issue with Classify and Classify again, Settings' Issues group (the project's text, the
+classifier's model and effort, 1040's standing), and Nucleus's `classify_issue`. The server
+gained the snapshot's hash on an issue's read, the records' list, and the classifier's settings.
+Nothing in the page's or Settings' words names a repository.
+
+**Three real vite issues**, read only, through the built page in a shallow clone of vitejs/vite
+(`f898888`, HV9b's), with its own cache, Hive on in its own `symbiote/hive.json`, HV9a's vite text
+as `hive.issues.about`, Claude Code 2.1.325, Opus at `high`:
+
+| Issue | Decision on the card | HV9b's | Cost | Classifier's time | Click to card |
+|---|---|---|---|---|---|
+| #24083 | Taken: a fix, large, Opus at high | take | $0.081 | 18.3 s | 20.3 s |
+| #23151 | Refused as unsafe by Symbiote's rules (`outside-actions`; the model also flagged `ci-or-release`) | refuse, unsafe | $0.036 | 9.3 s | 11.1 s |
+| #23936 | Refused: out of scope | refuse, out-of-scope | $0.028 | 5.6 s | 7.5 s |
+
+- The same decisions as HV9b's on all 3, $0.145 in all.
+- The identity Settings computes (`e67ad16…`) equals the three records': no card offered
+  Classify again on an unchanged issue. The standing read 3 classified (1 taken, 2 refused), 0 of
+  20 judged, the hostile test issues not run.
+- The page showed no error; the rows' chips came from `GET /api/issues/classifications` after a
+  reload.
+
+**Learned**:
+
+- **A failed record keeps an answer that did not fit.** The first screenshots showed a failed
+  card's four reasons (`a`, `b`, `c`, `d`, the fake's misfit) as if they were the decision's. A
+  failed card now shows only why it failed.
+- **A judged take must name the classifier that took it.** A record keeps its last
+  classification only; after Classify again under a new identity, a take judged earlier would be
+  counted under the wrong one. `JudgedEvent.identity` carries it (decision 1059).
+- **`/api/issues/classifications` matched `/api/issues/<n>`** and answered 400 ("an issue's
+  number") until it was routed first.
+- **e2e's `serveCommits` has no git user** (`GIT_CONFIG_GLOBAL=/dev/null`): the records and
+  `hive.json` went to Symbiote's cache, not the repository's `symbiote/`. The spec sets
+  `user.email` in its repository.
+- **The fake Claude Code is a template literal**: a comment with backticks in its classifier
+  branch broke the harness's TypeScript at load time ("Unexpected token").
+- **A textarea with `field-sizing: content` widened its row** for a word longer than the field:
+  the flex item's minimum width is its content's. `min-width: 0` on the form and the field holds it.
+- **A tab opened without the page's key reads only**: the real run's light screenshots came from a
+  second browser context, which showed "Open from Symbiote" over Settings. Reading needs no key;
+  the classifications were made in the first context.
+
+**Verification**:
+
+- Tests first, red for the right reason (the service's methods and the routes missing, the pure
+  modules missing):
+  - `issue-classifier.test.ts`: the records' list (another origin's and a file that is not one
+    left out), the identity a classification records equal to the list's, Settings' read, the
+    standing's counts under the current identity with judged events of this and another identity,
+    the text's 4,000 characters (4,001 refused with words), the model and effort checked against
+    Claude Code's list;
+  - `issues.test.ts`: an issue's read carries the classifier's own hash of it;
+  - `server.test.ts`: the records' list, Settings' read and its three writes with the page key;
+  - `mcp.test.ts`: `classify_issue` listed with the classifier, acting, no Confirm; its answer for
+    a take, an ask, an unsafe refusal and a failure; the classifier's refusal in its words; a
+    number that is not an issue's refused before it runs; left out without the classifier. The
+    tools snapshot gained only the tool (6 entries);
+  - the viewer's `issue-classification.test.ts` (the chips', the card's and the offer's words per
+    state) and `classifier-settings.test.ts` (the count, the standing).
+- e2e `issues-classify.spec.ts` on the fake forge with the e2e fake Claude Code answering the
+  classifier from a list: Classify; taken, held, asked, refused by the rules and failed on the
+  card and as chips, read again after a reload; an edit on the fake forge, Refresh, "The issue
+  changed since it was classified." and Classify again (events `classified`, `classified-again`;
+  the new text in the classifier's message); Hive off with the decision shown and no Classify, no
+  card for an issue never classified; no `hive.issues.about` in words, refused by the server in
+  the same words (409), its link to Settings; Settings saving the text (a longer one refused) and
+  the model and effort into `symbiote/config.json`, then the standing counting one take.
+- Screenshots of 13 states at 1x, dark and light (52 files): never classified, taken (brief
+  open), held, asked, refused, failed, classifying, a refusal while one runs, changed, Hive off
+  (classified and not), no `hive.issues.about`, Settings without and with the text, and a text too
+  long.
+- `pnpm check`, `pnpm build` and `pnpm test:e2e`: see the last line of this entry.
+
+Not verified:
+
+- A GitLab issue classified for real: the run was on vite only, as HV9b's.
+- `classify_issue` with a real Claude Code: on the MCP tests' fake only (it calls the same service
+  the page does).
+- The standing with judged takes from real work: nothing writes `judged` before HV10; the hostile
+  test issues run with a repository's text in HV13.

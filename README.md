@@ -406,7 +406,9 @@ long files in warmer colours. Use it to spot the files that have grown too large
 **Issues** (`u`) lists the issues of the GitHub or GitLab repository that `origin` points to: open
 ones first, closed or all on a tab, and a search on titles. Pick one to read its text and comments,
 or open it on the forge. The page only reads: it never comments, labels or closes. It uses the
-tokens `symbiote pr` uses; without one, it still reads public issues.
+tokens `symbiote pr` uses; without one, it still reads public issues. In Hive mode, **Classify**
+has Hive's classifier read an issue and answer take, ask or refuse; each row shows its decision,
+and the issue a card with the reasons and the brief it would start.
 
 ### Settings
 

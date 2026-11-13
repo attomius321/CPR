@@ -3,7 +3,7 @@
 [Index](../PLAN.md) · [Journal](../journal/hv9-issue-classifier.md); the loop's first
 measurements are in [the chore's journal](../journal/chore-hive-issue-loop-gaps.md)
 
-**Status:** HV9c planned and agreed (2026-11-14), being built on `feature/hv9c-classifier-page` (Plan (HV9c), below). HV9b built (2026-11-13) on `feature/hv9b-issue-classifier`, ready for review (Plan and As built (HV9b), below). HV9a measured (2026-11-13) on `spike/hv9a-classifier-eval`, ready for review: Opus
+**Status:** HV9c built (2026-11-14) on `feature/hv9c-classifier-page`, ready for review (Plan and As built (HV9c), below). HV9b built (2026-11-13) on `feature/hv9b-issue-classifier`, ready for review (Plan and As built (HV9b), below). HV9a measured (2026-11-13) on `spike/hv9a-classifier-eval`, ready for review: Opus
 at `high` with the prompt p2 (As built, below). Planned (2026-11-12) by
 the chore `chore/hive-issue-loop-gaps` (from `main` at `a47dda3`). It is the first of five milestones that bring a forge's issues into
 Hive's loop (HV9 to HV13). The chore's journal ranks them and says what each step of the loop has
@@ -589,3 +589,32 @@ only.
 | 1058 | What is `classify_issue`? (details 1008) | **An issue's number in; the decision, reasons, question, the take's fields, the brief and the cost out; refusals in the page's words; marked as acting, not destructive (it writes a record); no Confirm, as `suggest_settings` (582)** | It changes nothing in the repository and starts nothing |
 | 1059 | What does Settings count for 1040? | **Under the current identity: the records by decision, the judged takes right and wrong from `judged` events (`{ event: 'judged', right, why }`, written from HV10 on), the bar (20, 95 %), and the hostile sets' result, "not run" until HV13 runs them** | The person's live count; nothing judges a take before HV10 |
 | 1060 | What of a `hive.issues.about` over 4,000 characters? | **Settings refuses to save it, with words; a longer text written by hand is still cut at reading (HV9b)** | What the person sees saved is what the classifier reads |
+
+## As built (HV9c)
+
+HV9c was built on 2026-11-14 on `feature/hv9c-classifier-page`, as its plan above says. The code
+is `packages/viewer/src/issues/HiveCard.tsx` and `classification.ts` (the words, pure), the
+classifier's settings in `settings/HivePage.tsx` and `classifier-words.ts`, the routes in
+`issue-classifier.ts` and `server.ts`, and `mcp-issues.ts`. The journal has the measurements and
+what was learned.
+
+What differs from the plan:
+
+- **A failed classification shows none of its answer.** The plan's card showed the reasons and
+  flags of any record. A failed record keeps the model's last answer, which did not fit: its four
+  reasons read as the decision's in the first screenshots. The card shows only why it failed, and
+  Classify again needs no line of its own for a failure.
+- **The judged event carries the identity that took the take** (`JudgedEvent.identity`, decision
+  1059). A record keeps its last classification only: after Classify again under a new identity,
+  the record could not say which classifier a judged take belonged to.
+- **The record's types moved to core**, the flags' and refusals' lists with them
+  (`CLASSIFIER_FLAGS`, `CLASSIFIER_REFUSALS`); the CLI imports them.
+- **The running reviewer's model and effort selects are shared** with the classifier's
+  (`LevelSelects`): one list, the same short words ("Opus 5.5 (default)").
+
+**Results (HV9c)**: 3 of HV9b's vite issues (the clone at `f898888`, HV9b's) through the built
+page, read only: the same decisions as HV9b's: #24083 taken (a fix, large, Opus at high),
+#23151 refused as unsafe by Symbiote's rules (`outside-actions`, the model also flagging
+`ci-or-release`), #23936 refused as out of scope. $0.145 in all; the classifier's own time 18.3,
+9.3 and 5.6 s; from the click to the card 20.3, 11.1 and 7.5 s. The identity Settings computes
+equals the three records', so no card offered Classify again on unchanged issues.
