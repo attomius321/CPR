@@ -191,7 +191,6 @@ describe('what the card offers (decision 1056)', () => {
     expect(cardOffer({ ...now, record: { ...TAKE, decision: 'failed' } })).toEqual({
       show: true,
       action: 'again',
-      why: 'The last classification failed.',
     });
     // Not read yet: nothing offered on a guess.
     expect(cardOffer({ ...now, snapshot: undefined, identity: undefined, record: TAKE })).toEqual({

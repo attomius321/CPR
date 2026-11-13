@@ -104,7 +104,8 @@ export function HiveCard({
   const shell = useShell();
   const offer = cardOffer({ hive, about, record, snapshot, identity });
   if (!offer.show) return null;
-  const answer = record?.answer;
+  // A failed classification's answer did not fit: none of it is the decision's.
+  const answer = record?.decision === 'failed' ? undefined : record?.answer;
   const flags = [...new Set([...(answer?.flags ?? []), ...(record?.snapshot?.flags ?? [])])];
   const button =
     offer.action &&

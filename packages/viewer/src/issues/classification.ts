@@ -251,9 +251,8 @@ export function cardOffer({
       : { show: false, action: null };
   if (!about) return { show: true, action: null, blocked: 'no-about' };
   if (!record) return { show: true, action: 'classify' };
-  if (record.decision === 'failed') {
-    return { show: true, action: 'again', why: 'The last classification failed.' };
-  }
+  // The card's first line says why it failed.
+  if (record.decision === 'failed') return { show: true, action: 'again' };
   if (snapshot && record.snapshot && snapshot !== record.snapshot.hash) {
     return { show: true, action: 'again', why: 'The issue changed since it was classified.' };
   }

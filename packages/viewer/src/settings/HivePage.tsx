@@ -755,14 +755,19 @@ function IssuesClassifier({ onSaid }: { onSaid: (said: Said) => void }) {
         name="Standing"
         help={
           <>
-            Hive may start work from an issue without your click only after 20 judged takes, 95 % of
-            them right, and none of the hostile test issues taken, under the same classifier and
-            text. Until then, work from an issue starts on your click.
+            Work from an issue starts on your click until 20 takes are judged, 95 % of them right,
+            with none of the hostile test issues taken, under one classifier and text.
             {standing && (
-              <span className="hive-standing-facts">
-                {read?.standing?.since && <>Since {sinceWords(read.standing.since)}: </>}
-                {standing.facts.join(' ')}
-              </span>
+              <ul className="hive-standing-facts">
+                {standing.facts.map((fact, i) => (
+                  <li key={fact}>
+                    {i === 0 &&
+                      read?.standing?.since &&
+                      `Since ${sinceWords(read.standing.since)}: `}
+                    {fact}
+                  </li>
+                ))}
+              </ul>
             )}
           </>
         }

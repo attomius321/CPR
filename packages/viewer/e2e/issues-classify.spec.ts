@@ -228,7 +228,8 @@ test('Classify: each decision on the card and its row, then Classify again after
   await expect(card(page, 5)).toContainText(
     'Failed: its answer did not fit (reasons), twice. Nothing starts from it.',
   );
-  await expect(card(page, 5)).toContainText('The last classification failed.');
+  // The misfit answer's reasons are not shown as the decision's.
+  await expect(card(page, 5).getByRole('list', { name: 'Its reasons' })).toHaveCount(0);
   await expect(card(page, 5).getByRole('button', { name: 'Classify again' })).toBeVisible();
   await expect(chip(page, 5)).toHaveText('Failed');
 

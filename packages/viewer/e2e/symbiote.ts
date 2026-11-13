@@ -885,7 +885,8 @@ if (args.includes('--json-schema') && args[args.indexOf('--json-schema') + 1].in
   process.exit(0);
 }
 // The classifier (HV9c): one turn held to its schema (it has "decision"), the card and the issue
-// on stdin; each call the next of classify-answers.json: an answer, { exit } or { none: true }.
+// on stdin; each call the next of classify-answers.json: an answer, { exit } or { none: true },
+// after waitMs when given (a classification under way).
 if (args.includes('--json-schema') && args[args.indexOf('--json-schema') + 1].includes('"decision"')) {
   const input = readFileSync(0, 'utf8');
   const calls = join(dir, 'classify-calls.jsonl');
@@ -894,6 +895,7 @@ if (args.includes('--json-schema') && args[args.indexOf('--json-schema') + 1].in
   const file = join(dir, 'classify-answers.json');
   const answers = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : [];
   const a = answers[n - 1] || {};
+  if (a.waitMs) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, a.waitMs);
   if (a.exit) process.exit(a.exit);
   if (a.none) process.exit(0);
   process.stdout.write(JSON.stringify({ type: 'result', subtype: 'success', stop_reason: 'end_turn', total_cost_usd: a.cost ?? 0.031, structured_output: a.answer ?? a }) + '\\n');
