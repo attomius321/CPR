@@ -2,14 +2,17 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import type {
   Issue,
   IssueAnswer,
+  IssueDecision,
+  IssueDecisions,
   IssueFilter,
   IssueListAnswer,
+  IssueRecord,
   IssueSource,
   IssueSummary,
 } from '@symbiote/core';
 import { Help } from '../ui/Help.js';
 import { PageHead } from '../ui/PageHead.js';
-import { getJson } from '../ui/http.js';
+import { getJson, postJson } from '../ui/http.js';
 import { DoneIcon, ExternalIcon, IssuesIcon, SearchIcon } from '../ui/icons.js';
 import { Loading } from '../ui/Loading.js';
 import { markdownNodes, useMarkdown } from '../ui/markdown.js';
@@ -18,6 +21,9 @@ import { tip } from '../ui/tip.js';
 import { loadWidths, saveWidth } from '../ui/widths.js';
 import { longDate } from '../history/commits.js';
 import { useShell } from '../shell/shell-context.js';
+import { useHive } from '../shell/hive.js';
+import { DecisionChip, HiveCard } from './HiveCard.js';
+import { DECISIONS_ADDRESS, classificationAddress, classifyAddress } from './classification.js';
 import { issueTokens } from './issue-text.js';
 import {
   authorName,
@@ -66,6 +72,7 @@ export function IssuesPage({ number }: { number?: number | undefined }) {
   const [width, setWidth] = useState(() => loadWidths().issues);
   const [resizing, setResizing] = useState(false);
   const asked = useRef(0);
+  const classifier = useClassifier(round);
 
   // The search asks once typing rests.
   useEffect(() => {
@@ -238,6 +245,8 @@ export function IssuesPage({ number }: { number?: number | undefined }) {
               search={search}
               picked={number}
               now={now}
+              decided={classifier.decided}
+              running={classifier.running}
               onPick={pick}
               onMore={more}
               onRetry={() => setRound((n) => n + 1)}
@@ -253,7 +262,7 @@ export function IssuesPage({ number }: { number?: number | undefined }) {
             onResize={resize}
             onDrag={setResizing}
           />
-          <IssueCard number={number} round={round} />
+          <IssueCard number={number} round={round} classifier={classifier} />
         </div>
       )}
     </div>
@@ -267,6 +276,8 @@ function IssueRows({
   search,
   picked,
   now,
+  decided,
+  running,
   onPick,
   onMore,
   onRetry,
@@ -276,6 +287,9 @@ function IssueRows({
   search: string;
   picked: number | undefined;
   now: number;
+  /** Each classified issue's decision (decision 1055). */
+  decided: ReadonlyMap<number, IssueDecision>;
+  running: ReadonlySet<number>;
   onPick: (number: number) => void;
   onMore: () => void;
   onRetry: () => void;
@@ -317,6 +331,10 @@ function IssueRows({
                 <span className="issues-row-line">
                   <span className="issues-row-number">#{issue.number}</span>
                   <span className="issues-row-title">{issue.title}</span>
+                  <DecisionChip
+                    decision={decided.get(issue.number)}
+                    running={running.has(issue.number)}
+                  />
                 </span>
                 {issue.labels.length > 0 && <Labels labels={issue.labels} max={4} />}
                 <span className="issues-row-meta">{issueLine(issue, now)}</span>
@@ -388,11 +406,93 @@ function Labels({ labels, max }: { labels: IssueSummary['labels']; max?: number 
   );
 }
 
-/** The issue picked, read whole: its text, its comments, a link to it on the forge. */
-function IssueCard({ number, round }: { number: number | undefined; round: number }) {
-  const [answer, setAnswer] = useState<{ number: number; read?: IssueAnswer; error?: string }>();
-  const lexer = useMarkdown();
+/** The classifier's part of the page (HV9c): the rows' decisions, Classify and its answers. */
+export interface ClassifierState {
+  /** What `/api/issues/classifications` said: null until read, or when it could not be. */
+  read: IssueDecisions | null;
+  decided: ReadonlyMap<number, IssueDecision>;
+  running: ReadonlySet<number>;
+  /** Records this page's Classify got, newer than any read. */
+  fresh: Readonly<Record<number, IssueRecord>>;
+  /** A Classify the server refused: its words. */
+  refused: Readonly<Record<number, string>>;
+  classify: (number: number) => void;
+}
 
+/**
+ * The rows' decisions, read on opening and on Refresh (nothing is polled, decision 950), and
+ * Classify: one POST an issue, its record then the row's chip and the card's.
+ */
+function useClassifier(round: number): ClassifierState {
+  const [read, setRead] = useState<IssueDecisions | null>(null);
+  const [running, setRunning] = useState<ReadonlySet<number>>(new Set());
+  const [fresh, setFresh] = useState<Record<number, IssueRecord>>({});
+  const [refused, setRefused] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    let live = true;
+    getJson<IssueDecisions>(DECISIONS_ADDRESS)
+      .then((answer) => live && setRead(answer))
+      .catch(() => live && setRead(null));
+    return () => {
+      live = false;
+    };
+  }, [round]);
+
+  const classify = useCallback((number: number) => {
+    const without = (all: Record<number, string>) => {
+      const rest = { ...all };
+      delete rest[number];
+      return rest;
+    };
+    setRunning((was) => new Set([...was, number]));
+    setRefused(without);
+    postJson<IssueRecord>(classifyAddress(number), {})
+      .then((record) => setFresh((was) => ({ ...was, [number]: record })))
+      .catch((failed: unknown) =>
+        setRefused((was) => ({ ...was, [number]: (failed as Error).message })),
+      )
+      .finally(() => setRunning((was) => new Set([...was].filter((n) => n !== number))));
+  }, []);
+
+  const decided = new Map((read?.decisions ?? []).map((d) => [d.number, d]));
+  for (const record of Object.values(fresh)) {
+    decided.set(record.number, {
+      number: record.number,
+      decision: record.decision,
+      ...(record.held?.length ? { held: record.held } : {}),
+      ...(record.refusal ? { refusal: record.refusal } : {}),
+      at: record.run.at,
+    });
+  }
+  return { read, decided, running, fresh, refused, classify };
+}
+
+/** The issue's record (HV9b), or null when it was never classified (404). */
+async function readClassification(number: number): Promise<IssueRecord | null> {
+  const response = await fetch(classificationAddress(number));
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(await response.text());
+  return (await response.json()) as IssueRecord;
+}
+
+/** The issue picked, read whole: its text, its comments, a link to it on the forge. */
+function IssueCard({
+  number,
+  round,
+  classifier,
+}: {
+  number: number | undefined;
+  round: number;
+  classifier: ClassifierState;
+}) {
+  const [answer, setAnswer] = useState<{ number: number; read?: IssueAnswer; error?: string }>();
+  const [kept, setKept] = useState<{ number: number; record: IssueRecord | null }>();
+  const hive = useHive();
+  const lexer = useMarkdown();
+  const fresh = number ? classifier.fresh[number] : undefined;
+
+  // Read again after a Classify: the issue as the classifier read it, its hash the record's.
   useEffect(() => {
     if (!number) return;
     let live = true;
@@ -400,6 +500,17 @@ function IssueCard({ number, round }: { number: number | undefined; round: numbe
     getJson<IssueAnswer>(issueAddress(number))
       .then((read) => live && setAnswer({ number, read }))
       .catch((failed: unknown) => live && setAnswer({ number, error: (failed as Error).message }));
+    return () => {
+      live = false;
+    };
+  }, [number, round, fresh]);
+
+  useEffect(() => {
+    if (!number) return;
+    let live = true;
+    readClassification(number)
+      .then((record) => live && setKept({ number, record }))
+      .catch(() => live && setKept({ number, record: null }));
     return () => {
       live = false;
     };
@@ -425,6 +536,8 @@ function IssueCard({ number, round }: { number: number | undefined; round: numbe
   const forge = issue ? FORGE_NAMES[issue.forge] : undefined;
   const now = Date.now();
   const ending = issue ? commentsWords(issue) : undefined;
+  // The record: this page's Classify's, else the one read; undefined until read.
+  const record = fresh ?? (kept?.number === number ? kept.record : undefined);
 
   return (
     <section className="issues-card issues-issue" aria-label={`Issue #${number}`}>
@@ -454,6 +567,21 @@ function IssueCard({ number, round }: { number: number | undefined; round: numbe
           <Loading className="issues-state">Reading #{number}…</Loading>
         ) : (
           <article className="issues-article">
+            {record !== undefined && classifier.read && (
+              <HiveCard
+                number={number}
+                record={record}
+                hive={hive}
+                about={classifier.read.about}
+                identity={classifier.read.identity}
+                snapshot={answer?.read?.snapshot}
+                running={classifier.running.has(number)}
+                refused={classifier.refused[number]}
+                text={text}
+                now={now}
+                onClassify={() => classifier.classify(number)}
+              />
+            )}
             <h3 className="issues-title">{issue.title}</h3>
             <p className="issues-byline">
               <span className="issues-state-word" data-state={issue.state}>

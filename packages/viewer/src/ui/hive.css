@@ -735,6 +735,45 @@
   color: var(--warning);
 }
 
+/* The project's text (HV9c): the field under its words, the row's whole width. */
+.hive-about-form {
+  display: flex;
+  flex: 1 1 100%;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hive-about textarea {
+  box-sizing: border-box;
+  width: 100%;
+  font: inherit;
+  letter-spacing: inherit;
+}
+
+.hive-about textarea[aria-invalid='true'] {
+  border-color: var(--error);
+}
+
+.hive-about-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: var(--height-control);
+  color: var(--muted);
+  font-size: var(--size-caption);
+}
+
+.hive-about-foot .is-fail {
+  color: var(--error);
+}
+
+/* The standing's facts under its help (decision 1059). */
+.hive-standing-facts {
+  display: block;
+  margin-top: 4px;
+}
+
 .hive-commands {
   display: flex;
   flex-wrap: wrap;
