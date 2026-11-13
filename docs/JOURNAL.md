@@ -479,3 +479,4 @@ merge commit.
 - 2026-11-12 [Chore — Hive's loop from an issue: what is left to build, the classifier first](journal/chore-hive-issue-loop-gaps.md)
 - 2026-11-13 [HV9a — the classifier's eval: three models, 80 issues and three hostile sets](journal/hv9-issue-classifier.md)
 - 2026-11-13 [HV9b — the classifier in the CLI: snapshot, run, rules, record, endpoint](journal/hv9-issue-classifier.md)
+- 2026-11-13 [HV10a — the writer's reach, measured: the daemon's environment, the sandbox's leaks, the hosts per ecosystem](journal/hv10-workspace-from-issue.md)
