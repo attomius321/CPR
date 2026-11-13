@@ -632,6 +632,7 @@ describe("Nucleus's prompt (V35, NU1)", () => {
       'nucleus',
       'scribe',
       'library',
+      'hive.classify',
       'hive.start',
       'hive.check',
       'hive.review',
@@ -789,6 +790,8 @@ describe("Hive's prompts (HV2, decision 657)", () => {
     const { prompts } = await promptSettingsService(await openRepo(repo.root)).prompts();
     const of = (key: string) => prompts.find((p) => p.key === key);
     expect(prompts.filter((p) => p.group === 'Hive').map((p) => [p.key, p.title])).toEqual([
+      // HV9b: the classifier, the first step of Hive's loop from an issue.
+      ['hive.classify', 'Classifier'],
       ['hive.start', 'Start'],
       ['hive.check', 'Check failed'],
       ['hive.review', 'Defects proven'],

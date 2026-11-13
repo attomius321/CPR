@@ -9,6 +9,7 @@ import { PromptRefused } from './prompts.js';
 import { PageAgentRefused } from './page-agent-context.js';
 import { SkillRefused } from './skills.js';
 import { McpRefused } from './mcp.js';
+import { IssueRefused } from './issue-classifier.js';
 import type { ServerContext } from './server-context.js';
 
 /** A GET answered with a value of the repository. */
@@ -65,7 +66,8 @@ async function refusals(res: ServerResponse, send: () => Promise<void>): Promise
       error instanceof MergeRefused ||
       error instanceof PromptRefused ||
       error instanceof PageAgentRefused ||
-      error instanceof SkillRefused
+      error instanceof SkillRefused ||
+      error instanceof IssueRefused
     )
       return json(res, error.status, { error: error.message });
     throw error;

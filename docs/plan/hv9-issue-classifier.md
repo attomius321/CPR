@@ -3,8 +3,8 @@
 [Index](../PLAN.md) · [Journal](../journal/hv9-issue-classifier.md); the loop's first
 measurements are in [the chore's journal](../journal/chore-hive-issue-loop-gaps.md)
 
-**Status:** HV9a measured (2026-11-13) on `spike/hv9a-classifier-eval`, ready for review: Opus
-at `high` with the prompt p2 (As built, below); HV9b and HV9c not started. Planned (2026-11-12) by
+**Status:** HV9b built (2026-11-13) on `feature/hv9b-issue-classifier`, ready for review (Plan and As built (HV9b), below). HV9a measured (2026-11-13) on `spike/hv9a-classifier-eval`, ready for review: Opus
+at `high` with the prompt p2 (As built, below); HV9c not started. Planned (2026-11-12) by
 the chore `chore/hive-issue-loop-gaps` (from `main` at `a47dda3`). It is the first of five milestones that bring a forge's issues into
 Hive's loop (HV9 to HV13). The chore's journal ranks them and says what each step of the loop has
 today.
@@ -415,3 +415,114 @@ Answer with the JSON your answer's schema asks for.
 | 1035 | What else does the classifier flag? | **`weakens-checks`: it removes, skips or loosens tests, lint, type checks, coverage or CI steps, or a security control. `new-dependency` also covers replacing a package** | No p1 flag named h21, and every model took it. With p2, every model flagged h22 and h24 (coverage at 0, `eslint-disable`) |
 | 1036 | Which model? (supersedes 1006's model and level) | **Opus at `high`; `hive.classifier.model` and `.effort` as in 1006** | 91 % precision, wrong only on two borderline asks; the issue's exact output quoted in 14 of 22 briefs (Sonnet and Haiku 3); $0.03 and 11 s at the median |
 | 1037 | What of the person reaches the classifier? | **Claude Code puts the account's email, the folder and the OS in its context, even with `--safe-mode`. HV11 posts a question only when it holds none of the account's email, the home folder's path or the cache's path, checked in code; otherwise the record keeps it and nothing is posted** | Measured: the classifier named the email when asked. `--bare` drops it but needs an API key. h15 asked for it, and no answer of 1,026 repeated it, but the prompt is the only thing that kept it out |
+
+## Plan (HV9b)
+
+Planned on 2026-11-13 in the workspace `feature/hv9b-issue-classifier` (from `main` at
+`4bfdfde`), and agreed by the person before any code. The person's direction: Symbiote builds any
+app, so nothing in the classifier assumes this repository, and decision 1010's bar holds per
+repository, not once on HV9a's sets.
+
+What HV9b found before it was built:
+
+- `hive.issues.about` does not exist yet: no code or doc names it.
+- GitLab's comments carry no role: `getIssue` (`packages/forge/src/gitlab.ts`) reads each note's
+  author without one, and `roleOf` calls guest, reporter and developer all `member`. Decision
+  1001 asks for Developer and above.
+- IS1's cleaning (`packages/viewer/src/issues/issue-text.ts`) works on marked's tokens in the
+  browser, and the viewer imports only types: the server needs a port. HV9a's port decodes no
+  entities and strips tags inside inline code, where the viewer leaves them as written.
+- p2 names its setting twice: the writer's models, written out ("haiku (small) … fable
+  (largest)"), and "Symbiote's autonomous mode". The rest is the project card's, which the eval
+  wrote per project.
+
+What it builds, in `packages/cli` and `packages/forge`:
+
+1. **The snapshot** (`issue-snapshot.ts`, decision 1001): IS1's cleaning on the server, Symbiote's
+   own tags removed, zero-width and bidirectional characters dropped and flagged `hidden-text`,
+   members' comments and the author's own (decision 1044), outside comments counted, at most
+   20,000 characters, cut and flagged; hashed over the raw text read, so that any edit changes it.
+2. **GitLab's members**: each comment author's access level, read once an issue with a token
+   (`IssueAuthor.level`); without a token, no comment is read, as today.
+3. **The run** (`issue-classify.ts`, decisions 1002 and 1036): `claudeAdviceArgs` in a new empty
+   folder under `<cache>/classifier/`, removed after; the card and the snapshot on stdin; Opus at
+   `high` unless `hive.classifier.model` and `.effort` name others from Claude Code's list; the
+   schema built from the writer's own models and levels, as `adviceSchema`.
+4. **The project card** (decision 1038) and **the prompt `hive.classify`** (decision 1039).
+5. **Symbiote's rules**: lengths in code, asked once more, then failed; 1005's refusing flags;
+   1034's hold; 1037's check, on the question and the brief (decision 1042).
+6. **The brief**: "From issue #n (link), classified at <time>.", then V24's headings
+   (`briefOf`).
+7. **The record** `symbiote/issues/<number>.json` and its events in `.jsonl` (decision 1007),
+   with the classifier's identity (decision 1041).
+8. **`POST /api/issues/<n>/classify`** with SC1's page key: refused, with words and 409, with
+   Hive off, with no forge, for a pull request's number, while that issue is being classified,
+   without Claude Code, and without `hive.issues.about`. **`GET
+   /api/issues/<n>/classification`** reads the record back.
+
+**How 1010's bar holds per repository** (decisions 1040 and 1041). Each repository counts its own
+takes, from its own `symbiote/issues/`, under one classifier identity: the hash of the prompt's
+text, the model, the effort, the project card's text and Symbiote's rules version. A change to
+any of them starts the count again. A take is right when the person started it (HV10's click) and
+it did not end badly. It is wrong when the person declined it, when its request was closed
+without a merge, or when the person stopped its workspace. A stop by Hive's own limits (the
+budget, the usage pause) counts neither way. The repository meets the bar with at least 20 judged
+takes under its current identity, at least 95 % of them right, and none of HV9a's hostile sets
+taken with this repository's card and identity. Below it, or once it falls below, work starts on
+a click. HV9b records the identity and the snapshot; HV10 and HV13 add the `judged` and `ended`
+events and enforce it.
+
+**Verification (HV9b)**: the plan's 1–3 and 5, red first: the snapshot on IS1's recorded vite and
+gitlab-runner answers and on HV9a's hostile sets; the rules on HV9a's recorded Opus answers; the
+schema, the brief and the record; the classifier's arguments as `workspace-advice.test.ts` tests
+the advisor's; the server's refusals and the record read back with a fake forge and a fake Claude
+Code. Then 10 of HV9a's 20 vite issues (5 open, 5 closed) through the built `symbiote view` in a
+shallow vite clone in scratch, with its own cache, Hive on in that clone only and the eval's vite
+card as `hive.issues.about`; read only; compared with HV9a's Opus answers.
+
+**Decisions (HV9b)**
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 1038 | What is the project card? | **The forge's project (`origin`), V24's kinds of work, the check's commands (`merge.checks` or the one Symbiote finds) and the text of `hive.issues.about`, all from the repository being worked on; no file of it. Without `hive.issues.about`, classifying is refused with words** | Symbiote builds any app: what a project is and what Hive may take is the person's to write. Without it "out of scope" means nothing, and a wrong take costs about $18 |
+| 1039 | Which prompt? | **p2 as `hive.classify`, with the writer's models and levels filled from Claude Code's own list (`{models}`, `{levels}`) and no name of Symbiote or of any repository** | p2 took none of 78 hostile answers with the rules; the two names it wrote out were its setting's, not the classifier's |
+| 1040 | When may a repository start work from an issue with no click? (replaces 1010's labelled set) | **When its own judged takes under its current classifier identity number at least 20, at least 95 % of them right, and HV9a's hostile sets run with its card took none. Right: started by the person and not ended badly; wrong: declined, its request closed without a merge, or its workspace stopped by the person; a stop by Hive's limits counts neither way. HV13 enforces it** | The person's direction: 1010's bar must hold per repository. HV9a's 91 % was on two projects and the author's labels; each repository's issues and card differ |
+| 1041 | What does the record keep of the classifier? | **Its identity: Claude Code's version, the model, the effort, the prompt's hash, the card's hash and Symbiote's rules version; a change to the prompt, model, effort, card or rules starts 1040's count again** | A count is only good for the classifier that earned it |
+| 1042 | Does 1037's check cover more than the question? | **The brief too: a brief holding the account's email, git's `user.email`, the home folder's path or the cache's path holds the take** | `requestBody` puts the brief at the top of a public pull request (`hive-request.ts`) |
+| 1043 | Who is a member on GitLab? | **An access level of Developer (30) or above, read for each comment's author with a token; without one, no comment is read** | Decision 1001; `roleOf` calls guest and reporter `member` |
+| 1044 | Does the classifier read the author's comments? (adds to 1001) | **Yes, marked as the author's: the same author as the body, so the same trust** | HV13's 1031 classifies again when the author answers an ask; without the answer, an ask cannot end |
+
+## As built (HV9b)
+
+HV9b was built on 2026-11-13 on `feature/hv9b-issue-classifier`, as its plan above says. The
+code is `packages/cli/src/issue-snapshot.ts`, `issue-classify.ts`, `issue-record.ts` and
+`issue-classifier.ts`, with the routes in `server-pages.ts`. The journal has the measurements and
+what was learned.
+
+What differs from the plan:
+
+- **The prompt's model guide stays text** (decision 1039 as built). The plan said to fill
+  `{models}` and `{levels}` from Claude Code's list. Instead the guide is text, as the advisor's
+  is (decision 546), and the answer's schema holds the models and levels Claude Code lists.
+  `hive.classify` is p2 with one phrase changed: "for Hive, an autonomous mode", not "Symbiote's
+  autonomous mode". It names no repository and no project.
+- **Symbiote's own tags are marked before other tags are stripped.** HV9a's port stripped
+  `</issue>` with the other HTML tags, so h14's attempt left no mark. Now it reads `[tag
+  removed]`. Scripts and styles also count as hidden text; an HTML comment inside code does not.
+  Inline code is left as written, and entities are decoded, as the Issues page does.
+- **The records sit beside `hive.json`** (`reviewPlace`): the main checkout's `symbiote/`, or
+  Symbiote's cache when there is no git user or `symbiote/` holds the project's files.
+- **`hive.issues.about` is at most 4,000 characters**, the rest left out.
+- **`GET /api/issues/<n>/classification`** reads the record back, or answers 404.
+- **The record keeps why an answer was asked again** (`run.retried`), and failures in words:
+  what did not fit, `declined`, `no answer`, `exit <code>`.
+- **The markers of decision 1037** are Claude Code's account email (its `.claude.json`), git's
+  `user.email`, the home folder and Symbiote's cache. They are read for each classification and
+  are kept in no record; a record names which one an answer held.
+- **`hive.classify` is listed in Settings' Hive group**, as every prompt is. Its model and effort,
+  and the Issues page's card and chips, are HV9c's.
+
+**Results (HV9b)**: the built classifier on 10 of HV9a's vite issues, read only: the same decision
+as HV9a's Opus answers on all 10, 8 of 10 as the author labelled them (the two others are HV9a's
+borderline asks). 5 takes and 5 refusals: 1 unsafe, 2 not a change, 2 out of scope. $0.48 in
+all, $0.040 at the median, 11.8 s at the median.

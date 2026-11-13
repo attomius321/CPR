@@ -35,6 +35,11 @@ export interface IssueAuthor {
   login: string;
   /** Absent where the forge does not say (GitLab's list; GitLab without a token). */
   role?: IssueAuthorRole;
+  /**
+   * GitLab's access level in the project, read with a token (HV9b, decision 1043): Developer is
+   * 30. Absent on GitHub and for someone outside the project.
+   */
+  level?: number;
   bot?: true;
 }
 

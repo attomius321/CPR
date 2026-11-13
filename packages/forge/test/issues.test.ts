@@ -350,13 +350,14 @@ describe('GitLab issues (IS1)', () => {
         return { body: gitlabNotes };
       }
       if (path === `${PROJECT}/members/all/35011548`) return { body: { access_level: 30 } };
+      if (path === `${PROJECT}/members/all/1001`) return { body: { access_level: 40 } };
       return undefined;
     });
     const issue = await gitlab().getIssue(40247);
     expect(issue).toMatchObject({
       number: 40247,
       body: gitlabIssue.description,
-      author: { login: 'daniel-keenan', role: 'member' },
+      author: { login: 'daniel-keenan', role: 'member', level: 30 },
       comments: 3,
       moreComments: 0,
     });
@@ -366,8 +367,19 @@ describe('GitLab issues (IS1)', () => {
       'daniel-keenan',
       'haraldF',
     ]);
+    // Each note's author with their access level (HV9b, decision 1043): a member is Developer
+    // (30) or above; someone outside the project has none. One read a person, not a note.
+    expect(issue.thread.map((note) => note.author)).toEqual([
+      { login: 'runner-maintainer', role: 'maintainer', level: 40 },
+      { login: 'daniel-keenan', role: 'member', level: 30 },
+      { login: 'haraldF', role: 'none' },
+    ]);
+    const levels = api?.requests.filter((r) => r.path.includes('/members/all/')) ?? [];
+    expect(levels.map((r) => r.path).sort()).toEqual(
+      ['1001', '2002', '35011548'].map((id) => `${PROJECT}/members/all/${id}`),
+    );
     expect(issue.thread[0]).toEqual({
-      author: { login: 'runner-maintainer' },
+      author: { login: 'runner-maintainer', role: 'maintainer', level: 40 },
       body: 'Can you share the job log with `CI_DEBUG_TRACE` on?',
       created: '2026-11-05T09:12:44.120Z',
       url: 'https://gitlab.com/gitlab-org/gitlab-runner/-/work_items/40247#note_2871000001',

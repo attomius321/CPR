@@ -44,6 +44,7 @@ import {
   FlaskIcon,
   FolderIcon,
   HexagonIcon,
+  IssuesIcon,
   MergeIcon,
   NucleusIcon,
   PlanIcon,
@@ -109,6 +110,8 @@ const ICONS: Partial<Record<EntryKey, () => ReactNode>> = {
   'merge.failed': ChecksIcon,
   nucleus: NucleusIcon,
   scribe: SparklesIcon,
+  // HV9b: the classifier reads an issue, the Issues page's icon.
+  'hive.classify': IssuesIcon,
   'hive.start': HexagonIcon,
   'hive.check': ChecksIcon,
   'hive.review': BugIcon,
