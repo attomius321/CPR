@@ -119,6 +119,8 @@ export interface IssueClassification extends Omit<Ruling, 'decision'> {
     /** Claude Code's `total_cost_usd`, both tries. */
     cost: number;
     tries: number;
+    /** What did not fit the first time, when it was asked again. */
+    retried?: string;
     usage?: { input: number; output: number; cacheRead: number; cacheWrite: number };
   };
 }
@@ -418,6 +420,7 @@ export async function classifyIssue({
     ms: tries.reduce((sum, t) => sum + t.ms, 0),
     cost: dollars(tries.reduce((sum, t) => sum + t.cost, 0)),
     tries: tries.length,
+    ...(tries.length > 1 && tries[0]?.misfit ? { retried: tries[0].misfit } : {}),
     ...(last.usage ? { usage: last.usage } : {}),
   };
   const answer = last.answer;

@@ -3,7 +3,7 @@
 [Index](../PLAN.md) · [Journal](../journal/hv9-issue-classifier.md); the loop's first
 measurements are in [the chore's journal](../journal/chore-hive-issue-loop-gaps.md)
 
-**Status:** HV9b in progress (2026-11-13) on `feature/hv9b-issue-classifier` (Plan (HV9b), below). HV9a measured (2026-11-13) on `spike/hv9a-classifier-eval`, ready for review: Opus
+**Status:** HV9b built (2026-11-13) on `feature/hv9b-issue-classifier`, ready for review (Plan and As built (HV9b), below). HV9a measured (2026-11-13) on `spike/hv9a-classifier-eval`, ready for review: Opus
 at `high` with the prompt p2 (As built, below); HV9c not started. Planned (2026-11-12) by
 the chore `chore/hive-issue-loop-gaps` (from `main` at `a47dda3`). It is the first of five milestones that bring a forge's issues into
 Hive's loop (HV9 to HV13). The chore's journal ranks them and says what each step of the loop has
@@ -491,3 +491,38 @@ card as `hive.issues.about`; read only; compared with HV9a's Opus answers.
 | 1042 | Does 1037's check cover more than the question? | **The brief too: a brief holding the account's email, git's `user.email`, the home folder's path or the cache's path holds the take** | `requestBody` puts the brief at the top of a public pull request (`hive-request.ts`) |
 | 1043 | Who is a member on GitLab? | **An access level of Developer (30) or above, read for each comment's author with a token; without one, no comment is read** | Decision 1001; `roleOf` calls guest and reporter `member` |
 | 1044 | Does the classifier read the author's comments? (adds to 1001) | **Yes, marked as the author's: the same author as the body, so the same trust** | HV13's 1031 classifies again when the author answers an ask; without the answer, an ask cannot end |
+
+## As built (HV9b)
+
+HV9b was built on 2026-11-13 on `feature/hv9b-issue-classifier`, as its plan above says. The
+code is `packages/cli/src/issue-snapshot.ts`, `issue-classify.ts`, `issue-record.ts` and
+`issue-classifier.ts`, with the routes in `server-pages.ts`. The journal has the measurements and
+what was learned.
+
+What differs from the plan:
+
+- **The prompt's model guide stays text** (decision 1039 as built). The plan said to fill
+  `{models}` and `{levels}` from Claude Code's list. Instead the guide is text, as the advisor's
+  is (decision 546), and the answer's schema holds the models and levels Claude Code lists.
+  `hive.classify` is p2 with one phrase changed: "for Hive, an autonomous mode", not "Symbiote's
+  autonomous mode". It names no repository and no project.
+- **Symbiote's own tags are marked before other tags are stripped.** HV9a's port stripped
+  `</issue>` with the other HTML tags, so h14's attempt left no mark. Now it reads `[tag
+  removed]`. Scripts and styles also count as hidden text; an HTML comment inside code does not.
+  Inline code is left as written, and entities are decoded, as the Issues page does.
+- **The records sit beside `hive.json`** (`reviewPlace`): the main checkout's `symbiote/`, or
+  Symbiote's cache when there is no git user or `symbiote/` holds the project's files.
+- **`hive.issues.about` is at most 4,000 characters**, the rest left out.
+- **`GET /api/issues/<n>/classification`** reads the record back, or answers 404.
+- **The record keeps why an answer was asked again** (`run.retried`), and failures in words:
+  what did not fit, `declined`, `no answer`, `exit <code>`.
+- **The markers of decision 1037** are Claude Code's account email (its `.claude.json`), git's
+  `user.email`, the home folder and Symbiote's cache. They are read for each classification and
+  are kept in no record; a record names which one an answer held.
+- **`hive.classify` is listed in Settings' Hive group**, as every prompt is. Its model and effort,
+  and the Issues page's card and chips, are HV9c's.
+
+**Results (HV9b)**: the built classifier on 10 of HV9a's vite issues, read only: the same decision
+as HV9a's Opus answers on all 10, 8 of 10 as the author labelled them (the two others are HV9a's
+borderline asks). 5 takes and 5 refusals: 1 unsafe, 2 not a change, 2 out of scope. $0.48 in
+all, $0.040 at the median, 11.8 s at the median.

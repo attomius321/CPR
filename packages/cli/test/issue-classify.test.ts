@@ -362,7 +362,11 @@ describe('one run of the classifier (decision 1002)', () => {
   it('asks once more when the answer does not fit, then records it as failed', async () => {
     const long = { ...answer('a01'), reasons: ['x'.repeat(400)] };
     const again = await classifyIssue(base([result(long), result(answer('a01'))], []));
-    expect(again).toMatchObject({ decision: 'take', run: { tries: 2, cost: 0.0604 } });
+    // What did not fit the first time is kept: the record says why it was asked again.
+    expect(again).toMatchObject({
+      decision: 'take',
+      run: { tries: 2, cost: 0.0604, retried: 'reason' },
+    });
     const failed = await classifyIssue(base([result(long), result(long)], []));
     expect(failed).toMatchObject({ decision: 'failed', failed: 'reason', run: { tries: 2 } });
     expect(failed.brief).toBeUndefined();

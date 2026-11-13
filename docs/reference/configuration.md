@@ -47,6 +47,9 @@ the merger, Nucleus and Scribe, and leaves the rest of the file as it is.
 | `hive.budget` | none | Dollars a workspace Hive drives may spend, by Claude Code's own count: its agent's sessions and its running reviews. Reached, Hive stops the workspace. See [Pacing: usage and budget](#pacing-usage-and-budget). |
 | `hive.reviewer.model` | `opus` | The model [Hive's running reviewer](#the-running-reviewer) is asked on. Set it in Settings' **Hive mode** page, under **Running reviewer**. |
 | `hive.reviewer.effort` | `high` | The effort level the running reviewer is asked at, if its model takes it. |
+| `hive.issues.about` | none | What the project is and what Hive may take on, in your words, at most 4,000 characters. The classifier reads it on each issue; without it, classifying is refused. See [Classifying an issue](#classifying-an-issue). |
+| `hive.classifier.model` | `opus` | The model [the classifier](#classifying-an-issue) runs on, if Claude Code lists it. |
+| `hive.classifier.effort` | `high` | The effort level the classifier runs at, if its model takes it. |
 | `prompts` | Symbiote's text | The text Symbiote gives its agents. See [Prompts](#prompts). |
 
 To pick a model or an effort level from the agent's own list, use **Settings** rather than
@@ -111,6 +114,7 @@ and leaves any other brace as text:
 | `nucleus` | Nucleus's instructions, its system prompt. While Hive is on, a text without `{name}` gets a line at its end that tells Nucleus its name | `{name}`: Nucleus, or Alpha Ceph while [Hive](#hive-mode) is on |
 | `scribe` | Scribe's instructions, its system prompt. A `{request}` left from an older text is filled with nothing | `{skills}`, `{checkout}`, `{library}` |
 | `library` | What `{library}` becomes in Scribe's prompt when a [skill library](#the-skill-library) is set. Without a library, the line that holds `{library}` is left out | `{folder}` (required), `{skills}` |
+| `hive.classify` | [The classifier's](#classifying-an-issue) instructions, its system prompt: how it takes, asks or refuses an issue and writes the brief. The project's card and the issue are its message; the answer's shape and Symbiote's rules around it are Symbiote's | none |
 | `hive.start` | What `{hive}` becomes in the first prompt of a workspace [Hive](#hive-mode) drives. Without Hive, the line that holds `{hive}` is left out; a start prompt without `{hive}` gets it at its end | `{check}`, `{rounds}` |
 | `hive.check` | What Hive sends the agent when the check fails | `{output}` (required), `{command}`, `{branch}`, `{at}`, `{round}`, `{rounds}` |
 | `hive.review` | What Hive sends the agent when the [running reviewer](#the-running-reviewer) proved defects: each defect, its test's command and files, and the last lines of Symbiote's rerun | `{findings}` (required), `{count}`, `{branch}`, `{at}`, `{round}`, `{rounds}`, `{folder}` |
@@ -131,7 +135,7 @@ cases:
 - It lacks a required placeholder.
 - It is too long. The limits are 8,000 characters for a start prompt, for Nucleus's and Scribe's
   and for `hive.nucleus`; 1,000 for `plan.*`, `documents`, `verdict.*` and the other `hive.*`; and
-  20,000 for `reviews`, `merger` and `hive.reviewer`.
+  20,000 for `reviews`, `merger`, `hive.reviewer` and `hive.classify`.
 
 Prompts cannot widen what Symbiote's helpers may do. Whatever its prompt says, Nucleus cannot edit
 files or run any command that writes or runs another program, and its starts, verdicts, merges and
@@ -473,6 +477,39 @@ One `symbiote view` drives a repository's Hive at a time. Another one of the sam
 shows the cards and drives nothing, until the first one stops.
 
 With Hive off, a workspace Hive drove is reviewed and landed as any other, from its review.
+
+### Classifying an issue
+
+Before Hive starts anything from an issue of `origin`'s GitHub or GitLab, a classifier reads it
+and answers **take**, **ask** or **refuse**, with its reasons. For a take, it writes the brief a
+writer would get in place of the issue's text. Nothing starts from an issue yet: that is a later
+step. `POST /api/issues/<number>/classify` runs it, from a page Symbiote opened, while Hive is on.
+
+- **What it reads**: the issue's title, author's role, labels, body, and the comments of the
+  project's members and of the issue's author. On GitLab, a member has the Developer role or
+  above, and comments are read only with a token. Other comments are counted, not read. The text
+  is cleaned as the Issues page cleans it. Text the forge hides (HTML comments, zero-width and
+  bidirectional characters) is dropped and flagged, and the text is cut at 20,000 characters.
+- **The project's card**: `origin`'s project, the kinds of work, the check's commands and
+  `hive.issues.about`. It holds no file of the repository. Without `hive.issues.about`,
+  classifying is refused.
+- **How it runs**: one turn of Claude Code on `hive.classifier.model` at `.effort` (Opus at
+  `high`), with the prompt `hive.classify`, no tools, no MCP servers, no hooks, no saved session,
+  in an empty folder of Symbiote's cache. One classification cost about $0.03 at the median.
+- **Symbiote's rules, whatever the model decides**: an issue that asks for secrets, speaks to an
+  agent or asks for actions outside the repository is refused as unsafe. A take that adds or
+  replaces a dependency, weakens a check, holds hidden text or was cut waits for your click. So
+  does a take whose brief names your account's email, git's `user.email`, your home folder or
+  Symbiote's cache. An answer that does not fit is asked once more, then recorded as failed.
+- **Refused**: with Hive off, with no forge, for a pull request's number, without
+  `hive.issues.about`, without Claude Code, and while the issue is being classified.
+
+Symbiote keeps the last decision in `symbiote/issues/<number>.json`, beside `hive.json`, and each
+step, one line an event, in `symbiote/issues/<number>.jsonl` (`classified`, `classified-again`,
+`failed`). `GET /api/issues/<number>/classification` reads it back. The record holds the snapshot
+(its hash, its text, what was read and left out, Symbiote's flags), the answer, the decision, the
+brief, the time and the cost, and the classifier's identity: Claude Code's version, the model, the
+effort, and hashes of the prompt and of the card. A record of another `origin` is never read.
 
 ### Where Hive keeps its state
 

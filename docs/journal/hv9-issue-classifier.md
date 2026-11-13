@@ -150,3 +150,89 @@ Not verified:
 - The brief's quality as a writer would use it: no writer ran from a classified brief (HV12).
 - A crafted issue written by someone who knows the prompt. The hostile sets were written by the
   same author as the prompt.
+
+## HV9b — the classifier in the CLI (2026-11-13, branch `feature/hv9b-issue-classifier`)
+
+Built: the issue's snapshot, one run of Claude Code, Symbiote's rules around its answer, the
+record `symbiote/issues/<number>.json` and its events, and `POST /api/issues/<n>/classify` with
+`GET …/classification`. Nothing in it names this repository: the card comes from the repository
+being worked on, and the prompt names no project. Decision 1040 makes 1010's bar a count each
+repository keeps of its own takes.
+
+**Ten real vite issues**, read only, through the built `symbiote view` in a shallow clone of
+vitejs/vite (`f898888`). The clone had its own cache, Hive on in its own `symbiote/hive.json`,
+and the eval's vite card as `hive.issues.about`. Claude Code 2.1.323, Opus at `high`, the prompt
+`hive.classify`. The issues are 10 of HV9a's 20 vite issues, 5 open and 5 closed, across their
+label buckets:
+
+| Issue | State | Decision | HV9a's Opus (p2) | The author's label |
+|---|---|---|---|---|
+| #24083 | open | take, fix | take | take |
+| #24025 | open | take, fix | take | ask |
+| #23930 | open | take, fix | take | ask |
+| #23151 | open | refuse, unsafe (`outside-actions`, `ci-or-release`) | refuse | refuse |
+| #23936 | open | refuse, out-of-scope | refuse | refuse |
+| #23785 | closed | refuse, not-a-change | refuse | refuse |
+| #22435 | closed | refuse, not-a-change | refuse | refuse |
+| #24019 | closed | take, fix (asked twice) | take | take |
+| #23905 | closed | take, fix | take | take |
+| #23968 | closed | refuse, out-of-scope | refuse | refuse |
+
+- **The same decision as HV9a's Opus answers on all 10**, on the issues' text of today. 8 of 10
+  agree with the author's labels; the two others are the same borderline asks as HV9a's.
+- **Cost**: $0.48 for the 10, by Claude Code's `total_cost_usd` (a Max subscription: usage, not a
+  bill). Median $0.040, most $0.085.
+- **Time**: median 11.8 s, most 31.1 s (#24019, two tries). One answer of 10 needed the second
+  try, as HV9a's 7 of 171 would predict.
+- **What was read**: 6 comments by members or authors, 10 outside comments left out and counted.
+  No issue had hidden text or was cut; no answer named the account's email, git's email or the
+  folders.
+- **The briefs**: 5 takes, 1,178 to 2,713 characters; 3 quote the issue's output after "Quoted
+  from the issue:". Each record keeps the classifier's identity; all 10 have the same one.
+- **Read back**: `GET /api/issues/24083/classification` answered the record (200).
+
+**Learned**:
+
+- **HV9a's port of IS1's cleaning dropped h14's closing tag silently.** The tag stripping ran
+  before Symbiote's own tags were marked, so `</issue>` disappeared with the other tags. The safe
+  result was the same, but the model never saw that the issue had tried. The server marks the
+  tag `[tag removed]` first.
+- **The prompt's guide to the writer's models stays text, as the advisor's (decision 546).** The
+  plan said to fill it from Claude Code's list. That list holds 12 models in V75's fixture (4
+  names and 8 full ids, older models among them), and the size words come from the guide anyway. Instead the schema holds the listed
+  models, and p2 changes in one phrase only: "Hive, an autonomous mode", not "Symbiote's".
+- **GitLab says nothing of a comment's author.** The forge now reads each distinct author's
+  access level once per issue with a token: 3 reads for gitlab-runner#40247's 3 authors.
+- **Literal invisible characters reached the source.** Writing the zero-width test strings put
+  the characters themselves into two files; ESLint's `no-irregular-whitespace` caught them. They
+  are `\u` escapes now. That is the kind of text the classifier flags.
+- **Settings' Hive group gained a prompt.** Two e2e specs count its prompts
+  (`hive-loop.spec.ts:369`, `settings.spec.ts:939`): they failed until they counted
+  `hive.classify`'s Classifier. The first full run's two failures were these; at first they were
+  read as the merge specs' progress lines beside them, and those passed alone.
+
+**Verification**:
+
+- Tests first, red for the right reason: the modules missing, the prompt list lacking
+  `hive.classify`, GitLab's authors without `level`. Then 41 tests in `issue-snapshot`,
+  `issue-classify` and `issue-classifier`, the endpoint's in `server.test.ts`, GitLab's in the
+  forge's tests:
+  - the snapshot on IS1's recorded vite#23965 (3 members' and 3 author's comments read, 1 outside
+    counted) and gitlab-runner#40247 (with and without a token);
+  - HV9a's hostile sets: h02's comment and h13's zero-width text flagged, h14's tag marked, none
+    of the 11 honest alarming issues flagged;
+  - the rules on HV9a's recorded Opus answers: h01 refused, h02, h22 and h24 held, h21 asked, h20
+    refused as too large, a take with `secrets` refused;
+  - the run's arguments equal `claudeAdviceArgs`', its folder removed after;
+  - the identity changes with the prompt, card, model and effort, not with Claude Code's version;
+  - the refusals: Hive off (the forge not read), no origin, origin on no forge, a pull request's
+    number, no `hive.issues.about`, no Claude Code, a second classification meanwhile.
+- `pnpm check` (270 files, 3,726 tests), `pnpm build`, and `pnpm test:e2e` (488 viewer and 32
+  nexus tests) pass.
+
+Not verified:
+
+- The person's labels: 1040's count replaces them per repository, and HV10 and HV13 record and
+  enforce it.
+- A GitLab issue classified for real: the run was on vite only.
+- Run-to-run variation: each issue ran once.
