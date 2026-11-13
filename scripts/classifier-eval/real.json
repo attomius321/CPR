@@ -1,0 +1,515 @@
+[
+  {
+    "project": "vite",
+    "number": 24083,
+    "url": "https://github.com/vitejs/vite/issues/24083",
+    "state": "open",
+    "bucket": "pending triage",
+    "label": {
+      "decision": "take",
+      "kind": "fix",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z"
+    }
+  },
+  {
+    "project": "vite",
+    "number": 24025,
+    "url": "https://github.com/vitejs/vite/issues/24025",
+    "state": "open",
+    "bucket": "pending triage",
+    "label": {
+      "decision": "ask",
+      "kind": "fix",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z",
+      "note": "the author is unsure it is a bug; the fix is a design question about the optimizer"
+    }
+  },
+  {
+    "project": "vite",
+    "number": 23979,
+    "url": "https://github.com/vitejs/vite/issues/23979",
+    "state": "open",
+    "bucket": "pending triage",
+    "label": {
+      "decision": "take",
+      "kind": "fix",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z"
+    }
+  },
+  {
+    "project": "vite",
+    "number": 23965,
+    "url": "https://github.com/vitejs/vite/issues/23965",
+    "state": "open",
+    "bucket": "p3-minor-bug",
+    "label": {
+      "decision": "take",
+      "kind": "fix",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z"
+    }
+  },
+  {
+    "project": "vite",
+    "number": 23880,
+    "url": "https://github.com/vitejs/vite/issues/23880",
+    "state": "open",
+    "bucket": "p3-minor-bug",
+    "label": {
+      "decision": "take",
+      "kind": "fix",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z",
+      "note": "borderline: the scanner may be Rolldown's"
+    }
+  },
+  {
+    "project": "vite",
+    "number": 23930,
+    "url": "https://github.com/vitejs/vite/issues/23930",
+    "state": "open",
+    "bucket": "p2-edge-case",
+    "label": {
+      "decision": "ask",
+      "kind": "fix",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z",
+      "note": "may share its root cause with a Rolldown issue: ask whether it is Vite's"
+    }
+  },
+  {
+    "project": "vite",
+    "number": 23151,
+    "url": "https://github.com/vitejs/vite/issues/23151",
+    "state": "open",
+    "bucket": "documentation",
+    "label": {
+      "decision": "refuse",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z"
+    }
+  },
+  {
+    "project": "vite",
+    "number": 23958,
+    "url": "https://github.com/vitejs/vite/issues/23958",
+    "state": "open",
+    "bucket": "p2-nice-to-have",
+    "label": {
+      "decision": "take",
+      "kind": "feature",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z"
+    }
+  },
+  {
+    "project": "vite",
+    "number": 23890,
+    "url": "https://github.com/vitejs/vite/issues/23890",
+    "state": "open",
+    "bucket": "p2-nice-to-have",
+    "label": {
+      "decision": "refuse",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z",
+      "note": "adds public options; the author has a branch ready"
+    }
+  },
+  {
+    "project": "vite",
+    "number": 23936,
+    "url": "https://github.com/vitejs/vite/issues/23936",
+    "state": "open",
+    "bucket": "bug: upstream",
+    "label": {
+      "decision": "refuse",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z"
+    }
+  },
+  {
+    "project": "vite",
+    "number": 23785,
+    "url": "https://github.com/vitejs/vite/issues/23785",
+    "state": "closed",
+    "bucket": "duplicate",
+    "label": {
+      "decision": "refuse",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z"
+    }
+  },
+  {
+    "project": "vite",
+    "number": 23670,
+    "url": "https://github.com/vitejs/vite/issues/23670",
+    "state": "closed",
+    "bucket": "duplicate",
+    "label": {
+      "decision": "refuse",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z"
+    }
+  },
+  {
+    "project": "vite",
+    "number": 23267,
+    "url": "https://github.com/vitejs/vite/issues/23267",
+    "state": "closed",
+    "bucket": "wontfix",
+    "label": {
+      "decision": "refuse",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z"
+    }
+  },
+  {
+    "project": "vite",
+    "number": 22435,
+    "url": "https://github.com/vitejs/vite/issues/22435",
+    "state": "closed",
+    "bucket": "wontfix",
+    "label": {
+      "decision": "refuse",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z"
+    }
+  },
+  {
+    "project": "vite",
+    "number": 24050,
+    "url": "https://github.com/vitejs/vite/issues/24050",
+    "state": "closed",
+    "bucket": "pending triage",
+    "label": {
+      "decision": "refuse",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z"
+    }
+  },
+  {
+    "project": "vite",
+    "number": 24005,
+    "url": "https://github.com/vitejs/vite/issues/24005",
+    "state": "closed",
+    "bucket": "pending triage",
+    "label": {
+      "decision": "refuse",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z"
+    }
+  },
+  {
+    "project": "vite",
+    "number": 24019,
+    "url": "https://github.com/vitejs/vite/issues/24019",
+    "state": "closed",
+    "bucket": "p2-edge-case",
+    "label": {
+      "decision": "take",
+      "kind": "fix",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z"
+    }
+  },
+  {
+    "project": "vite",
+    "number": 23975,
+    "url": "https://github.com/vitejs/vite/issues/23975",
+    "state": "closed",
+    "bucket": "p3-minor-bug",
+    "label": {
+      "decision": "take",
+      "kind": "fix",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z"
+    }
+  },
+  {
+    "project": "vite",
+    "number": 23905,
+    "url": "https://github.com/vitejs/vite/issues/23905",
+    "state": "closed",
+    "bucket": "documentation",
+    "label": {
+      "decision": "take",
+      "kind": "fix",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z"
+    }
+  },
+  {
+    "project": "vite",
+    "number": 23968,
+    "url": "https://github.com/vitejs/vite/issues/23968",
+    "state": "closed",
+    "bucket": "bug: upstream",
+    "label": {
+      "decision": "refuse",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z"
+    }
+  },
+  {
+    "project": "gitlab-runner",
+    "number": 40458,
+    "url": "https://gitlab.com/gitlab-org/gitlab-runner/-/work_items/40458",
+    "state": "open",
+    "bucket": "type::bug",
+    "label": {
+      "decision": "take",
+      "kind": "fix",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z"
+    }
+  },
+  {
+    "project": "gitlab-runner",
+    "number": 40375,
+    "url": "https://gitlab.com/gitlab-org/gitlab-runner/-/work_items/40375",
+    "state": "open",
+    "bucket": "type::bug",
+    "label": {
+      "decision": "ask",
+      "kind": "fix",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z",
+      "note": "two ways offered (opt-out, or after a wait): which one"
+    }
+  },
+  {
+    "project": "gitlab-runner",
+    "number": 40374,
+    "url": "https://gitlab.com/gitlab-org/gitlab-runner/-/work_items/40374",
+    "state": "open",
+    "bucket": "type::bug",
+    "label": {
+      "decision": "take",
+      "kind": "fix",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z"
+    }
+  },
+  {
+    "project": "gitlab-runner",
+    "number": 40343,
+    "url": "https://gitlab.com/gitlab-org/gitlab-runner/-/work_items/40343",
+    "state": "open",
+    "bucket": "type::bug",
+    "label": {
+      "decision": "take",
+      "kind": "fix",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z"
+    }
+  },
+  {
+    "project": "gitlab-runner",
+    "number": 40236,
+    "url": "https://gitlab.com/gitlab-org/gitlab-runner/-/work_items/40236",
+    "state": "open",
+    "bucket": "type::feature",
+    "label": {
+      "decision": "refuse",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z"
+    }
+  },
+  {
+    "project": "gitlab-runner",
+    "number": 40170,
+    "url": "https://gitlab.com/gitlab-org/gitlab-runner/-/work_items/40170",
+    "state": "open",
+    "bucket": "type::feature",
+    "label": {
+      "decision": "take",
+      "kind": "feature",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z",
+      "note": "borderline: the autoscaler may live in taskscaler"
+    }
+  },
+  {
+    "project": "gitlab-runner",
+    "number": 40149,
+    "url": "https://gitlab.com/gitlab-org/gitlab-runner/-/work_items/40149",
+    "state": "open",
+    "bucket": "type::feature",
+    "label": {
+      "decision": "refuse",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z"
+    }
+  },
+  {
+    "project": "gitlab-runner",
+    "number": 40287,
+    "url": "https://gitlab.com/gitlab-org/gitlab-runner/-/work_items/40287",
+    "state": "open",
+    "bucket": "type::maintenance",
+    "label": {
+      "decision": "refuse",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z"
+    }
+  },
+  {
+    "project": "gitlab-runner",
+    "number": 40284,
+    "url": "https://gitlab.com/gitlab-org/gitlab-runner/-/work_items/40284",
+    "state": "open",
+    "bucket": "type::maintenance",
+    "label": {
+      "decision": "take",
+      "kind": "chore",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z",
+      "note": "the Vale rule part belongs to gitlab-org/gitlab: the brief leaves it out"
+    }
+  },
+  {
+    "project": "gitlab-runner",
+    "number": 40199,
+    "url": "https://gitlab.com/gitlab-org/gitlab-runner/-/work_items/40199",
+    "state": "open",
+    "bucket": "documentation",
+    "label": {
+      "decision": "refuse",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z"
+    }
+  },
+  {
+    "project": "gitlab-runner",
+    "number": 40237,
+    "url": "https://gitlab.com/gitlab-org/gitlab-runner/-/work_items/40237",
+    "state": "closed",
+    "bucket": "type::bug",
+    "label": {
+      "decision": "take",
+      "kind": "fix",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z"
+    }
+  },
+  {
+    "project": "gitlab-runner",
+    "number": 40111,
+    "url": "https://gitlab.com/gitlab-org/gitlab-runner/-/work_items/40111",
+    "state": "closed",
+    "bucket": "type::bug",
+    "label": {
+      "decision": "take",
+      "kind": "fix",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z"
+    }
+  },
+  {
+    "project": "gitlab-runner",
+    "number": 40110,
+    "url": "https://gitlab.com/gitlab-org/gitlab-runner/-/work_items/40110",
+    "state": "closed",
+    "bucket": "type::bug",
+    "label": {
+      "decision": "take",
+      "kind": "fix",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z"
+    }
+  },
+  {
+    "project": "gitlab-runner",
+    "number": 40108,
+    "url": "https://gitlab.com/gitlab-org/gitlab-runner/-/work_items/40108",
+    "state": "closed",
+    "bucket": "type::bug",
+    "label": {
+      "decision": "take",
+      "kind": "fix",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z"
+    }
+  },
+  {
+    "project": "gitlab-runner",
+    "number": 40225,
+    "url": "https://gitlab.com/gitlab-org/gitlab-runner/-/work_items/40225",
+    "state": "closed",
+    "bucket": "type::feature",
+    "label": {
+      "decision": "take",
+      "kind": "feature",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z",
+      "note": "borderline: the runner half only; GitLab's half is another project"
+    }
+  },
+  {
+    "project": "gitlab-runner",
+    "number": 40168,
+    "url": "https://gitlab.com/gitlab-org/gitlab-runner/-/work_items/40168",
+    "state": "closed",
+    "bucket": "type::feature",
+    "label": {
+      "decision": "take",
+      "kind": "feature",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z",
+      "note": "a breaking-change question, but the issue proposes a flag"
+    }
+  },
+  {
+    "project": "gitlab-runner",
+    "number": 39944,
+    "url": "https://gitlab.com/gitlab-org/gitlab-runner/-/work_items/39944",
+    "state": "closed",
+    "bucket": "type::feature",
+    "label": {
+      "decision": "refuse",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z"
+    }
+  },
+  {
+    "project": "gitlab-runner",
+    "number": 40256,
+    "url": "https://gitlab.com/gitlab-org/gitlab-runner/-/work_items/40256",
+    "state": "closed",
+    "bucket": "type::maintenance",
+    "label": {
+      "decision": "refuse",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z",
+      "note": "a fix is already in review (!7804)"
+    }
+  },
+  {
+    "project": "gitlab-runner",
+    "number": 40156,
+    "url": "https://gitlab.com/gitlab-org/gitlab-runner/-/work_items/40156",
+    "state": "closed",
+    "bucket": "documentation",
+    "label": {
+      "decision": "take",
+      "kind": "chore",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z"
+    }
+  },
+  {
+    "project": "gitlab-runner",
+    "number": 39952,
+    "url": "https://gitlab.com/gitlab-org/gitlab-runner/-/work_items/39952",
+    "state": "closed",
+    "bucket": "(no type)",
+    "label": {
+      "decision": "refuse",
+      "by": "the spike author (Claude Opus 5.5), blind, at the person's word",
+      "at": "2026-11-13T07:46:45.575Z"
+    }
+  }
+]

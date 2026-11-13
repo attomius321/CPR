@@ -477,3 +477,4 @@ merge commit.
 - 2026-11-12 [V107 — Back in the panel; its rows on one line](journal/v107-back-in-the-panel.md)
 - 2026-11-12 [SC1 — a key for the page, the bridge and Nucleus](journal/sc1-local-write-secret.md)
 - 2026-11-12 [Chore — Hive's loop from an issue: what is left to build, the classifier first](journal/chore-hive-issue-loop-gaps.md)
+- 2026-11-13 [HV9a — the classifier's eval: three models, 80 issues and three hostile sets](journal/hv9-issue-classifier.md)
