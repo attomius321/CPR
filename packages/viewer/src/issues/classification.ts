@@ -161,14 +161,6 @@ export function decisionWords(record: IssueRecord): string {
   }
 }
 
-const KINDS: Record<ClassifierAnswer['kind'], string> = {
-  feature: 'Feature',
-  fix: 'Fix',
-  refactor: 'Refactor',
-  chore: 'Chore',
-  spike: 'Spike',
-};
-
 /** Claude Code's short model names as people say them: `opus` is Opus; any other ID as it is. */
 const modelName = (model: string) =>
   /^[a-z]+$/.test(model) ? model[0]!.toUpperCase() + model.slice(1) : model;
@@ -182,7 +174,7 @@ export function modelWords(model: string, effort?: string): string {
 
 /** The writer a take would start: "Fix, small: Sonnet at medium". */
 export const writerWords = (answer: ClassifierAnswer): string =>
-  `${KINDS[answer.kind]}, ${answer.size}: ${modelWords(answer.model, answer.effort)}`;
+  `${answer.kind[0]!.toUpperCase()}${answer.kind.slice(1)}, ${answer.size}: ${modelWords(answer.model, answer.effort)}`;
 
 /** Claude Code's cost in dollars: three decimals under a dime. */
 export function costWords(cost: number): string {
