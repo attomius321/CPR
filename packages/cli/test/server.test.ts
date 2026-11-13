@@ -37,6 +37,8 @@ import type { Review } from '@symbiote/forge';
 import type { CodeMap } from '@symbiote/monitor';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { tempDir } from '../../core/test/helpers/git-repo.js';
+import { IssueRefused } from '../src/issue-classifier.js';
+import type { IssueRecord } from '../src/issue-record.js';
 import { sourceFiles, startViewServer, type ViewServer } from '../src/server.js';
 import { serverKeys } from '../src/server-keys.js';
 import { parseReview } from '../src/server-requests.js';
@@ -3078,6 +3080,12 @@ describe('symbiote view: the Issues page (IS1)', () => {
   const viewer = tempDir();
   const C = 'c'.repeat(40);
   const asked: unknown[] = [];
+  const classified: number[] = [];
+  const RECORD = {
+    forge: { kind: 'github', host: 'github.com', project: 'acme/app' },
+    number: 3,
+    decision: 'ask',
+  } as unknown as IssueRecord;
   const source = {
     forge: { kind: 'github', host: 'github.com', project: 'acme/app' },
     token: true,
@@ -3113,6 +3121,17 @@ describe('symbiote view: the Issues page (IS1)', () => {
             asked.push(number);
             return Promise.resolve({ ...source, forge: { ...source.forge, kind: 'github' } });
           },
+        },
+        // HV9b: the classifier, its refusals the service's words.
+        issueClassifier: {
+          classify: (number) => {
+            classified.push(number);
+            if (number === 4) {
+              return Promise.reject(new IssueRefused('#4 is a pull request, not an issue', 409));
+            }
+            return Promise.resolve({ ...RECORD, number });
+          },
+          record: (number) => Promise.resolve(number === 3 ? RECORD : null),
         },
       },
     });
@@ -3158,6 +3177,33 @@ describe('symbiote view: the Issues page (IS1)', () => {
     const post = await get('/api/issues', { method: 'POST', headers: { ...PAGE } });
     expect(post.status).toBe(405);
     expect(asked).toEqual([]);
+  });
+
+  it('classifies an issue on a write with the page key, and reads its record back (HV9b)', async () => {
+    const classify = (path: string, headers: Record<string, string> = PAGE) =>
+      get(path, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', ...headers },
+        body: '{}',
+      });
+    const done = await classify('/api/issues/3/classify');
+    expect(done.status).toBe(200);
+    expect(await done.json()).toEqual(RECORD);
+    const refused = await classify('/api/issues/4/classify');
+    expect(refused.status).toBe(409);
+    expect(await refused.json()).toEqual({ error: '#4 is a pull request, not an issue' });
+    // SC1: a write without the page key, a read of a write, a number that is not one.
+    expect((await classify('/api/issues/3/classify', { 'x-symbiote': '1' })).status).toBe(403);
+    expect((await get('/api/issues/3/classify')).status).toBe(405);
+    expect((await classify('/api/issues/0/classify')).status).toBe(400);
+    expect((await classify('/api/issues/3a/classify')).status).toBe(400);
+    expect(classified).toEqual([3, 4]);
+    const record = await get('/api/issues/3/classification');
+    expect(record.status).toBe(200);
+    expect(await record.json()).toEqual(RECORD);
+    expect((await get('/api/issues/5/classification')).status).toBe(404);
+    expect((await get('/api/issues/x/classification')).status).toBe(400);
+    expect((await classify('/api/issues/3/classification')).status).toBe(405);
   });
 });
 

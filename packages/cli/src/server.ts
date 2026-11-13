@@ -40,7 +40,14 @@ import { sinceOf, serverHive } from './server-hive.js';
 import { serverNucleus } from './server-nucleus.js';
 import { serverMerges } from './server-merges.js';
 import { serverTerminals } from './server-terminals.js';
-import { monitorMap, issueList, issueOne, serverPages } from './server-pages.js';
+import {
+  monitorMap,
+  issueClassification,
+  issueClassify,
+  issueList,
+  issueOne,
+  serverPages,
+} from './server-pages.js';
 
 export { sourceFiles } from './server-requests.js';
 
@@ -379,6 +386,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       skills,
       monitor,
       issues,
+      issueClassifier,
       settings,
       checks,
       usage,
@@ -466,6 +474,15 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       if (url.pathname === '/api/issues') return issueList(req, res, url, issues);
       const one = /^\/api\/issues\/([^/]*)$/.exec(url.pathname);
       if (one) return issueOne(req, res, one[1] ?? '', issues);
+    }
+    // The classifier (HV9b): a write with the page key, and its record read back.
+    if (issueClassifier) {
+      const classify = /^\/api\/issues\/([^/]*)\/classify$/.exec(url.pathname);
+      if (classify) {
+        return issueClassify(req, res, classify[1] ?? '', issueClassifier, written);
+      }
+      const kept = /^\/api\/issues\/([^/]*)\/classification$/.exec(url.pathname);
+      if (kept) return issueClassification(req, res, kept[1] ?? '', issueClassifier);
     }
     // Each subscription's windows of use (V29c): read only, the tokens stay in this process.
     if (usage && url.pathname === '/api/usage') {

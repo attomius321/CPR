@@ -4,9 +4,10 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { SymbioteError } from '@symbiote/core';
 import { isIssueCursor } from '@symbiote/forge';
 import type { IntroRecord } from './intro.js';
+import type { IssueClassifier } from './issue-classifier.js';
 import type { IssuesService } from './issues.js';
 import type { RepositoryOptions, ViewServerOptions } from './server-context.js';
-import { json, send, type ServerHttp } from './server-http.js';
+import { answer, json, send, type ServerHttp } from './server-http.js';
 
 /** The checkout's map (RM1), or why there is none (no commit yet): 409 with its words. */
 export async function monitorMap(
@@ -67,6 +68,49 @@ export async function issueOne(
   if (req.method !== 'GET') return send(res, 405, 'method not allowed');
   if (!/^[1-9]\d{0,9}$/.test(number)) return send(res, 400, "an issue's number");
   return json(res, 200, await issues.one(Number(number)));
+}
+
+/** An issue's number in a path: 1 to 10 digits, no leading zero. */
+const ISSUE_NUMBER = /^[1-9]\d{0,9}$/;
+
+/** A classification's body: none, or `{}`. */
+function parseNoBody(text: string): void {
+  if (text.trim() === '') return;
+  const value: unknown = JSON.parse(text);
+  if (!value || typeof value !== 'object' || Object.keys(value).length > 0) {
+    throw new Error('the body is {} or none');
+  }
+}
+
+/**
+ * `POST /api/issues/<n>/classify` (HV9b): the classifier on issue `n`, with the page key (SC1);
+ * its record, or the refusal's words.
+ */
+export async function issueClassify(
+  req: IncomingMessage,
+  res: ServerResponse,
+  number: string,
+  classifier: IssueClassifier,
+  written: ServerHttp['written'],
+): Promise<void> {
+  if (!ISSUE_NUMBER.test(number)) return send(res, 400, "an issue's number");
+  return written(req, res, parseNoBody, () =>
+    answer(res, () => classifier.classify(Number(number))),
+  );
+}
+
+/** `GET /api/issues/<n>/classification` (HV9b): the issue's record, or 404 without one. */
+export async function issueClassification(
+  req: IncomingMessage,
+  res: ServerResponse,
+  number: string,
+  classifier: IssueClassifier,
+): Promise<void> {
+  if (req.method !== 'GET') return send(res, 405, 'method not allowed');
+  if (!ISSUE_NUMBER.test(number)) return send(res, 400, "an issue's number");
+  const record = await classifier.record(Number(number));
+  if (!record) return json(res, 404, { error: `#${number} has not been classified` });
+  return json(res, 200, record);
 }
 
 /** The most of an issue search's words (IS1): GitHub's search takes 256 characters, the rest. */

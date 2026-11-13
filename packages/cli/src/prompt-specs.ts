@@ -221,6 +221,16 @@ export const SPECS: Readonly<Record<PromptKey, PromptSpec>> = {
     ],
     max: MAX_START,
   },
+  'hive.classify': {
+    group: 'Hive',
+    title: 'Classifier',
+    about:
+      "The classifier's system prompt: how it takes, asks or refuses an issue and writes the brief " +
+      "a writer gets. The project's card and the issue follow as its message; its answer's shape " +
+      "and Symbiote's rules around it are Symbiote's.",
+    placeholders: [],
+    max: MAX_TEXT,
+  },
   'hive.start': {
     group: 'Hive',
     title: 'Start',

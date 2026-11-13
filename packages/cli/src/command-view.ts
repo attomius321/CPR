@@ -26,6 +26,7 @@ import { Histories, slowListingHint } from './history.js';
 import { gitPage } from './git-page.js';
 import { hiveLandingService, hiveRequests } from './hive-request.js';
 import { issuesService } from './issues.js';
+import { viewIssueClassifier } from './issue-classifier.js';
 import { hivePacing, hivePacingService } from './hive-pacing.js';
 import { childRunner } from './runner.js';
 import { startViewServer } from './server.js';
@@ -329,6 +330,12 @@ export async function view(argv: string[], given: CliContext): Promise<number> {
       monitor: codeMaps(repo.root),
       // The Issues page (IS1): origin's GitHub or GitLab issues, read only.
       issues: issuesService(repo, ctx.env),
+      // The classifier (HV9b): an issue read for Hive, with Hive on; its records in symbiote/issues/.
+      issueClassifier: viewIssueClassifier(repo, cacheDir, {
+        env: ctx.env,
+        hive: () => hive.on(),
+        claude: claudeOf,
+      }),
       scribe: scribe(repo, cacheDir, {
         claude: claudeOf,
         codex: codexOf,

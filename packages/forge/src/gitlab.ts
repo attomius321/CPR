@@ -7,6 +7,7 @@ import type {
   Env,
   Forge,
   Issue,
+  IssueAuthor,
   IssueAuthorRole,
   IssuePage,
   IssueQuery,
@@ -52,7 +53,7 @@ interface GitLabIssue {
 interface GitLabNote {
   id: number;
   body?: string | null;
-  author: { username: string; bot?: boolean } | null;
+  author: { id?: number; username: string; bot?: boolean } | null;
   created_at: string;
   system?: boolean;
 }
@@ -61,6 +62,11 @@ interface GitLabNote {
 function roleOf(level: number | undefined): IssueAuthorRole {
   if (level === undefined) return 'none';
   return level >= 50 ? 'owner' : level >= 40 ? 'maintainer' : 'member';
+}
+
+/** An author's role, and their access level where they have one. */
+function withLevel(level: number | undefined): Pick<IssueAuthor, 'role' | 'level'> {
+  return { role: roleOf(level), ...(level === undefined ? {} : { level }) };
 }
 
 function summaryOf(issue: GitLabIssue): IssueSummary {
@@ -172,8 +178,9 @@ export class GitLabForge implements Forge {
   }
 
   /**
-   * An issue, and with a token its first 100 notes by people, oldest first, and its author's
-   * access level (decisions 948, 951): gitlab.com answers 401 for notes without one.
+   * An issue, and with a token its first 100 notes by people, oldest first, and the access level
+   * of its author and of each note's (decisions 948, 951; HV9b's 1043: one read a person):
+   * gitlab.com answers 401 for notes without one.
    */
   async getIssue(number: number): Promise<Issue> {
     const { body: issue } = await this.read<GitLabIssue>(`/issues/${number}`);
@@ -187,26 +194,36 @@ export class GitLabForge implements Forge {
         ...(summary.comments > 0 ? { commentsNeedToken: true as const } : {}),
       };
     }
+    const levels = new Map<number, Promise<number | undefined>>();
+    const levelOf = (user: number | undefined) => {
+      if (user === undefined) return Promise.resolve(undefined);
+      let level = levels.get(user);
+      if (!level) {
+        level = this.accessLevel(user);
+        levels.set(user, level);
+      }
+      return level;
+    };
     const [notes, level] = await Promise.all([
       this.read<GitLabNote[]>(
         `/issues/${number}/notes?sort=asc&order_by=created_at&per_page=${COMMENTS}`,
-      ).then((answer) => answer.body),
-      issue.author?.id === undefined ? undefined : this.accessLevel(issue.author.id),
+      ).then((answer) => answer.body.filter((note) => !note.system)),
+      levelOf(issue.author?.id),
     ]);
-    const thread = notes
-      .filter((note) => !note.system)
-      .map((note) => ({
-        author: {
-          login: note.author?.username ?? 'ghost',
-          ...(note.author?.bot ? { bot: true as const } : {}),
-        },
-        body: note.body ?? '',
-        created: note.created_at,
-        url: `${issue.web_url}#note_${note.id}`,
-      }));
+    const noteLevels = await Promise.all(notes.map((note) => levelOf(note.author?.id)));
+    const thread = notes.map((note, i) => ({
+      author: {
+        login: note.author?.username ?? 'ghost',
+        ...withLevel(noteLevels[i]),
+        ...(note.author?.bot ? { bot: true as const } : {}),
+      },
+      body: note.body ?? '',
+      created: note.created_at,
+      url: `${issue.web_url}#note_${note.id}`,
+    }));
     return {
       ...base,
-      author: { ...summary.author, role: roleOf(level) },
+      author: { ...summary.author, ...withLevel(level) },
       thread,
       moreComments: Math.max(0, summary.comments - thread.length),
     };

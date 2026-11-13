@@ -30,6 +30,8 @@ export type PromptKey =
   | 'library'
   /** The advisor's instructions (V75): how it sizes a brief and suggests the start's settings. */
   | 'advisor'
+  /** The classifier's instructions: take, ask or refuse a forge's issue (HV9b). */
+  | 'hive.classify'
   /** What `{hive}` becomes in a Hive workspace's start prompt (HV2). */
   | 'hive.start'
   /** What Hive sends the writer when the check fails (HV2). */
@@ -72,6 +74,7 @@ export const PROMPT_KEYS: readonly PromptKey[] = [
   'nucleus',
   'scribe',
   'library',
+  'hive.classify',
   'hive.start',
   'hive.check',
   'hive.review',
