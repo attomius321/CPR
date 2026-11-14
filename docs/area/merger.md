@@ -1,7 +1,7 @@
 # The merger
 
 [Index](../PLAN.md) · [Its decisions](../decisions.md#the-merger) · Checked against the code on
-2026-11-11
+2026-11-14
 
 This page says how Symbiote's merger works today. Read it before you change the merger. The plans
 listed in the index under "The merger" say why each part was built, as it was decided then. If a
@@ -40,8 +40,11 @@ Terms used below:
    [Hive's merges](#hives-merges)).
 3. The merger takes one entry at a time per repository. It resets its merge worktree to the
    target's tip and merges the approved commit with `--no-ff`. The commit's subject is
-   `Merge <branch>: <the workspace's title, else the approved commit's subject>`. (With the
-   fast-forward strategy there is no merge commit: see [Strategies](#strategies).)
+   `Merge <branch>: <the workspace's title, else the approved commit's subject>`. A workspace
+   started from an issue gives it the body `Closes #<n>` (HV10, decisions 1017, 1065), so the
+   forge closes the issue when the merge reaches the default branch; the entry keeps it as
+   `body`, and a merge the merger agent resolved keeps it too. (With the fast-forward strategy
+   there is no merge commit, and no body: see [Strategies](#strategies).)
 4. If the merge conflicts, the merger agent answers each conflicting region. Symbiote writes the
    answers, commits the merge and runs the check. The entry then waits at `needs-you` for the
    person, whether the check passed or not.
@@ -100,7 +103,9 @@ An entry Hive queues has `by: 'hive'` (HV4). Every other entry is merged as abov
   the person's merge there lands it. Hive then fetches the start branch and fast-forwards it as a
   landing does (`--ff-only` in the checkout that has it; refused, tried again each minute). A
   request the forge cannot merge goes to the workspace's agent as a failed landing does (769).
-  The merger and the queue take no part.
+  The merger and the queue take no part. A workspace started from an issue lands by
+  `hive.issues.lands` instead, a request unless set to `queue` (HV10c, decision 1016); its
+  request's description starts with `Closes #<n>.`.
 
 ## The check
 
@@ -165,6 +170,7 @@ stops during a merge, the entry is merged again from the start when Symbiote run
 | The merger agent's prompt and answer parsing | `packages/cli/src/merge-agent.ts` |
 | Hive's landing: the approval, the queued entry, what Hive does with its end | `packages/cli/src/hive-landing.ts` (`landing`, `land`, `follow`) |
 | Hive's landing by request (HV8): opened, reviewed, watched | `packages/cli/src/hive-forge.ts` (`openRequest`, `watchRequest`), `hive-request.ts`; the forge's calls in `packages/forge/src` |
+| A merge commit's message and body (HV10) | `mergeMessage` in `packages/cli/src/merge-context.ts`; the body set in `enqueue` (`merges.ts`) from the workspace's `issue` |
 | A target fetched, a push that never prompts | `fetchBranch`, `pushBranch` in `packages/core/src/git/sync.ts` |
 | Settings: `merge.checks`, `push`, `strategy`, `agent`, `model`, `effort` | `symbiote/config.json`; defaults in [configuration](../reference/configuration.md) |
 | A project's rules for the merger agent | `symbiote/merge.md`, committed with the project |
@@ -224,6 +230,8 @@ when a later decision or a fix changed it.
 | 792 | By request with no `origin`, forge or token, or a refused push or open: stopped, never the queue instead | HV8 |
 | 990 | `mark_merged` runs the repository's `merged` commands at the target's tip in the cache, makes their changes one commit and lands it as a merge lands (144), pushed as `merge.push` says; refused while a merge into that target is past `queued` and not landed | [MC3](../plan/mc3-mcp-batch-confirm.md) |
 | 991–992 | An MCP approval queues its merge in the same Confirm; `queue_merge` approves an unapproved tip first | MC3 |
+| 1016 | A workspace from an issue lands by `hive.issues.lands`: a request by default, whatever `hive.lands` says (amends 788) | [HV10](../plan/hv10-workspace-from-issue.md) |
+| 1017, 1065 | A workspace from an issue: `Closes #n.` first in its request's description; `Closes #n` the body of every merge commit the queue makes of it; the subject unchanged; a fast-forward closes nothing | HV10 |
 
 These no longer hold:
 

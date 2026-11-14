@@ -408,7 +408,9 @@ ones first, closed or all on a tab, and a search on titles. Pick one to read its
 or open it on the forge. The page only reads: it never comments, labels or closes. It uses the
 tokens `symbiote pr` uses; without one, it still reads public issues. In Hive mode, **Classify**
 has Hive's classifier read an issue and answer take, ask or refuse; each row shows its decision,
-and the issue a card with the reasons and the brief it would start.
+and the issue a card with the reasons and the brief it would start. **Start in Hive** starts a
+Hive workspace from a take, its writer without the forge's credentials or the web, landing through
+a pull request that closes the issue.
 
 ### Settings
 

@@ -50,6 +50,8 @@ the merger, Nucleus and Scribe, and leaves the rest of the file as it is.
 | `hive.issues.about` | none | What the project is and what Hive may take on, in your words, at most 4,000 characters. The classifier reads it on each issue; without it, classifying is refused. See [Classifying an issue](#classifying-an-issue). Set it in Settings' **Hive mode** page, under **Issues**: it refuses to save a longer text. |
 | `hive.classifier.model` | `opus` | The model [the classifier](#classifying-an-issue) runs on, if Claude Code lists it. Set it in Settings' **Hive mode** page, under **Issues**. |
 | `hive.classifier.effort` | `high` | The effort level the classifier runs at, if its model takes it. |
+| `hive.issues.lands` | `request` | How a workspace [started from an issue](#starting-work-from-an-issue) lands, whatever `hive.lands` says: `request`, through a pull or merge request that you merge; or `queue`, through the merge queue. Set it in Settings' **Hive mode** page, row **Work from an issue**. |
+| `hive.sandbox.allowedDomains` | none | Hosts an issue's writer may reach beyond its ecosystems' registries: a private registry, a git dependency's host, a toolchain's downloads. A host, `*.` before one, or a host and a port. See [The writer's reach](#the-writers-reach). Set it in Settings' **Hive mode** page, row **The writer's network**. |
 | `prompts` | Symbiote's text | The text Symbiote gives its agents. See [Prompts](#prompts). |
 
 To pick a model or an effort level from the agent's own list, use **Settings** rather than
@@ -116,6 +118,7 @@ and leaves any other brace as text:
 | `library` | What `{library}` becomes in Scribe's prompt when a [skill library](#the-skill-library) is set. Without a library, the line that holds `{library}` is left out | `{folder}` (required), `{skills}` |
 | `hive.classify` | [The classifier's](#classifying-an-issue) instructions, its system prompt: how it takes, asks or refuses an issue and writes the brief. The project's card and the issue are its message; the answer's shape and Symbiote's rules around it are Symbiote's | none |
 | `hive.start` | What `{hive}` becomes in the first prompt of a workspace [Hive](#hive-mode) drives. Without Hive, the line that holds `{hive}` is left out; a start prompt without `{hive}` gets it at its end | `{check}`, `{rounds}` |
+| `hive.issue` | Added after `hive.start` for a workspace [started from an issue](#starting-work-from-an-issue): where the brief came from, that the issue is anyone's text, what the sandbox reaches, and what never goes into code or messages | `{number}`, `{url}` |
 | `hive.check` | What Hive sends the agent when the check fails | `{output}` (required), `{command}`, `{branch}`, `{at}`, `{round}`, `{rounds}` |
 | `hive.review` | What Hive sends the agent when the [running reviewer](#the-running-reviewer) proved defects: each defect, its test's command and files, and the last lines of Symbiote's rerun | `{findings}` (required), `{count}`, `{branch}`, `{at}`, `{round}`, `{rounds}`, `{folder}` |
 | `hive.commit` | What Hive sends the agent when it ended a turn with files not committed, or no commit | `{what}`, `{branch}` |
@@ -482,8 +485,8 @@ With Hive off, a workspace Hive drove is reviewed and landed as any other, from 
 
 Before Hive starts anything from an issue of `origin`'s GitHub or GitLab, a classifier reads it
 and answers **take**, **ask** or **refuse**, with its reasons. For a take, it writes the brief a
-writer would get in place of the issue's text. Nothing starts from an issue yet: that is a later
-step. While Hive is on, **Classify** on the Issues page runs it (see
+writer would get in place of the issue's text. Only a take starts work (see
+[Starting work from an issue](#starting-work-from-an-issue)). While Hive is on, **Classify** on the Issues page runs it (see
 [Issues](../guide/pages.md#issues)), and so does Nucleus's `classify_issue`, with no **Confirm**:
 it records a decision and starts nothing. `POST /api/issues/<number>/classify` is the page's call.
 
@@ -508,7 +511,7 @@ it records a decision and starts nothing. `POST /api/issues/<number>/classify` i
 
 Symbiote keeps the last decision in `symbiote/issues/<number>.json`, beside `hive.json`, and each
 step, one line an event, in `symbiote/issues/<number>.jsonl` (`classified`, `classified-again`,
-`failed`). `GET /api/issues/<number>/classification` reads it back, and `GET
+`failed`; `started` and `judged` from the [start](#starting-work-from-an-issue) on). `GET /api/issues/<number>/classification` reads it back, and `GET
 /api/issues/classifications` lists every record's decision. The record holds the snapshot (its
 hash, its text, what was read and left out, Symbiote's flags), the answer, the decision, the
 brief, the time and the cost, and the classifier's identity: Claude Code's version, the model, the
@@ -518,6 +521,80 @@ effort, and hashes of the prompt and of the card. A record of another `origin` i
 its snapshot (its title, body, labels, author's role or the comments it read), when the classifier
 changed (its prompt, model, effort, the project's text or check, or Symbiote's rules), or when the last
 classification failed. With Hive off, the page shows past decisions and offers neither.
+
+### Starting work from an issue
+
+While Hive is on, **Start in Hive** on an issue's Hive card starts a Hive workspace from it (see
+[Issues](../guide/pages.md#issues)), and so does Nucleus's `start_from_issue`. Both call one
+function. It starts only an issue the classifier took on its current text: if the issue changed
+since its snapshot, it is classified again first, and the new decision holds. It refuses:
+
+- with Hive off;
+- an issue never classified, asked, refused, or whose classification failed;
+- a held take, from Nucleus or `symbiote mcp`: only your click on the page starts one;
+- an issue whose workspace is not yet landed, merged or cleaned up: one workspace an issue.
+
+The workspace takes the classifier's kind, title, parts, model and effort. Its brief starts with
+`From issue #n (<url>).`, then the classifier's brief; never the issue's own text. Its branch is
+`<kind>/<number>-<slug of the issue's title>`, as `fix/412-config-is-null`, and `-2`, `-3` after it
+when an earlier workspace of the issue left its branch. Its record and its summary hold `issue`:
+the forge, host, project, number, address, title and the snapshot's hash. The issue's events get
+`started`, with the branch. The card and the issue's row show the workspace's branch and Hive's
+step; the workspace's card and page show `#n`. `POST /api/issues/<number>/start` is the page's
+call; `POST /api/workspaces` never sets `issue`.
+
+Nucleus is told to use `start_from_issue` for work from an issue and never to copy an issue's text
+into `start_workspace` (the prompt `hive.nucleus`). That is a rule in a prompt, not a guard: the
+guards are the writer's reach and the landing below.
+
+#### The writer's reach
+
+An issue's writer runs with settings of its own, in `writers/<id>/` of Symbiote's cache, and
+`--strict-mcp-config`. Measured on Claude Code 2.1.325, it reaches no forge credential, no web and
+no MCP server:
+
+- **Its variables** are set in the settings' `env`, because `claude --bg` hands the session to
+  Claude Code's daemon, whose environment the writer gets: `GH_CONFIG_DIR` is an empty folder,
+  and the caches of npm, pnpm, Yarn, bun, pip, Cargo and Go are one folder for the workspace.
+- **Claude Code's sandbox** is on and required, with every command run in it and none outside.
+  The worktree and the cache folder are the only places it writes outside its own temp folder.
+  The forge's tokens and every variable whose name says it holds a secret are hidden from its
+  commands, and so are `~/.config/gh`, `~/.config/glab-cli`, `~/.ssh`, `~/.git-credentials` and
+  `~/.netrc`.
+- **Its network** is the hosts of the ecosystems the worktree's root files name (`package-lock.json`,
+  `pnpm-lock.yaml`, `bun.lock`: `registry.npmjs.org`; `yarn.lock`; `requirements*.txt`,
+  `pyproject.toml`, `uv.lock`; `Cargo.lock`; `go.sum`; `pom.xml`; `build.gradle`; `Gemfile.lock`;
+  `*.csproj`; `composer.lock`; `deno.json`), plus `hive.sandbox.allowedDomains`. No forge host is
+  allowed unless you list it. The allowlist is strict: a command cannot add hosts of its own.
+- **Its tools** lose WebFetch and WebSearch, Claude Code's claude.ai tools (`Artifact`,
+  `ArtifactData`, `ArtifactComments`, `DesignSync`, `RemoteTrigger`, `SendToProject`,
+  `SendToProjectContext`, `PushNotification`), and `ListAgents` and `SendMessage`, which reach
+  your other sessions.
+- **Its prompt** gets `hive.issue` after `hive.start`.
+
+The sandbox mounts placeholders for 23 paths it protects (`.bashrc`, `.claude/settings.json`…) in
+the worktree, and `git add -A` fails on them; Symbiote lists them in the repository's
+`.git/info/exclude`, anchored at the root, once. A file you track is not affected. The writer's
+folder is removed when the workspace is cleaned up.
+
+A command the sandbox refuses a host prints `deny network-outbound <host>`. At the end of that
+turn Hive stops the workspace and names the host: add it to `hive.sandbox.allowedDomains` if the
+writer needs it, then start the agent again. Hive never allows a host itself. Settings' **The
+writer's network** shows each ecosystem found with its hosts, yours, and how many are in force.
+
+#### Landing with the issue
+
+A workspace from an issue lands as `hive.issues.lands` says: through a pull or merge request by
+default, whatever `hive.lands` says, so that you merge what someone else asked for. The request's
+description starts with `Closes #n.`. Through the merge queue, its merge commit keeps the subject
+`Merge <branch>: <title>` and has the body `Closes #n`; any merge the queue makes of such a
+workspace does, yours too. GitHub and GitLab close the issue when that reaches the default
+branch. A fast-forward makes no merge commit and closes nothing, and neither does a landing into
+another branch.
+
+A take is judged once its workspace ends, for Settings' standing: right when it landed, wrong when
+its request was closed without a merge. Each is a `judged` line in the issue's events, under the
+classifier's identity that took it.
 
 **The standing.** Before Hive may start work from an issue without your click, a repository must
 earn it: at least 20 takes judged under one classifier identity, at least 95 % of them right, and
