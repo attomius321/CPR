@@ -551,6 +551,13 @@ button.workspace-about {
   white-space: nowrap;
 }
 
+/* HV10b: a workspace from an issue, its number before its name. */
+.sidenav .ws-row-issue {
+  margin-right: 6px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
 /* The second line (the kits' `.m`): the word in 500, the rest after it; one line, cut at its end. */
 .sidenav .ws-row-state {
   grid-column: 2 / -1;

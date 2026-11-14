@@ -162,6 +162,8 @@ export function WorkspaceRowItem({
           open();
         }}
       >
+        {/* HV10b: the issue it was started from. */}
+        {workspace.issue && <span className="ws-row-issue">#{workspace.issue.number}</span>}
         {name}
       </button>
       {!folded && <RowLine words={words} />}

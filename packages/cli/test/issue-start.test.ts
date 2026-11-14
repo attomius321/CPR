@@ -225,7 +225,7 @@ describe('startFromIssue (HV10b)', () => {
       expect(await refusal(service.start(3, { by }))).toEqual({
         status: 409,
         message:
-          'Issue #3 is held for the person: it adds a dependency. They start it with Start in Hive on the Issues page',
+          'Issue #3 is held for the person: it adds or replaces a dependency. They start it with Start in Hive on the Issues page',
       });
       expect(started).toEqual([]);
     }

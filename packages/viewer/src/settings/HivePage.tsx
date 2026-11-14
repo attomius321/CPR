@@ -5,8 +5,10 @@ import type {
   HiveLandingSetting,
   HiveLandsBy,
   HivePacingSetting,
+  HiveSandboxSetting,
   HiveState,
 } from '@symbiote/core';
+import { plural } from '../ui/plural.js';
 import { useShell } from '../shell/shell-context.js';
 import { HIVE_STAGES } from '../ui/StageTrack.js';
 import { effortChoices, keptEffort, keptModel, modelChoices } from '../workspaces/run-choices.js';
@@ -233,6 +235,7 @@ export function HivePage({
       </Group>
       <Group name="Issues" about="the classifier reads each issue before Hive starts anything">
         <IssuesClassifier onSaid={setSaid} />
+        <WriterNetwork onSaid={setSaid} />
       </Group>
       {said && (
         <p className={`settings-notice${said.error ? ' error' : ''}`} role="status">
@@ -244,7 +247,8 @@ export function HivePage({
         <span>
           Kept in <code>symbiote/config.json</code> as <code>hive.lands</code>,{' '}
           <code>hive.usage.pauseAt</code>, <code>hive.budget</code>, <code>hive.reviewer.*</code>,{' '}
-          <code>hive.issues.about</code> and <code>hive.classifier.*</code>. On or off:{' '}
+          <code>hive.issues.about</code>, <code>hive.issues.lands</code>,{' '}
+          <code>hive.sandbox.allowedDomains</code> and <code>hive.classifier.*</code>. On or off:{' '}
           <code>symbiote/hive.json</code>, never committed.
         </span>
       </p>
@@ -287,6 +291,21 @@ function HiveLanding({
       live = false;
     };
   }, [onSaid]);
+  // HV10c: how a workspace from an issue lands, `hive.issues.lands`.
+  const pickIssues = async (by: HiveLandsBy) => {
+    setBusy(true);
+    try {
+      setSetting(await postJson<HiveLandingSetting>('/api/hive/landing/issues', { by }));
+      onSaid({
+        text: `Saved. Work from an issue lands ${by === 'request' ? 'through a request' : 'through the merge queue'}.`,
+      });
+    } catch (failed) {
+      onSaid({ text: `Lands through could not be set: ${(failed as Error).message}`, error: true });
+    } finally {
+      setBusy(false);
+    }
+  };
+  const issues = setting?.issues ?? 'request';
   const pick = async (by: HiveLandsBy) => {
     setBusy(true);
     try {
@@ -322,6 +341,31 @@ function HiveLanding({
               aria-pressed={setting?.by === choice.by}
               disabled={busy || !setting}
               onClick={() => void pick(choice.by)}
+            >
+              <MergeIcon />
+              {choice.label}
+            </button>
+          ))}
+        </span>
+      </Row>
+      <Row
+        id="hive-issues-land"
+        name="Work from an issue"
+        help={
+          issues === 'request'
+            ? 'A pull or merge request whatever the above says: you merge what someone else asked for. Its description starts with Closes #n.'
+            : 'Through the merge queue: its merge commit says Closes #n. No person reads it before it lands.'
+        }
+      >
+        <span className="scopes" role="group" aria-label="Work from an issue lands through">
+          {LANDS_BY.map((choice) => (
+            <button
+              key={choice.by}
+              type="button"
+              className={issues === choice.by ? 'scope active' : 'scope'}
+              aria-pressed={issues === choice.by}
+              disabled={busy || !setting}
+              onClick={() => void pickIssues(choice.by)}
             >
               <MergeIcon />
               {choice.label}
@@ -642,6 +686,115 @@ function LevelSelects({
  * and effort (`hive.classifier.*`, Opus at high unless set, 1036), and the repository's standing
  * against 1040's bar under the classifier it runs now (1059).
  */
+/**
+ * The network an issue's writer gets (HV10b, decision 1052): the hosts of the ecosystems the
+ * repository's root files name, and the repository's own (`hive.sandbox.allowedDomains`), one a
+ * line; the list in force.
+ */
+function WriterNetwork({ onSaid }: { onSaid: (said: Said) => void }) {
+  const [read, setRead] = useState<HiveSandboxSetting | null>(null);
+  const [typed, setTyped] = useState('');
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    let live = true;
+    getJson<HiveSandboxSetting>('/api/hive/sandbox')
+      .then((answer) => {
+        if (!live) return;
+        setRead(answer);
+        setTyped(answer.allowedDomains.join('\n'));
+      })
+      .catch((failed: unknown) => live && onSaid({ text: (failed as Error).message, error: true }));
+    return () => {
+      live = false;
+    };
+  }, [onSaid]);
+  const hosts = typed
+    .split(/[\s,]+/)
+    .map((h) => h.trim())
+    .filter((h) => h !== '');
+  const changed = read !== null && hosts.join('\n') !== read.allowedDomains.join('\n');
+  const save = async () => {
+    setBusy(true);
+    try {
+      const answer = await postJson<HiveSandboxSetting>('/api/hive/sandbox', {
+        allowedDomains: hosts,
+      });
+      setRead(answer);
+      setTyped(answer.allowedDomains.join('\n'));
+      onSaid({ text: `Saved. An issue's writer reaches ${plural(answer.hosts.length, 'host')}.` });
+    } catch (failed) {
+      onSaid({ text: (failed as Error).message, error: true });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="hive-setting hive-about" role="group" aria-labelledby="hive-hosts-name">
+      <div className="hive-setting-words">
+        <label className="hive-setting-name" id="hive-hosts-name" htmlFor="hive-hosts">
+          The writer's network
+        </label>
+        <span className="hive-setting-help">
+          An issue's writer runs in Claude Code's sandbox, without the forge's credentials or the
+          web. Its commands reach the registries of the ecosystems found here, and the hosts you
+          add: a private registry, a git dependency. A host it is refused stops the workspace.
+        </span>
+        {read && (
+          <ul className="hive-standing-facts hive-hosts-found" aria-label="Hosts in force">
+            {read.ecosystems.map((e) => (
+              <li key={e.name}>
+                {e.name} ({e.files.join(', ')}):{' '}
+                <span className="hive-commands">
+                  {e.hosts.map((h) => (
+                    <code key={h}>{h}</code>
+                  ))}
+                </span>
+              </li>
+            ))}
+            {read.ecosystems.length === 0 && <li>No ecosystem found at the repository's root.</li>}
+            {read.allowedDomains.length > 0 && (
+              <li>
+                Yours:{' '}
+                <span className="hive-commands">
+                  {read.allowedDomains.map((h) => (
+                    <code key={h}>{h}</code>
+                  ))}
+                </span>
+              </li>
+            )}
+            <li>In force: {plural(read.hosts.length, 'host')}.</li>
+          </ul>
+        )}
+      </div>
+      <form
+        className="hive-about-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (changed) void save();
+        }}
+      >
+        <textarea
+          id="hive-hosts"
+          value={typed}
+          rows={3}
+          disabled={!read || busy}
+          spellCheck={false}
+          placeholder={'npm.example.com\n*.corp.example'}
+          onChange={(event) => setTyped(event.target.value)}
+        />
+        <div className="hive-about-foot">
+          <span>One host a line: hive.sandbox.allowedDomains</span>
+          {changed && (
+            <button type="submit" className="button secondary" disabled={busy}>
+              Save
+            </button>
+          )}
+        </div>
+      </form>
+    </div>
+  );
+}
+
 function IssuesClassifier({ onSaid }: { onSaid: (said: Said) => void }) {
   const [read, setRead] = useState<ClassifierSettings | null>(null);
   const [about, setAbout] = useState('');

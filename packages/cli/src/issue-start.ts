@@ -105,11 +105,11 @@ const DECISION_WORDS: Record<Exclude<IssueRecord['decision'], 'take'>, string> =
 
 /** The words of a hold (decision 1034) for a refusal. */
 const HOLD_WORDS: Record<NonNullable<IssueRecord['held']>[number], string> = {
-  'new-dependency': 'it adds a dependency',
+  'new-dependency': 'it adds or replaces a dependency',
   'weakens-checks': 'it weakens a check',
-  'hidden-text': 'it had hidden text',
-  cut: 'it was too long to read whole',
-  personal: 'its brief names the person',
+  'hidden-text': 'it holds hidden text',
+  cut: 'it was cut at 20,000 characters',
+  personal: "its brief names the person's email or a folder of this machine",
 };
 
 /** `startFromIssue`: refusals in words the page shows, else the started workspace. */
