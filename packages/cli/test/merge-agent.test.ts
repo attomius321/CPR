@@ -310,6 +310,8 @@ describe('running the merger agent (V26c)', () => {
           'summarized',
           '--tools',
           'Read,Grep,Glob',
+          '--disallowedTools',
+          'ListAgents,RemoteTrigger',
           '--strict-mcp-config',
           '--no-session-persistence',
           '--model',

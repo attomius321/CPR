@@ -376,7 +376,7 @@ describe('claudeCode().startPageAgent (V35, decision 236)', () => {
 });
 
 describe('pageAgentSettings', () => {
-  it('runs the gate before every tool, and records nothing', () => {
+  it("runs the gate before every tool, and records nothing; the person's sessions and routines denied (1078)", () => {
     const settings = JSON.parse(
       pageAgentSettings({ node: '/usr/bin/node', gate: GATE }, 'linux'),
     ) as unknown;
@@ -389,6 +389,7 @@ describe('pageAgentSettings', () => {
           },
         ],
       },
+      permissions: { deny: ['ListAgents', 'RemoteTrigger'] },
     });
   });
 });
@@ -1568,6 +1569,7 @@ describe('Scribe (V41): the same conversation, writing skills', () => {
           },
         ],
       },
+      permissions: { deny: ['ListAgents', 'RemoteTrigger'] },
     });
     expect(JSON.parse(readFileSync(scribeRecord(repo), 'utf8'))).toMatchObject({
       about:

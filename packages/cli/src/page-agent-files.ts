@@ -4,7 +4,7 @@ import { readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { MODEL_ID } from '@symbiote/core';
 import { prepareSymbioteFolder, type ReviewPlace } from './reviews.js';
-import { shellWord } from './claude-code.js';
+import { SESSION_TOOLS, shellWord } from './claude-code.js';
 import { writeFileWhole } from './file-write.js';
 import { mcpFolder } from './mcp-bridge.js';
 import type { PageAgentRecord, ReadRecord, PageAgentContext } from './page-agent-context.js';
@@ -66,7 +66,9 @@ export function pageAgentSettings(
       ];
     }
   }
-  return `${JSON.stringify({ ...more, hooks }, null, 2)}\n`;
+  // Besides its gate's refusal: the person's sessions not listed, their routines not run (1078).
+  const permissions = { deny: [...SESSION_TOOLS] };
+  return `${JSON.stringify({ ...more, hooks, permissions }, null, 2)}\n`;
 }
 
 /**

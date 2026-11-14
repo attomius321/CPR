@@ -13,6 +13,7 @@ import {
   type SuggestRequest,
   type WorkspaceSuggestion,
 } from '@symbiote/core';
+import { SESSION_TOOLS_ARGS } from './claude-code.js';
 import { runProgram, runWithInput, type Run, type RunWithInput } from './programs.js';
 import { fillPrompt } from './prompt-text.js';
 import { briefOf } from './workspace-brief.js';
@@ -168,6 +169,7 @@ export function claudeAdviceArgs(request: {
     '--strict-mcp-config',
     '--tools',
     '',
+    ...SESSION_TOOLS_ARGS,
     '--no-session-persistence',
   ];
 }

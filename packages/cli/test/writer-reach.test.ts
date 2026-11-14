@@ -183,12 +183,13 @@ describe("an issue writer's settings (decisions 1050–1054, 1063)", () => {
         'ArtifactData',
         'ArtifactComments',
         'DesignSync',
-        'RemoteTrigger',
         'SendToProject',
         'SendToProjectContext',
         'PushNotification',
-        // The person's other sessions on this machine, Nucleus among them.
+        // The person's other sessions, Nucleus among them, and their routines (every agent's,
+        // 1078); a message to one.
         'ListAgents',
+        'RemoteTrigger',
         'SendMessage',
         // Its own settings file only: an Edit deny is a write deny in the sandbox too, and one on
         // the writers' folder made the install cache read-only (the real run's npm).
