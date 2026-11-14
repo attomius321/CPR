@@ -3079,7 +3079,7 @@ describe('A Hive workspace from an issue (HV10b, decisions 1013, 1050–1054, 10
     expect(existsSync(join(cache, 'writers'))).toBe(false);
   });
 
-  it("gives Hive's message to it with its settings and --strict-mcp-config again", async () => {
+  it("gives Hive's message to it with no flag: the session keeps its settings (a flag starts a copy)", async () => {
     const repo = repository(['test -f two.txt']);
     const s = await setup(repo);
     await s.turn(true);
@@ -3091,8 +3091,10 @@ describe('A Hive workspace from an issue (HV10b, decisions 1013, 1050–1054, 10
     await until(() => s.fake.resume.mock.calls.length > 0, 'the check sent');
     const resumed = s.fake.resume.mock.calls.at(-1)?.[0];
     expect(resumed?.text).toContain('`test -f two.txt` failed');
-    expect(resumed?.settings).toBe(s.fake.start.mock.calls[0]?.[0].settings);
-    expect(resumed?.strictMcpConfig).toBe(true);
+    expect(resumed?.settings).toBeUndefined();
+    expect(resumed?.strictMcpConfig).toBeUndefined();
+    // Its settings file is there for the wake to read.
+    expect(existsSync(s.fake.start.mock.calls[0]?.[0].settings ?? '')).toBe(true);
   });
 
   it('stops a writer the sandbox refused a host, naming it and the setting', async () => {

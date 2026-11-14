@@ -347,8 +347,9 @@ export function workspaceLifecycle(
         throw new WorkspaceRefused(`its worktree is gone: ${workspace.worktree}`, 409);
       }
       // A session that wakes reads its settings file again, and does not start without it; an
-      // issue's writer is given its own again (HV10, decision 1063).
-      const again = workspace.agent?.hooks ? await sessionSettings(where, workspace) : null;
+      // issue's writer's own is written again too (HV10). No flag is given: the session keeps the
+      // options it started with, and a flag starts a copy (Claude Code 2.1.325's own words).
+      if (workspace.agent?.hooks) await sessionSettings(where, workspace);
       const session = newestSession(workspace, await agent.sessions(), real);
       if (!session?.sessionId || !session.id) {
         throw new WorkspaceRefused(
@@ -380,7 +381,6 @@ export function workspaceLifecycle(
         sessionId: session.sessionId,
         cwd: workspace.worktree,
         text,
-        ...(again?.strictMcpConfig ? again : {}),
       });
       if (!resumed.ok) throw new WorkspaceRefused(resumed.error, 502);
       const refs = await listRefs(repo);

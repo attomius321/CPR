@@ -4062,7 +4062,7 @@ describe('claudeCode', () => {
     ]);
   });
 
-  it("starts and resumes an issue's writer with its settings and --strict-mcp-config (HV10, 1054, 1063)", async () => {
+  it("starts an issue's writer with its settings and --strict-mcp-config, resumes it with neither (HV10, 1054, 1063)", async () => {
     const calls: string[][] = [];
     const run: Run = (_command, args) => {
       calls.push(args);
@@ -4082,8 +4082,6 @@ describe('claudeCode', () => {
       sessionId: 'session-1',
       cwd: '/w',
       text: 'OK',
-      settings: '/c/writers/a/settings.json',
-      strictMcpConfig: true,
     });
     expect(calls).toEqual([
       [
@@ -4100,16 +4098,8 @@ describe('claudeCode', () => {
         '--',
         'Do it',
       ],
-      [
-        '--bg',
-        '--resume',
-        'session-1',
-        '--settings',
-        '/c/writers/a/settings.json',
-        '--strict-mcp-config',
-        '--',
-        'OK',
-      ],
+      // The session keeps its options: a flag would start a copy (Claude Code 2.1.325).
+      ['--bg', '--resume', 'session-1', '--', 'OK'],
     ]);
   });
 

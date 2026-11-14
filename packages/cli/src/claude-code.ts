@@ -378,12 +378,6 @@ export interface ClaudeCode {
     sessionId: string;
     cwd: string;
     text: string;
-    /**
-     * An issue's writer (HV10, decision 1063): its settings and `--strict-mcp-config` given again,
-     * as a wake that made a copy might not carry them.
-     */
-    settings?: string;
-    strictMcpConfig?: boolean;
   }): Promise<{ ok: true } | { ok: false; error: string }>;
   /** Removes a background session (`claude rm <id>`); a worktree Symbiote made stays. */
   remove(id: string): Promise<{ ok: true } | { ok: false; error: string }>;
@@ -551,15 +545,8 @@ export function claudeCode(
       return { ok: false, error: wordsOf(result) || `could not stop ${id}` };
     },
     async resume(request) {
-      const args = [
-        '--bg',
-        '--resume',
-        request.sessionId,
-        ...(request.settings ? ['--settings', request.settings] : []),
-        ...(request.strictMcpConfig ? ['--strict-mcp-config'] : []),
-        '--',
-        request.text,
-      ];
+      // No flag: the session keeps the options it started with; a flag starts a copy (2.1.325).
+      const args = ['--bg', '--resume', request.sessionId, '--', request.text];
       const result = await run(command, args, { cwd: request.cwd, timeoutMs: 60_000 });
       sessions = null;
       if (result.code === 0) return { ok: true };

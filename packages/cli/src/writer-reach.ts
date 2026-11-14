@@ -175,7 +175,11 @@ export function writerFolder(cacheDir: string, worktree: string): string {
   return join(cacheDir, 'writers', id);
 }
 
-/** The variables the writer's `env` sets: an empty gh folder, the installs' caches (1053). */
+/**
+ * The variables the writer's `env` sets: an empty gh folder, the installs' caches (1053). Never
+ * `TMPDIR`: the sandbox makes its sockets there, and a path that long stopped every command
+ * (Claude Code 2.1.325, "Failed to create bridge sockets"); its own temp folder is writable.
+ */
 function writerEnv(folder: string): Record<string, string> {
   const cache = join(folder, 'cache');
   return {
@@ -189,7 +193,6 @@ function writerEnv(folder: string): Record<string, string> {
     GOPATH: join(cache, 'go'),
     GOMODCACHE: join(cache, 'go', 'pkg', 'mod'),
     GOCACHE: join(cache, 'go-build'),
-    TMPDIR: join(cache, 'tmp'),
   };
 }
 

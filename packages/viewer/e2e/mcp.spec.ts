@@ -101,8 +101,8 @@ test("Nucleus reviews a branch, approves it and queues its merge, each on the pe
   });
   expect(init).toMatchObject({ result: { serverInfo: { name: 'symbiote' } } });
   const listed = await nucleus.request('tools/list');
-  // 24 tools, `activity` since V84 and `classify_issue` since HV9c.
-  expect((listed.result as { tools: unknown[] }).tools).toHaveLength(26);
+  // 24 tools, `activity` since V84, `classify_issue` since HV9c and `start_from_issue` since HV10b.
+  expect((listed.result as { tools: unknown[] }).tools).toHaveLength(27);
 
   // The branch's graph: its findings in the detector's words.
   const review = await nucleus.call('review', { branch: 'agent' });

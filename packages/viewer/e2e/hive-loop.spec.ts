@@ -379,10 +379,11 @@ test("Settings lists Hive's prompts only while Hive is on", async ({ page }) => 
   // Hive mode under This repository.
   await group.locator('.settings-fold-head').click();
   await expect(group.getByRole('button')).toHaveText([
-    'Hive10',
+    'Hive11',
     // The classifier's (HV9b): the first step of Hive's loop from an issue.
     'Classifier',
     'Start',
+    'Start from an issue',
     'Check failed',
     'Defects proven',
     'Not committed',

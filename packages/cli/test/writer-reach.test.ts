@@ -121,7 +121,7 @@ describe("an issue writer's settings (decisions 1050–1054, 1063)", () => {
     expect(settings().hooks).toEqual(HOOKS.hooks);
   });
 
-  it('sets the variables in env: an empty gh folder, every install cache and TMPDIR in one folder', () => {
+  it('sets the variables in env: an empty gh folder, every install cache in one folder; never TMPDIR', () => {
     const cache = join(folder, 'cache');
     expect(settings().env).toEqual({
       GH_CONFIG_DIR: join(folder, 'gh'),
@@ -134,8 +134,10 @@ describe("an issue writer's settings (decisions 1050–1054, 1063)", () => {
       GOPATH: join(cache, 'go'),
       GOMODCACHE: join(cache, 'go', 'pkg', 'mod'),
       GOCACHE: join(cache, 'go-build'),
-      TMPDIR: join(cache, 'tmp'),
     });
+    // The sandbox makes its sockets in TMPDIR: a cache's path too long for one stopped every
+    // command (2.1.325, "Failed to create bridge sockets"); its own temp folder is writable.
+    expect(settings().env).not.toHaveProperty('TMPDIR');
   });
 
   it("runs every command in Claude Code's sandbox, none outside, writing only the worktree and the cache", () => {
@@ -228,7 +230,7 @@ describe("the writer's folder on disk (decisions 1053, 1054)", () => {
       sandbox: { network: { allowedDomains: string[] } };
     };
     expect(written.sandbox.network.allowedDomains).toEqual(['registry.npmjs.org']);
-    for (const sub of ['cache/npm', 'cache/pnpm', 'cache/go/pkg/mod', 'cache/tmp', 'gh']) {
+    for (const sub of ['cache/npm', 'cache/pnpm', 'cache/go/pkg/mod', 'gh']) {
       expect(existsSync(join(folder, sub))).toBe(true);
     }
     // The sandbox's placeholders: ignored, so `git add -A` passes (HV10a; 23 on 2.1.325).
