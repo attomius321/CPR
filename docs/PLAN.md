@@ -276,6 +276,7 @@ What holds now: [Reviews](area/reviews.md) · its decisions: [the register](deci
 | [HV12](plan/hv12-issue-loop-real-run.md) | Spike: a real run on private scratch forges, eight issues (two hostile) through both landing modes, to prove each step no real run has shown | planned (rank 4) | 1024–1026 | |
 | [HV13](plan/hv13-issue-intake.md) | Issues come in: a label watch that checks who set the label, a start queue, issues at once and a day, the classifier's cost; after HV12 and three of HV7's parts | planned (rank 6, after HV7) | 1027–1033 | |
 | Fix | Normal mode's Ask asks: the permission mode always passed to Claude Code, Ask as `manual` where its help lists it (`auto` is its own default from 2.1.319 on) | built, ready for review | | [journal](journal/fix-default-permission-mode.md) |
+| [Fix](plan/fix-agents-no-session-messages.md) | No agent lists your other sessions or runs your routines: `ListAgents` and `RemoteTrigger` denied to every agent Symbiote starts; `SendMessage` kept | built, ready for review | 1078 | [journal](journal/fix-agents-no-session-messages.md) |
 
 ### The merger
 

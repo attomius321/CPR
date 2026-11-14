@@ -483,3 +483,4 @@ merge commit.
 - 2026-11-14 [HV9c — the classifier on the Issues page, in Nucleus and in Settings](journal/hv9-issue-classifier.md)
 - 2026-11-14 [Fix — normal mode's Ask asks: the permission mode passed to Claude Code by its name](journal/fix-default-permission-mode.md)
 - 2026-11-14 [HV10b, HV10c — the start from an issue, the writer's reach, landing with Closes #n](journal/hv10-workspace-from-issue.md)
+- 2026-11-14 [Fix — no agent lists your other sessions or runs your routines: `ListAgents` and `RemoteTrigger` denied](journal/fix-agents-no-session-messages.md)
