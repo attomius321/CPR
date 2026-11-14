@@ -5,7 +5,8 @@
 
 **Status:** planned (2026-11-12) by the chore `chore/hive-issue-loop-gaps` (from `main` at
 `a47dda3`); HV10a measured, ready for review (As built, below: decisions 1050–1054 give 1015's
-details); HV10b and HV10c not started. It needs [HV9](hv9-issue-classifier.md), the classifier.
+details); HV10b and HV10c in progress on `feature/hv10-workspace-from-issue` (from `main` at
+`834128a`; decisions 1061–1066 below). It needs [HV9](hv9-issue-classifier.md), the classifier.
 
 **Problem**. Nothing starts a workspace from an issue, and nothing keeps an issue's text from
 reaching a writer by another way. Here is what the code on `main` does today:
@@ -281,3 +282,17 @@ as page agents have (`startPageAgent`), would remove them. Decision 1051 leaves 
 variables untouched, such as `CLAUDE_CODE_MESSAGING_TOKEN`, which Claude Code sets for its own
 use. It names only the secrets that Symbiote can see in its own environment: a secret that only
 the daemon has, with a name not in `FORGE_TOKENS`, is still not hidden. Verification 5 reruns this spike's probes on the built `symbiote view`.
+
+## HV10b and HV10c: the plan's open points, decided (2026-11-14)
+
+Planned on `feature/hv10-workspace-from-issue` with the person's OK. Decisions 1061–1066 (1060 the
+highest on `main` and every branch that day):
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 1061 | Who starts a held take? (details 1011, 1034) | **Only the person, with Start in Hive on the Issues page; `start_from_issue` refuses it, from Nucleus or `symbiote mcp`, with the hold's reasons. Only `startFromIssue` sets a request's `issue`: `POST /api/workspaces` drops one sent** | 1034: a hold waits for the person's click; a start that claims an issue gets its keyword and its landing |
+| 1062 | What if the issue's branch exists? (details 1013) | **A branch left by an earlier workspace of the issue, cleaned up, gives `-2`, `-3`… after the slug: the branch still starts `<kind>/<number>-`** | 1014 allows a new workspace once the old one is cleaned up; its unmerged branch stays (V18c) |
+| 1063 | Where are an issue writer's settings and install cache? (details 1050, 1053, 1054) | **In Symbiote's cache, a folder per workspace: `settings.json` beside `cache/`, the sandbox's only `allowWrite` outside the worktree. Edit and Write denied on Symbiote's cache; Claude Code's claude.ai tools (`RemoteTrigger`, `SendToProject`, `ArtifactComments`, `PushNotification`) denied; `--settings` and `--strict-mcp-config` given again at each resume** | The `symbiote/` folder is the writer's `--add-dir`: a settings file there could be rewritten for its next wake; HV10a left the claude.ai tools to measure |
+| 1064 | What does Hive do when the sandbox refuses a host? | **A writer's turn whose commands printed `deny network-outbound <host>` stops the workspace (`stuck`), the note naming each host and Settings → Hive's `hive.sandbox.allowedDomains`. Hive never allows a host itself** | HV10a: the person knows which hosts the repository needs beyond its registries; a writer that works around a refusal is no better |
+| 1065 | Which merges carry `Closes #n`? (details 1017) | **Every merge commit the queue makes for a workspace with an issue, Hive's or the person's Approve, in its body; a fast-forward makes no merge commit and closes nothing (HV11 closes it)** | One rule for the queue; the subject stays `Merge <branch>: <title>` (the merger's page) |
+| 1066 | When is a take judged? (details 1040, 1059) | **`judged` in the issue's `<number>.jsonl`, with the identity that took it: right when Hive moves its workspace to `landed`; wrong when its request was closed without a merge, or the person stopped its agent; nothing for a stop by Hive's limits. Once per workspace** | 1059: "written from HV10 on"; Hive already knows these three ends |
