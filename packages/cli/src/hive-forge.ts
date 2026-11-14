@@ -7,7 +7,7 @@ import {
   type WorkspaceSummary,
 } from '@symbiote/core';
 import type { ChangeRequest, Forge } from '@symbiote/forge';
-import { readHive, type HiveFile } from './hive-record.js';
+import { readHive, type HiveFile, type HiveStopKind } from './hive-record.js';
 import {
   bringUp,
   conflictFiles,
@@ -84,10 +84,10 @@ export function hiveForge(
     const record = await readHive(where, branch);
     if (!record || ctx.closed) return;
     const prior = record.request;
-    const stop = async (note: string) =>
-      void (await moveTo(where, record, { step: 'stuck', note }, 'stuck', { note }));
+    const stop = async (note: string, kind: HiveStopKind = 'landing') =>
+      void (await moveTo(where, record, { step: 'stuck', note }, 'stuck', { note, stop: kind }));
     if (prior?.state === 'closed')
-      return stop(`its ${requestWords(prior)} was closed without a merge`);
+      return stop(`its ${requestWords(prior)} was closed without a merge`, 'request-closed');
     // Never a new request while the record holds one not seen closed: only the one the gate read
     // open is updated; a merged one is the gate's to land.
     if (prior && (prior.state !== 'open' || seen?.number !== prior.number)) return;
@@ -405,7 +405,7 @@ export function hiveForge(
     await event(where, record.branch, 'request-closed', { number: request.number });
     if (record.step !== 'landing') return save(where, after);
     const note = `its ${requestWords(request)} was closed without a merge`;
-    await moveTo(where, after, { step: 'stuck', note }, 'stuck', { note });
+    await moveTo(where, after, { step: 'stuck', note }, 'stuck', { note, stop: 'request-closed' });
   }
 
   /**

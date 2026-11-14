@@ -1,12 +1,14 @@
 // An issue's record (HV9b, decision 1007): `symbiote/issues/<number>.json`, the classifier's last
 // decision on it, and each step an event in `<number>.jsonl` (`classified`, `failed`,
-// `classified-again`; HV10's `started` and `judged`; HV11's after). Kept beside Hive's switch (`repositorySwitch`):
+// `classified-again`; HV10's `started` and `judged`; HV11's `due`, `answered`, `labelled`, `closed`,
+// `write-failed`, `not-written`). Kept beside Hive's switch (`repositorySwitch`):
 // the main checkout's `symbiote/`, which git ignores, or Symbiote's cache. A record of another
 // origin is never read.
 import { appendFile, mkdir, readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { writeFileWhole } from './file-write.js';
 import type { IssueForge, IssueRecord } from '@symbiote/core';
+import type { AnswerStep } from './issue-answer.js';
 
 /** Every issue record's first key: where an agent that opens one learns what it is. */
 export const ISSUE_RECORD_ABOUT =
@@ -52,14 +54,95 @@ export interface StartedEvent {
   identity?: string;
 }
 
-/** A line of `<number>.jsonl`. */
-export type IssueEvent = ClassifiedEvent | JudgedEvent | StartedEvent;
+/**
+ * A step to answer on the forge (HV11, decision 1071): its key, its values. Symbiote's own values
+ * only: a branch, a commit, a link, a refusal's word, the question cleaned.
+ */
+export interface DueEvent {
+  event: 'due';
+  at: string;
+  key: string;
+  step: AnswerStep;
+  /** The forge the issue is on: an answer never goes to another. */
+  forge: IssueForge;
+}
 
-/** Appends one of HV10's events to issue `number`'s `<number>.jsonl`. */
+/** What of a step's answer is written: its comment, its labels, its closing. */
+export type AnswerPart = 'comment' | 'labels' | 'close';
+
+/** The step's comment, posted (HV11). */
+export interface AnsweredEvent {
+  event: 'answered';
+  at: string;
+  key: string;
+  url: string;
+}
+
+/** The step's labels, set (HV11). */
+export interface LabelledEvent {
+  event: 'labelled';
+  at: string;
+  key: string;
+  add: string[];
+  remove: string[];
+}
+
+/** The issue closed (HV11, decisions 1021, 1074): by Symbiote, or found closed by the forge. */
+export interface ClosedEvent {
+  event: 'closed';
+  at: string;
+  key: string;
+  by: 'symbiote' | 'forge';
+}
+
+/** A write the forge refused or did not answer (HV11, decision 1023): tried again, 3 times at most. */
+export interface WriteFailedEvent {
+  event: 'write-failed';
+  at: string;
+  key: string;
+  part: AnswerPart | 'state';
+  /** Which try of the step this was, from 1. */
+  try: number;
+  /** The forge's HTTP status; 0 when it was not reached. */
+  status: number;
+  /** The forge's answer, cut. */
+  answer: string;
+}
+
+/**
+ * Why part of a step is not written (HV11, decisions 1022, 1023, 1076): the issue closed or
+ * locked, `hive.issues.answer` off, the 6 comments reached, the question held, no token, the
+ * issue on another forge than origin's, or 3 tries spent.
+ */
+export interface NotWrittenEvent {
+  event: 'not-written';
+  at: string;
+  key: string;
+  parts: AnswerPart[];
+  why:
+    | 'closed'
+    | 'locked'
+    | 'off'
+    | 'limit'
+    | 'personal'
+    | 'empty'
+    | 'no-token'
+    | 'other-forge'
+    | 'gave-up';
+}
+
+/** HV11's events: a step due and what was written of it. */
+export type AnswerEvent =
+  DueEvent | AnsweredEvent | LabelledEvent | ClosedEvent | WriteFailedEvent | NotWrittenEvent;
+
+/** A line of `<number>.jsonl`. */
+export type IssueEvent = ClassifiedEvent | JudgedEvent | StartedEvent | AnswerEvent;
+
+/** Appends one of HV10's or HV11's events to issue `number`'s `<number>.jsonl`. */
 export async function appendIssueEvent(
   folder: string,
   number: number,
-  event: StartedEvent | JudgedEvent,
+  event: StartedEvent | JudgedEvent | AnswerEvent,
 ): Promise<void> {
   await mkdir(join(folder, 'issues'), { recursive: true });
   await appendFile(fileOf(folder, number, 'jsonl'), `${JSON.stringify(event)}\n`);

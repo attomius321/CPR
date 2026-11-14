@@ -4,7 +4,7 @@ import { copyFile, mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import type { MergeState, HiveLanding, MergeEntry, WorkspaceSummary } from '@symbiote/core';
 import type { ChangeRequest, Forge } from '@symbiote/forge';
-import { readHive, type HiveFile } from './hive-record.js';
+import { readHive, type HiveFile, type HiveStopKind } from './hive-record.js';
 import { hiveLogId, hiveLogPath } from './hive-live.js';
 import type { ReviewPlace } from './reviews.js';
 import type { HiveContext } from './hive-context.js';
@@ -146,8 +146,8 @@ export function hiveLand(
       await pushOut(where, branch, tip);
       record = (await readHive(where, branch)) ?? record;
     }
-    const stop = async (note: string) =>
-      void (await moveTo(where, record, { step: 'stuck', note }, 'stuck', { note }));
+    const stop = async (note: string, kind: HiveStopKind = 'landing') =>
+      void (await moveTo(where, record, { step: 'stuck', note }, 'stuck', { note, stop: kind }));
     if (requests && (!record.pushed?.ok || record.pushed.sha !== tip)) {
       // A request needs the branch on the forge (792).
       return stop(`the branch was not pushed to origin: ${record.pushed?.error ?? 'not pushed'}`);
@@ -168,7 +168,7 @@ export function hiveLand(
       // closed stops it, open is updated below; not due or not read, the landing waits its turn.
       const prior = record.request;
       if (prior?.state === 'closed') {
-        return stop(`its ${requestWords(prior)} was closed without a merge`);
+        return stop(`its ${requestWords(prior)} was closed without a merge`, 'request-closed');
       }
       if (prior) {
         const gate = await watchRequest(where, record, summary, { landing: true });
@@ -280,7 +280,10 @@ export function hiveLand(
       const note = `its landing in ${last.into} was taken out of the merge queue`;
       const done: HiveLanding = { ...last, outcome: 'failed', ended: stamp(), message: note };
       delete done.state;
-      await moveTo(where, replace(done), { step: 'stuck', note }, 'stuck', { note });
+      await moveTo(where, replace(done), { step: 'stuck', note }, 'stuck', {
+        note,
+        stop: 'landing',
+      });
       return;
     }
     if (entry.state === 'landed') {

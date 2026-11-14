@@ -30,6 +30,22 @@ export const HIVE_MERGES = 2;
 /** Hive's answers in place of the person's (a plan's OK, "no one answers") before it stops (773). */
 export const HIVE_DECIDES = 3;
 
+/**
+ * Why Hive stopped a workspace, in a word (HV11, decision 1072): on every `stuck` event beside its
+ * note, which may hold Claude Code's own error text. The issue is told the kind, never the note.
+ */
+export const HIVE_STOPS = [
+  'rounds',
+  'budget',
+  'asked',
+  'failed',
+  'request-closed',
+  'landing',
+  'unseen',
+  'sandbox',
+] as const;
+export type HiveStopKind = (typeof HIVE_STOPS)[number];
+
 /** Hive's messages to the writer, by their prompt's key. */
 export type HiveMessageKey =
   | 'hive.check'

@@ -357,6 +357,7 @@ export {
   type HiveCheckStep,
   type HiveFinding,
   type HiveLanding,
+  type HiveAnsweringSetting,
   type HiveLandingSetting,
   type HiveSandboxSetting,
   type WriterEcosystem,

@@ -12,6 +12,7 @@ import {
   type WorkspaceStart,
   type WorkspaceSummary,
 } from '@symbiote/core';
+import type { AnswerStep } from './issue-answer.js';
 import { IssueRefused, type IssueClassifier } from './issue-classifier.js';
 import { appendIssueEvent } from './issue-record.js';
 import type { IssuesService } from './issues.js';
@@ -36,6 +37,8 @@ export interface IssueStartContext {
   /** Whether a branch of this name exists, here or on a remote. */
   taken(branch: string): Promise<boolean>;
   start(request: WorkspaceRequest): Promise<WorkspaceStart>;
+  /** Adds a step to answer on the issue (HV11): its workspace taken. */
+  due?(number: number, step: AnswerStep, forge: IssueForge, at: string): Promise<unknown>;
 }
 
 /** Longest slug after `<kind>/<number>-`. */
@@ -189,6 +192,10 @@ export function issueStarter(ctx: IssueStartContext) {
       branch,
       ...(record.classifier?.identity ? { identity: record.classifier.identity } : {}),
     });
+    // Its author hears it was taken (HV11): written by Hive's runner, never holding the start.
+    await ctx
+      .due?.(number, { step: 'taken', branch }, record.forge, started.workspace.created)
+      .catch(() => undefined);
     return started;
   }
 
@@ -216,12 +223,14 @@ export function viewIssueStarter(
     issues,
     workspaces,
     folder,
+    due,
   }: {
     hive: () => Promise<boolean>;
     classifier: Pick<IssueClassifier, 'record' | 'classify'>;
     issues: Pick<IssuesService, 'one'>;
     workspaces: Pick<Workspaces, 'list' | 'start'>;
     folder: () => Promise<string>;
+    due?: IssueStartContext['due'];
   },
 ): IssueStarter {
   return issueStarter({
@@ -240,5 +249,6 @@ export function viewIssueStarter(
       return branches.some((b) => b.name === branch) || remotes.some((r) => r.branch === branch);
     },
     start: (request) => workspaces.start(request),
+    ...(due ? { due } : {}),
   });
 }

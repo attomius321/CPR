@@ -26,6 +26,8 @@ import {
 import type { Env, Forge } from '@symbiote/forge';
 import type { ClaudeCode } from './claude-code.js';
 import { originForge } from './hive-request.js';
+import { askedStep } from './issue-answer.js';
+import { dueAnswer } from './issue-answering.js';
 import { foundCheck, readMergeConfig } from './merge-config.js';
 import { prepareSymbioteFolder, reviewPlace } from './reviews.js';
 import {
@@ -236,6 +238,15 @@ export function issueClassifier(ctx: {
     };
     const folder = await ctx.folder();
     await writeIssueRecord(folder, record);
+    // An ask or a refusal is due to be answered on the issue (HV11): Hive's runner writes it.
+    const step = askedStep(record);
+    if (step) {
+      await dueAnswer(folder, number, step, {
+        root: ctx.root,
+        forge: record.forge,
+        at: record.run?.at ?? new Date().toISOString(),
+      }).catch(() => undefined);
+    }
     return (await readIssueRecord(folder, number, record.forge)) ?? record;
   }
 

@@ -36,6 +36,7 @@ import type { HiveRecord } from './hive.js';
 import type { ReviewerSettings } from './hive-review.js';
 import type { HiveSandboxService } from './writer-reach.js';
 import type { HiveLandingService } from './hive-request.js';
+import type { HiveAnsweringService } from './issue-answering.js';
 import type { HivePacingService } from './hive-pacing.js';
 import type { HiveWorkspace } from './hive-workspace.js';
 import type { Histories } from './history.js';
@@ -196,6 +197,8 @@ export interface ViewServerOptions {
   hiveReviewer?: ReviewerSettings;
   /** Enables `/api/hive/landing` (HV8): how Hive lands, the forge and its token. */
   hiveLanding?: HiveLandingService;
+  /** Enables `/api/hive/answering` (HV11): `hive.issues.answer`, the labels, the account. */
+  hiveAnswering?: HiveAnsweringService;
   /** Enables `/api/hive/sandbox` (HV10b): an issue writer's hosts, `hive.sandbox.allowedDomains`. */
   hiveSandbox?: HiveSandboxService;
   /** Enables `/api/hive/pacing` (HV5): the usage threshold, the budget, Hive's pause now. */

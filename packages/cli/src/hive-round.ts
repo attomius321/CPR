@@ -26,6 +26,7 @@ import { fillPrompt } from './prompt-text.js';
 import type { ReviewPlace } from './reviews.js';
 import { readThreadEnd } from './thread.js';
 import { readRecord, symbioteFolder } from './workspace-record.js';
+import { answerOfHiveEvent, dueAnswer } from './issue-answering.js';
 import { judgeTake } from './issue-record.js';
 import type { HiveContext, WatchRequest, Landing } from './hive-context.js';
 
@@ -121,6 +122,37 @@ export function hiveRound(
     await hiveEvent(where, branch, at, kind, data);
     log?.info({ branch, hive: kind, ...data }, `hive ${kind}`);
     await judged(where, branch, kind, data, at);
+    await answered(where, branch, kind, data, at);
+  }
+
+  /**
+   * A step of a workspace from an issue, due to be answered on it (HV11, decision 1071): a request
+   * opened, landed, stopped with its kind. Hive's runner writes it at its tick.
+   */
+  async function answered(
+    where: ReviewPlace,
+    branch: string,
+    kind: string,
+    data: Record<string, unknown>,
+    at: string,
+  ): Promise<void> {
+    if (kind !== 'request-opened' && kind !== 'landed' && kind !== 'stuck') return;
+    try {
+      const workspace = await readRecord(where, branch).catch(() => null);
+      if (!workspace?.issue) return;
+      const landing =
+        kind === 'landed' ? (await readHive(where, branch))?.landings?.at(-1) : undefined;
+      const step = answerOfHiveEvent(kind, data, { branch, at, ...(landing ? { landing } : {}) });
+      if (!step) return;
+      const { issue } = workspace;
+      await dueAnswer(symbioteFolder(where), issue.number, step, {
+        root,
+        forge: { kind: issue.forge, host: issue.host, project: issue.project },
+        at,
+      });
+    } catch (error) {
+      log?.warn({ branch, error: (error as Error).message }, 'issue answer not due');
+    }
   }
 
   /**
@@ -264,7 +296,7 @@ export function hiveRound(
     const stuck: HiveFile = { ...record, step: 'stuck', since: stamp(), note };
     delete stuck.message;
     await save(where, stuck);
-    await event(where, record.branch, 'stuck', { note, unseen: true });
+    await event(where, record.branch, 'stuck', { note, stop: 'unseen', unseen: true });
   }
 
   /** Whether a branch is being landed (decision 717): merged, or in the merge queue. */
@@ -318,7 +350,7 @@ export function hiveRound(
       const stuck: HiveFile = { ...record, step: 'stuck', since: stamp(), note };
       delete stuck.message;
       await save(where, stuck);
-      await event(where, record.branch, 'stuck', { note });
+      await event(where, record.branch, 'stuck', { note, stop: 'rounds' });
       return;
     }
     const next = await queue(where, { ...record, round: record.round + 1 }, key, values);
@@ -384,7 +416,7 @@ export function hiveRound(
           record,
           { step: 'stuck', note, message: undefined, paused: undefined },
           'stuck',
-          { note, spent: spend.total, budget },
+          { note, stop: 'budget', spent: spend.total, budget },
         );
         return null;
       }
@@ -489,7 +521,7 @@ export function hiveRound(
       const stuck: HiveFile = { ...after, step: 'stuck', since: stamp(), note };
       delete stuck.message;
       await save(where, stuck);
-      await event(where, record.branch, 'stuck', { note });
+      await event(where, record.branch, 'stuck', { note, stop: 'landing' });
       return;
     }
     const next = await queue(where, { ...after, merges, round: 1 }, 'hive.land', {

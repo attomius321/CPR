@@ -100,6 +100,19 @@ export interface HiveLandingSetting {
   why?: string;
 }
 
+/**
+ * `GET /api/hive/answering` (HV11, decisions 1018, 1077): whether Hive answers issues
+ * (`hive.issues.answer`), the labels' names (`hive.issues.labels`), and the account the token
+ * writes as, with whether it may write; why not, when it cannot be read.
+ */
+export interface HiveAnsweringSetting {
+  answer: boolean;
+  labels: { working: string; question: string; declined: string; stopped: string };
+  forge?: { kind: 'github' | 'gitlab'; host: string; project: string };
+  account?: { login: string; write: 'yes' | 'no' | 'unknown' };
+  why?: string;
+}
+
 /** An ecosystem a repository's root files name, and its hosts (HV10, decision 1052). */
 export interface WriterEcosystem {
   name: string;
