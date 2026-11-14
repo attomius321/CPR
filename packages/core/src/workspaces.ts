@@ -52,6 +52,21 @@ export interface CheckGuess {
   source: string;
 }
 
+/**
+ * The forge issue a Hive workspace was started from (HV10, decision 1013): the classifier took it
+ * on the snapshot `hash` names. Set only by the start from an issue (decision 1061).
+ */
+export interface WorkspaceIssue {
+  forge: 'github' | 'gitlab';
+  host: string;
+  project: string;
+  number: number;
+  url: string;
+  title: string;
+  /** The snapshot's hash the take was on (decision 1001). */
+  hash: string;
+}
+
 /** A workspace and its agent, for the commits page. */
 export interface WorkspaceSummary {
   branch: string;
@@ -93,6 +108,8 @@ export interface WorkspaceSummary {
   finished?: string;
   /** Started while Hive was on (HV2): where Hive is with it. */
   hive?: WorkspaceHive;
+  /** The issue it was started from (HV10, decision 1013). */
+  issue?: WorkspaceIssue;
 }
 
 /**
@@ -314,6 +331,11 @@ export interface WorkspaceRequest {
   documents?: { id: string; name: string }[];
   /** Started through Symbiote's tools (MC1, decision 362): by Nucleus, or through `symbiote mcp`. */
   via?: McpVia;
+  /**
+   * The issue it starts from (HV10): set by the start from an issue only; `POST /api/workspaces`
+   * drops one sent (decision 1061).
+   */
+  issue?: WorkspaceIssue;
 }
 
 /**

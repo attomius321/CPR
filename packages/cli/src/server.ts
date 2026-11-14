@@ -45,6 +45,7 @@ import {
   monitorMap,
   issueClassification,
   issueClassify,
+  issueStartOne,
   issueList,
   issueOne,
   serverPages,
@@ -388,6 +389,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       monitor,
       issues,
       issueClassifier,
+      issueStart,
       settings,
       checks,
       usage,
@@ -485,6 +487,11 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       const classify = /^\/api\/issues\/([^/]*)\/classify$/.exec(url.pathname);
       if (classify) {
         return issueClassify(req, res, classify[1] ?? '', issueClassifier, written);
+      }
+      // Start in Hive (HV10b): the person's click, with the page key.
+      const start = /^\/api\/issues\/([^/]*)\/start$/.exec(url.pathname);
+      if (start && issueStart) {
+        return issueStartOne(req, res, start[1] ?? '', issueStart, written);
       }
       const kept = /^\/api\/issues\/([^/]*)\/classification$/.exec(url.pathname);
       if (kept) return issueClassification(req, res, kept[1] ?? '', issueClassifier);

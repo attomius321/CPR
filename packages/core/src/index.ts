@@ -340,6 +340,7 @@ export {
   type WorkspaceReply,
   type WorkspaceRequest,
   type WorkspaceStart,
+  type WorkspaceIssue,
   type WorkspaceSummary,
   type WorkspaceShell,
   type WorkspaceShells,

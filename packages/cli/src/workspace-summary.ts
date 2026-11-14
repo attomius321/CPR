@@ -278,6 +278,7 @@ export function workspaceSummary(
         : {}),
       ...(acted ? { lastAction: acted } : {}),
       ...(workspace.via ? { via: workspace.via } : {}),
+      ...(workspace.issue ? { issue: workspace.issue } : {}),
       ...(activity ? { activity } : {}),
       ...(workspace.hive ? await hiveOf(where, workspace.branch) : {}),
     };
@@ -398,6 +399,7 @@ export function workspaceSummary(
             }
           : {}),
         ...(workspace.via ? { via: workspace.via } : {}),
+        ...(workspace.issue ? { issue: workspace.issue } : {}),
         finished: workspace.finished,
       };
     },

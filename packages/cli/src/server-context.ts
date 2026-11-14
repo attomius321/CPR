@@ -44,6 +44,7 @@ import type { Terminals } from './terminal.js';
 import type { PageAgent } from './page-agent.js';
 import type { SkillsService } from './skills.js';
 import type { SymbioteMcp } from './mcp.js';
+import type { IssueStarter } from './issue-start.js';
 import type { IssueClassifier } from './issue-classifier.js';
 import type { IssuesService } from './issues.js';
 import type { ServerKeys } from './server-keys.js';
@@ -127,6 +128,8 @@ export interface RepositoryOptions {
   issues?: IssuesService;
   /** The classifier (HV9b): `POST /api/issues/<n>/classify`, `GET …/classification`. */
   issueClassifier?: IssueClassifier;
+  /** A Hive workspace from an issue (HV10b): `POST /api/issues/<n>/start`, Start in Hive. */
+  issueStart?: IssueStarter;
   /** Each subscription's windows of use (V29c): `GET /api/usage`, from a 5-min copy. */
   usage?: Pick<UsageService, 'report' | 'settled'>;
   /**

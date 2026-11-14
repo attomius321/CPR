@@ -10,7 +10,7 @@ import {
   type MergeCheckStep,
   type MergeEntry,
 } from '@symbiote/core';
-import { type MergerContext, short, plural, lastLines } from './merge-context.js';
+import { type MergerContext, mergeMessage, short, plural, lastLines } from './merge-context.js';
 import type { MergeTargetSteps } from './merge-targets.js';
 import type { MergeLandSteps } from './merge-land.js';
 import type { MergeResolveSteps } from './merge-resolve.js';
@@ -95,7 +95,9 @@ export function mergeRun(
     const merging = Date.now();
     await resetMergeWorktree(repo, worktree, tip.sha);
     log.out(`Symbiote's merge worktree at ${entry.into} (${short(tip.sha)})\n`);
-    const outcome = await mergeInWorktree(worktree, entry.head, entry.title, { keep: true });
+    const outcome = await mergeInWorktree(worktree, entry.head, mergeMessage(entry), {
+      keep: true,
+    });
     if ('conflicts' in outcome) {
       const n = outcome.conflicts.length;
       log.out(

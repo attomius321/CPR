@@ -10,6 +10,7 @@ import type {
 } from '@symbiote/core';
 import type { CodeMap } from '@symbiote/monitor';
 import type { DiffStatus, Pair } from './diffs.js';
+import type { IssueStarter } from './issue-start.js';
 import type { IssueClassifier } from './issue-classifier.js';
 import type { MarkMerged } from './mark-merged.js';
 import type { Merger } from './merges.js';
@@ -60,6 +61,8 @@ export interface McpServices {
   usage?: Pick<UsageService, 'report'>;
   /** The classifier (HV9b): `classify_issue` (HV9c), with Hive on. */
   issueClassifier?: Pick<IssueClassifier, 'classify'>;
+  /** A Hive workspace from an issue (HV10b): `start_from_issue`. */
+  issueStart?: Pick<IssueStarter, 'start'>;
   /** Merged work marked in the docs (MC3, decision 990), where the repository sets `merged`. */
   marks?: Pick<MarkMerged, 'configured' | 'preview' | 'mark'>;
   monitor?: { map(): Promise<CodeMap> };

@@ -53,6 +53,7 @@ import { scribe } from './scribe.js';
 import { skillsService } from './skills.js';
 import { readClaudeUsage, readCodexUsage, usageService } from './usage.js';
 import { workspaces } from './workspaces.js';
+import { viewIssueStarter } from './issue-start.js';
 import { symbioteFolder } from './workspace-record.js';
 import { findClaude } from './claude-code.js';
 import { removeViewRecord, viewFile, writeViewRecord } from './mcp-bridge.js';
@@ -212,6 +213,20 @@ export async function view(argv: string[], given: CliContext): Promise<number> {
     hive: () => hive.on(),
     hivePacing: pacing,
   });
+  // The Issues page (IS1) and the classifier (HV9b), shared with the start from an issue (HV10).
+  const repoIssues = issuesService(repo, ctx.env);
+  const classifier = viewIssueClassifier(repo, cacheDir, {
+    env: ctx.env,
+    hive: () => hive.on(),
+    claude: claudeOf,
+  });
+  const issueStart = viewIssueStarter(repo, {
+    hive: () => hive.on(),
+    classifier,
+    issues: repoIssues,
+    workspaces: repoWorkspaces,
+    folder: async () => symbioteFolder(await reviewPlace(repo, cacheDir)),
+  });
   // Branch reviews (V15) and the merger (V26): the review pages', and Hive's landings (HV4).
   const repoReviews = branchReviews(repo, cacheDir);
   const repoMerges = merger(repo, cacheDir, {
@@ -329,13 +344,11 @@ export async function view(argv: string[], given: CliContext): Promise<number> {
       // The Monitor page (RM1): where the checked-out commit's code is.
       monitor: codeMaps(repo.root),
       // The Issues page (IS1): origin's GitHub or GitLab issues, read only.
-      issues: issuesService(repo, ctx.env),
+      issues: repoIssues,
       // The classifier (HV9b): an issue read for Hive, with Hive on; its records in symbiote/issues/.
-      issueClassifier: viewIssueClassifier(repo, cacheDir, {
-        env: ctx.env,
-        hive: () => hive.on(),
-        claude: claudeOf,
-      }),
+      issueClassifier: classifier,
+      // A Hive workspace from an issue the classifier took (HV10b).
+      issueStart,
       scribe: scribe(repo, cacheDir, {
         claude: claudeOf,
         codex: codexOf,

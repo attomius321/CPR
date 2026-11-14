@@ -24,7 +24,7 @@ import { codexState, serverState } from './codex.js';
 import { AGENT_NAMES } from './agent-levels.js';
 import { agentState, newestSession } from './claude-code.js';
 import { pauseEvent } from './hive-pacing.js';
-import { MAX_BRIEF } from './workspace-brief.js';
+import { issueOrigin, MAX_BRIEF } from './workspace-brief.js';
 import { onServer } from './workspace-codex.js';
 import { documentsDir, placeDocuments, removeDocuments, uploadsOf } from './workspace-documents.js';
 import {
@@ -141,6 +141,14 @@ export function workspaceLifecycle(
       }
       // Hive drives Claude Code only (HV2, decision 658): every start while it is on is Hive's.
       const hiving = await hiveOn();
+      // A workspace from an issue is Hive's (HV10, decision 1011): never one in normal mode.
+      if (request.issue && !hiving) {
+        throw new WorkspaceRefused(
+          'Hive mode is off: work starts from an issue only while it is on',
+          409,
+        );
+      }
+      if (request.issue) work.brief = `${issueOrigin(request.issue)}\n\n${work.brief}`;
       if (hiving && request.agent !== undefined && request.agent !== 'claude') {
         throw new WorkspaceRefused(
           'Hive drives Claude Code only: pick Claude Code, or turn Hive off',
@@ -213,6 +221,7 @@ export function workspaceLifecycle(
         planFirst: request.planFirst,
         ...(request.via ? { via: request.via } : {}),
         ...(hiving ? { hive: true as const } : {}),
+        ...(request.issue ? { issue: request.issue } : {}),
         worktree: folder,
       };
       await prepareSymbioteFolder(where, { text: readPrompts(root).text.reviews });

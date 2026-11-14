@@ -104,6 +104,7 @@ describe("Symbiote's MCP: the protocol (MC1, decision 359)", () => {
       'suggest_settings',
       'start_workspace',
       'classify_issue',
+      'start_from_issue',
       'reply',
       'stop_agent',
       'restart_agent',
@@ -129,6 +130,7 @@ describe("Symbiote's MCP: the protocol (MC1, decision 359)", () => {
       .map((t) => t.name);
     expect(asked).toEqual([
       'start_workspace',
+      'start_from_issue',
       'restart_agent',
       'clean_workspace',
       'finish_review',
@@ -1238,5 +1240,78 @@ describe("Symbiote's MCP: Nucleus starts without a Confirm (NU8, decisions 782-7
     for (const tool of MCP_TOOLS) {
       expect(`${tool.name} ${tool.description}`).not.toMatch(/without a Confirm|nucleus-start/i);
     }
+  });
+});
+
+describe("Symbiote's MCP: start_from_issue (HV10b, decisions 1011, 1012, 1061)", () => {
+  async function listed(mcp: Mcp, caller: McpCaller = NUCLEUS) {
+    const answer = (await mcp.handle({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, caller)) as {
+      result: {
+        tools: {
+          name: string;
+          description: string;
+          inputSchema: Record<string, unknown>;
+          annotations: Record<string, unknown>;
+        }[];
+      };
+    };
+    return answer.result.tools.find((t) => t.name === 'start_from_issue');
+  }
+
+  it("takes an issue's number and a start branch; asks for a Confirm unless Hive starts it at once", async () => {
+    const tool = await listed(server(fakes().services));
+    expect(tool?.inputSchema).toEqual({
+      type: 'object',
+      properties: {
+        number: { type: 'integer', minimum: 1, description: expect.any(String) as unknown },
+        from: { type: 'string', description: expect.any(String) as unknown },
+      },
+      required: ['number'],
+      additionalProperties: false,
+    });
+    expect(tool?.annotations).toEqual({ readOnlyHint: false, destructiveHint: false });
+    expect(tool?.description).toContain("the person's Confirm");
+    expect(tool?.description).toContain('start_workspace');
+    const hive = await listed(server(fakes().services, { withoutConfirm: () => Promise.resolve('hive') }));
+    expect(hive?.description).toContain("Starts at once, without the person's Confirm: Hive mode is on.");
+  });
+
+  it("starts Nucleus's at once while Hive is on: by Nucleus, from the branch given", async () => {
+    const { services, calls } = fakes();
+    const mcp = server(services, { withoutConfirm: () => Promise.resolve('hive') });
+    const done = await call(mcp, 'start_from_issue', { number: 12, from: 'release' });
+    expect(done.isError).toBe(false);
+    expect(done.value).toMatchObject({
+      workspace: { branch: 'fix/12-the-search-ignores-case', issue: { number: 12 } },
+      withoutConfirm: 'hive',
+    });
+    expect(calls).toContainEqual(['startFromIssue', 12, { by: 'nucleus', from: 'release' }]);
+    expect(mcp.asks().asks).toEqual([]);
+  });
+
+  it("asks the person's own agents through symbiote mcp, and starts on their yes", async () => {
+    const { services, calls } = fakes();
+    const mcp = server(services, { withoutConfirm: () => Promise.resolve('hive') });
+    const pending = call(mcp, 'start_from_issue', { number: 12 }, { via: 'mcp', client: 'codex' });
+    const id = await askOf(mcp);
+    expect(mcp.asks().asks[0]?.words).toBe('Start a Hive workspace from issue #12');
+    await mcp.answer({ id, yes: true });
+    expect((await pending).value).toMatchObject({ workspace: { issue: { number: 12 } } });
+    expect(calls).toContainEqual(['startFromIssue', 12, { by: 'mcp' }]);
+  });
+
+  it("answers a refusal in the start's words, and a wrong number before anything runs", async () => {
+    const { services, calls } = fakes({
+      startFromIssue: () => Promise.reject(new Error('Issue #12 is not taken: the classifier refused it')),
+    });
+    const mcp = server(services, { withoutConfirm: () => Promise.resolve('hive') });
+    const refused = await call(mcp, 'start_from_issue', { number: 12 });
+    expect(refused).toMatchObject({
+      isError: true,
+      text: 'Issue #12 is not taken: the classifier refused it',
+    });
+    const wrong = await call(mcp, 'start_from_issue', { number: 'twelve' });
+    expect(wrong).toMatchObject({ isError: true, text: "number: an issue's number, as 12" });
+    expect(calls.filter((c) => c[0] === 'startFromIssue')).toHaveLength(1);
   });
 });

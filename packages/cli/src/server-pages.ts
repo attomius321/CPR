@@ -4,6 +4,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { SymbioteError } from '@symbiote/core';
 import { isIssueCursor } from '@symbiote/forge';
 import type { IntroRecord } from './intro.js';
+import type { IssueStarter } from './issue-start.js';
 import type { IssueClassifier } from './issue-classifier.js';
 import type { IssuesService } from './issues.js';
 import type { RepositoryOptions, ViewServerOptions } from './server-context.js';
@@ -96,6 +97,23 @@ export async function issueClassify(
   if (!ISSUE_NUMBER.test(number)) return send(res, 400, "an issue's number");
   return written(req, res, parseNoBody, () =>
     answer(res, () => classifier.classify(Number(number))),
+  );
+}
+
+/**
+ * `POST /api/issues/<n>/start` (HV10b): Start in Hive, the person's click, with the page key (SC1);
+ * the workspace started, or the refusal's words.
+ */
+export async function issueStartOne(
+  req: IncomingMessage,
+  res: ServerResponse,
+  number: string,
+  starter: IssueStarter,
+  written: ServerHttp['written'],
+): Promise<void> {
+  if (!ISSUE_NUMBER.test(number)) return send(res, 400, "an issue's number");
+  return written(req, res, parseNoBody, () =>
+    answer(res, () => starter.start(Number(number), { by: 'page' })),
   );
 }
 

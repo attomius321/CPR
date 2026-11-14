@@ -256,6 +256,76 @@ describe('queueing a merge (V26a)', () => {
   });
 });
 
+/** A workspace record for `topic` started from issue #12 (HV10). */
+function issueWorkspace(repo: TestRepo, base: string) {
+  const record: WorkspaceFile = {
+    agent: null,
+    base,
+    branch: 'topic',
+    brief: '# Fix: Add t\n',
+    created: NOW.toISOString(),
+    from: 'main',
+    kind: 'fix',
+    planFirst: false,
+    title: 'Add t',
+    hive: true,
+    issue: {
+      forge: 'github',
+      host: 'github.com',
+      project: 'o/r',
+      number: 12,
+      url: 'https://github.com/o/r/issues/12',
+      title: 'Config is null',
+      hash: 'a'.repeat(64),
+    },
+    worktree: join(repo.root, '..', 'wt'),
+  };
+  mkdirSync(join(repo.root, 'symbiote', 'workspaces'), { recursive: true });
+  writeFileSync(join(repo.root, 'symbiote', 'workspaces', 'topic.json'), serializeWorkspace(record));
+}
+
+const body = (repo: TestRepo, sha: string) => repo.git('log', '-1', '--format=%b', sha);
+
+describe('the merge commit of a workspace from an issue (HV10, decisions 1017, 1065)', () => {
+  it('gives the entry the body Closes #n; none for a workspace from a brief', async () => {
+    const { repo, shas } = setup();
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    issueWorkspace(repo, shas.A);
+    const m = await make(repo);
+    const entry = await m.enqueue({ branch: 'topic', into: 'main' }, { start: false });
+    expect(entry).toMatchObject({ title: 'Merge topic: Add t', body: 'Closes #12' });
+  });
+
+  it('merges with the subject as before and Closes #n in the body', async () => {
+    const { repo, shas } = setup();
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    issueWorkspace(repo, shas.A);
+    config(repo, { checks: 'ok' });
+    const m = await make(repo);
+    await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    const [entry] = (await m.list()).merges;
+    expect(entry?.state).toBe('landed');
+    const merge = entry?.merge ?? '';
+    expect(subject(repo, merge)).toBe('Merge topic: Add t');
+    expect(body(repo, merge).trim()).toBe('Closes #12');
+  });
+
+  it("keeps Closes #n in a merge the merger agent resolved", async () => {
+    const { repo, shas } = conflicting();
+    issueWorkspace(repo, shas.A);
+    config(repo, { checks: 'ok' });
+    const agent = fakeAgent(BOTH);
+    const m = await make(repo, fakeChecks().run, { mergerAgent: agent.find });
+    await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    const [entry] = (await m.list()).merges;
+    const merge = entry?.merge ?? '';
+    expect(subject(repo, merge)).toBe('Merge topic: Add t');
+    expect(body(repo, merge).trim()).toBe('Closes #12');
+  });
+});
+
 describe('merging, checking and landing (V26a)', () => {
   it('merges the approved commit with --no-ff, checks it, and fast-forwards the checkout that has main', async () => {
     const { repo, shas } = setup();

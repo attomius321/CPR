@@ -147,16 +147,19 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
 
   /**
    * Why `name`'s call goes without the person's Confirm (NU8, decision 784): only Nucleus's
-   * `start_workspace`, while Hive mode or the person's setting says so; else undefined.
+   * `start_workspace` and `start_from_issue` (HV10b), while Hive mode or the person's setting says so; else undefined.
    */
   async function startsAtOnce(
     name: string,
     caller: McpCaller,
   ): Promise<WithoutConfirm | undefined> {
-    if (name !== 'start_workspace' || caller.via !== 'nucleus' || !options.withoutConfirm) {
+    const starts = name === 'start_workspace' || name === 'start_from_issue';
+    if (!starts || caller.via !== 'nucleus' || !options.withoutConfirm) {
       return undefined;
     }
-    return options.withoutConfirm().catch(() => undefined);
+    const why = await options.withoutConfirm().catch(() => undefined);
+    // A start from an issue needs Hive on (HV10b): the person's setting alone starts none.
+    return name === 'start_from_issue' && why !== 'hive' ? undefined : why;
   }
 
   /** A tool's call: its value, or its problem in words; Nucleus's recorded (NU2). */
@@ -279,7 +282,7 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
         const lapse =
           ' Unanswered, a Confirm stays on their Symbiote bar to confirm later: do not ask again unless they say so. Several starts or clean-ups go in one call, one Confirm.';
         const waits = why
-          ? `start_workspace starts at once, without the person's Confirm (${
+          ? `start_workspace${why === 'hive' ? ' and start_from_issue start' : ' starts'} at once, without the person's Confirm (${
               why === 'hive' ? 'Hive mode is on' : 'their setting in Symbiote'
             }): say first in one line what you start. The tools that start an agent again, record a verdict, act on a merge, mark merged work or clean up wait for the person's Confirm in Symbiote, 10 minutes at most: say first in one line what you will ask.${lapse}`
           : `The tools that start an agent, record a verdict, act on a merge, mark merged work or clean up wait for the person's Confirm in Symbiote, 10 minutes at most: say first in one line what you will ask.${lapse}`;
@@ -296,16 +299,22 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
       if (method === 'ping') return reply(id, {});
       if (method === 'tools/list') {
         const why = await startsAtOnce('start_workspace', caller);
+        const fromIssue = why === 'hive' ? why : undefined;
         return reply(id, {
-          tools: tools.filter(listedNow).map(({ name, description, inputSchema, annotations }) => ({
-            name,
-            description:
-              why && name === 'start_workspace'
-                ? description.replace(ASKS, STARTS_AT_ONCE[why])
-                : description,
-            inputSchema,
-            annotations,
-          })),
+          tools: tools.filter(listedNow).map(({ name, description, inputSchema, annotations }) => {
+            const at =
+              name === 'start_workspace'
+                ? why
+                : name === 'start_from_issue'
+                  ? fromIssue
+                  : undefined;
+            return {
+              name,
+              description: at ? description.replace(ASKS, STARTS_AT_ONCE[at]) : description,
+              inputSchema,
+              annotations,
+            };
+          }),
         });
       }
       if (method !== 'tools/call') return failure(id, -32601, `unknown method: ${method}`);

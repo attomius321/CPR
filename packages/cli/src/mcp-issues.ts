@@ -1,10 +1,12 @@
 // Symbiote's MCP: the classifier (HV9c, decision 1058). `classify_issue` runs it as the Issues
 // page's Classify does and answers the decision; it writes a record and starts nothing, so it asks
-// for no Confirm, as `suggest_settings` (decision 582).
+// for no Confirm, as `suggest_settings` (decision 582). `start_from_issue` (HV10b) starts a Hive
+// workspace from an issue the classifier took: asked, as `start_workspace`, but for Nucleus with Hive on.
 import type { IssueRecord } from '@symbiote/core';
 import type { McpContext, McpRead, McpAsking } from './mcp-context.js';
 import type { McpLookup } from './mcp-lookup.js';
 import { ToolProblem, type Args } from './mcp-tools.js';
+import { row } from './mcp-workspaces.js';
 
 /** An issue's number in a tool's call: 1 to 10 digits, as the Issues page's address takes it. */
 function issueNumber(args: Args): number {
@@ -58,9 +60,9 @@ export function classifiedAnswer(record: IssueRecord, page: string): Record<stri
   };
 }
 
-/** The classifier's tool: it runs at once. */
+/** The classifier's tool, which runs at once, and the start from an issue, which asks (HV10b). */
 export function mcpIssues(
-  { url }: Pick<McpContext, 'url'>,
+  { url, exclusive }: Pick<McpContext, 'url' | 'exclusive'>,
   { service }: Pick<McpLookup, 'service'>,
 ) {
   const reads: Record<string, McpRead> = {
@@ -70,6 +72,23 @@ export function mcpIssues(
       return classifiedAnswer(record, new URL(`issues?number=${number}`, url()).toString());
     },
   };
-  const asking: Record<string, McpAsking> = {};
+  const asking: Record<string, McpAsking> = {
+    start_from_issue(args, caller) {
+      const number = issueNumber(args);
+      const from = args.from;
+      if (from !== undefined && (typeof from !== 'string' || from.trim() === '')) {
+        throw new ToolProblem("from: a branch's name");
+      }
+      const by = caller.via === 'nucleus' ? 'nucleus' : 'mcp';
+      return Promise.resolve({
+        words: `Start a Hive workspace from issue #${number}${from ? `, from ${from}` : ''}`,
+        act: () =>
+          // One start at a time, as start_workspace's.
+          exclusive('a workspace is being started', () =>
+            service('issueStart').start(number, { by, ...(from ? { from } : {}) }),
+          ).then((started) => ({ workspace: row(started.workspace) })),
+      });
+    },
+  };
   return { reads, asking };
 }

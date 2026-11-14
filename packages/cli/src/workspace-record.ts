@@ -13,6 +13,7 @@ import {
   type McpVia,
   type PermissionMode,
   type WorkKind,
+  type WorkspaceIssue,
 } from '@symbiote/core';
 import { sortKeys, type ReviewPlace } from './reviews.js';
 import { BRIEF_PARTS } from './workspace-brief.js';
@@ -71,6 +72,8 @@ export interface WorkspaceFile {
    * `symbiote/hive/<branch>.json`.
    */
   hive?: true;
+  /** The issue it was started from (HV10, decision 1013); set only by the start from an issue. */
+  issue?: WorkspaceIssue;
   /** The workspace's worktree folder. */
   worktree: string;
 }
@@ -189,8 +192,23 @@ export async function readWorkspace(path: string): Promise<WorkspaceFile | null>
     ...(text(v.title) ? { title: text(v.title) } : {}),
     ...viaOf(v.via),
     ...(v.hive === true ? { hive: true as const } : {}),
+    ...issueRead(v.issue),
     worktree: text(v.worktree),
   };
+}
+
+/** A record's issue (HV10): kept only whole, its number an issue's. */
+export function issueRead(value: unknown): { issue?: WorkspaceIssue } {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const v = value as Partial<Record<keyof WorkspaceIssue, unknown>>;
+  const word = (x: unknown) => (typeof x === 'string' && x !== '' ? x : null);
+  const [host, project, url, hash] = [v.host, v.project, v.url, v.hash].map(word);
+  const title = typeof v.title === 'string' ? v.title : null;
+  const forge = v.forge === 'github' || v.forge === 'gitlab' ? v.forge : null;
+  const number = v.number;
+  if (!forge || !host || !project || !url || title === null || !hash) return {};
+  if (typeof number !== 'number' || !Number.isInteger(number) || number < 1) return {};
+  return { issue: { forge, host, project, number, url, title, hash } };
 }
 
 /** The documents' names that are names Symbiote would give (V40); none when there are none. */

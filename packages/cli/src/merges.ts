@@ -352,6 +352,8 @@ export function merger(
         head: found.head,
         into,
         title: `Merge ${branch}: ${title}`,
+        // A workspace from an issue closes it as it reaches the default branch (1017, 1065).
+        ...(workspace?.issue ? { body: `Closes #${workspace.issue.number}` } : {}),
         ...(fastForward ? { strategy: 'fast-forward' as const } : {}),
         ...(by === 'hive' ? { by } : {}),
         state: 'queued',

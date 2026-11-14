@@ -34,7 +34,8 @@ import {
 const MAX_ACTIVITY = 60 * 1024;
 
 /** A workspace as a list gives it: no brief, no paths. */
-function row(w: WorkspaceSummary) {
+/** A workspace as the tools answer it. */
+export function row(w: WorkspaceSummary) {
   const { state, kind, waitingFor, interrupted, error } = w.agent;
   return {
     branch: w.branch,
@@ -55,6 +56,8 @@ function row(w: WorkspaceSummary) {
     ...(w.worktree.exists ? {} : { worktree: 'gone' }),
     ...(w.worktree.changed ? { uncommitted: w.worktree.changed } : {}),
     ...(w.via ? { via: w.via } : {}),
+    // HV10: the issue it was started from, by its number and address.
+    ...(w.issue ? { issue: { number: w.issue.number, url: w.issue.url } } : {}),
   };
 }
 

@@ -40,6 +40,13 @@ const OUTPUT_LINES = 60;
 
 export const short = (sha: string) => sha.slice(0, 7);
 
+/**
+ * A merge commit's message: the entry's subject, then its body (HV10, decision 1065: `Closes #n`)
+ * after a blank line.
+ */
+export const mergeMessage = (entry: Pick<MergeEntry, 'title' | 'body'>) =>
+  entry.body ? `${entry.title}\n\n${entry.body}` : entry.title;
+
 export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 export const lastLines = (text: string) =>
