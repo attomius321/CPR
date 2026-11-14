@@ -9,6 +9,7 @@ import { AGENT_NAMES } from './workspaces.js';
 import {
   keptEffort,
   PERMISSION_LABELS,
+  PERMISSION_WORDS,
   type effortChoices,
   type modelChoices,
   type RunChoices,
@@ -167,6 +168,7 @@ export function StartAgent({
             <select
               id="start-permission"
               value={mode}
+              {...tip(PERMISSION_WORDS[mode])}
               onChange={(event) =>
                 onChoose({ ...run, permissionMode: event.target.value as PermissionMode })
               }

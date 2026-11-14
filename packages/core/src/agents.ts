@@ -73,7 +73,11 @@ export type AgentKind = 'claude' | 'codex';
 
 export const AGENT_KINDS: readonly AgentKind[] = ['claude', 'codex'];
 
-/** Claude Code's permission modes Symbiote may start an agent in; `default` passes none. */
+/**
+ * Claude Code's permission modes Symbiote may start an agent in, each passed by name: `default`
+ * is the mode that asks, as Claude Code's `manual` where it lists that name (no longer its own
+ * default: 2.1.323 started in `auto` when given none, fix/default-permission-mode).
+ */
 export type PermissionMode = 'default' | 'acceptEdits' | 'auto';
 
 export const PERMISSION_MODES: readonly PermissionMode[] = ['default', 'acceptEdits', 'auto'];

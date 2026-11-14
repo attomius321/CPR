@@ -42,7 +42,13 @@ make (plan first or not, the agent, where it merges):
   tip), and its effort level, how long the model thinks before it answers, as a row of steps
   (arrow keys move it). The lists come from the agent itself.
 - **Permissions** (Claude Code): Claude Code's own permission mode, which decides what it may do
-  without asking you. Symbiote never grants the agent more than the mode you pick.
+  without asking you. Symbiote passes the mode you pick, and never grants the agent more.
+  - **Ask**: it asks before each edit and each command your Claude Code settings do not allow.
+    This is Claude Code's Manual mode.
+  - **Accept edits**: it edits files and runs `mkdir`, `touch`, `rm`, `rmdir`, `mv`, `cp` and
+    `sed` without asking. It asks before other commands.
+  - **Auto**: Claude Code's classifier runs what it judges low-risk and blocks the rest, so it
+    rarely asks. It is Claude Code's own default from version 2.1.319 on.
 - **Plan first and wait for my OK**: the agent writes a plan and stops before it changes
   anything. It is on by default.
 - **Documents**: files for the agent, such as screenshots, PDFs or samples. Up to 20 files, of

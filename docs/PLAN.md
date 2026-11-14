@@ -275,6 +275,7 @@ What holds now: [Reviews](area/reviews.md) · its decisions: [the register](deci
 | [HV11](plan/hv11-issue-answered.md) | The issue answered on GitHub and GitLab: a comment and a label at each step, closed when landed; only Symbiote's fixed sentences and the classifier's cleaned question posted | planned (rank 3) | 1018–1023 | |
 | [HV12](plan/hv12-issue-loop-real-run.md) | Spike: a real run on private scratch forges, eight issues (two hostile) through both landing modes, to prove each step no real run has shown | planned (rank 4) | 1024–1026 | |
 | [HV13](plan/hv13-issue-intake.md) | Issues come in: a label watch that checks who set the label, a start queue, issues at once and a day, the classifier's cost; after HV12 and three of HV7's parts | planned (rank 6, after HV7) | 1027–1033 | |
+| Fix | Normal mode's Ask asks: the permission mode always passed to Claude Code, Ask as `manual` where its help lists it (`auto` is its own default from 2.1.319 on) | built, ready for review | | [journal](journal/fix-default-permission-mode.md) |
 
 ### The merger
 
