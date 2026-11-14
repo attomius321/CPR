@@ -1,10 +1,12 @@
 import { spawnSync } from 'node:child_process';
 import { SymbioteError } from '@symbiote/core';
-import { api, paged, read, type ReadAnswer } from './http.js';
+import { answered, api, ForgeError, paged, read, type ReadAnswer } from './http.js';
 import {
   COMMENTS,
   cursorOf,
   ISSUES_PER_PAGE,
+  knowLabel,
+  labelKnown,
   labelOf,
   MAX_CALLS,
   readCursor,
@@ -18,12 +20,17 @@ import type {
   Issue,
   IssueAuthor,
   IssueAuthorRole,
+  IssueCloseReason,
   IssueFilter,
+  IssueLabelChange,
   IssuePage,
   IssueQuery,
   IssueSummary,
+  IssueWriteState,
   NewChangeRequest,
+  NewLabel,
   Review,
+  TokenAccount,
 } from './types.js';
 
 const TOKEN_HINT = 'GITHUB_TOKEN or GH_TOKEN, or log in with gh auth login';
@@ -62,6 +69,8 @@ interface GitHubIssue {
   author_association?: string;
   body?: string | null;
   pull_request?: unknown;
+  /** Its conversation is locked (HV11). */
+  locked?: boolean;
 }
 
 interface GitHubUser {
@@ -268,6 +277,97 @@ export class GitHubForge implements Forge {
     };
   }
 
+  /** Comments on an issue (HV11, decision 1018). */
+  async commentOnIssue(number: number, body: string): Promise<{ url: string }> {
+    this.requireToken('Commenting on an issue');
+    const made = await this.request<{ html_url?: string }>(
+      `/repos/${this.project}/issues/${number}/comments`,
+      'POST',
+      { body },
+    );
+    return { url: made?.html_url ?? `https://${this.host}/${this.project}/issues/${number}` };
+  }
+
+  /** Closes an issue with GitHub's reason (HV11). */
+  async closeIssue(number: number, reason: IssueCloseReason): Promise<void> {
+    this.requireToken('Closing an issue');
+    await this.request(`/repos/${this.project}/issues/${number}`, 'PATCH', {
+      state: 'closed',
+      state_reason: reason === 'completed' ? 'completed' : 'not_planned',
+    });
+  }
+
+  /**
+   * Adds and removes labels (HV11). Each label to add is made first if missing, once a project:
+   * GitHub's add would make it itself, grey and without its description.
+   */
+  async labelIssue(number: number, { add, remove }: IssueLabelChange): Promise<void> {
+    this.requireToken('Labelling an issue');
+    for (const label of add) await this.ensureLabel(label);
+    const issue = `/repos/${this.project}/issues/${number}/labels`;
+    if (add.length > 0) await this.request(issue, 'POST', { labels: add.map((l) => l.name) });
+    for (const name of remove) {
+      await this.request(`${issue}/${encodeURIComponent(name)}`, 'DELETE').catch(unless(404));
+    }
+  }
+
+  /** Makes `label` in the project unless it is there; one made meanwhile (422) is taken. */
+  private async ensureLabel(label: NewLabel): Promise<void> {
+    if (labelKnown(this.apiBase, this.project, label.name)) return;
+    const labels = `/repos/${this.project}/labels`;
+    const found = await this.request(`${labels}/${encodeURIComponent(label.name)}`).then(
+      () => true,
+      unless(404, false),
+    );
+    if (!found) {
+      await this.request(labels, 'POST', {
+        name: label.name,
+        color: label.color.replace(/^#/, ''),
+        description: label.description,
+      }).catch(unless(422));
+    }
+    knowLabel(this.apiBase, this.project, label.name);
+  }
+
+  /** An issue's state, lock and labels: a conditional read (HV11). */
+  async issueState(number: number): Promise<IssueWriteState> {
+    const { body: issue } = await this.read<GitHubIssue>(`/repos/${this.project}/issues/${number}`);
+    if (issue.pull_request) throw new SymbioteError(`#${number} is a pull request, not an issue`);
+    return {
+      state: issue.state === 'closed' ? 'closed' : 'open',
+      locked: issue.locked === true,
+      labels: issue.labels.map((label) => labelOf(label).name),
+    };
+  }
+
+  /**
+   * Who the token is (decision 1077): a classic token lists its scopes in `x-oauth-scopes`, and
+   * `repo` or `public_repo` writes to issues; a fine-grained token lists none.
+   */
+  async tokenAccount(): Promise<TokenAccount> {
+    this.requireToken('Reading the account');
+    const { body, headers } = await answered<{ login: string }>(`${this.apiBase}/user`, {
+      tokenHint: this.tokenHint,
+      headers: this.headers(),
+    });
+    const scopes = headers.get('x-oauth-scopes');
+    const listed = scopes?.split(',').map((scope) => scope.trim()) ?? [];
+    return {
+      login: body.login,
+      write:
+        scopes === null
+          ? 'unknown'
+          : listed.includes('repo') || listed.includes('public_repo')
+            ? 'yes'
+            : 'no',
+    };
+  }
+
+  private requireToken(what: string): void {
+    if (this.secret) return;
+    throw new SymbioteError(`${what} on GitHub needs a token: set ${this.tokenHint}`);
+  }
+
   /** A conditional read (decision 950). */
   private read<T>(path: string): Promise<ReadAnswer<T>> {
     return read<T>(`${this.apiBase}${path}`, {
@@ -325,7 +425,7 @@ export class GitHubForge implements Forge {
 
   private request<T>(
     path: string,
-    method: 'GET' | 'POST' | 'PATCH' = 'GET',
+    method: 'GET' | 'POST' | 'PATCH' | 'DELETE' = 'GET',
     body?: unknown,
   ): Promise<T> {
     return api<T>(`${this.apiBase}${path}`, {
@@ -335,6 +435,16 @@ export class GitHubForge implements Forge {
       headers: this.headers(),
     });
   }
+}
+
+/**
+ * A catch that takes the forge's `status` as an answer (`value`), and throws any other failure.
+ */
+export function unless<T = undefined>(status: number, value?: T) {
+  return (error: unknown): T => {
+    if (error instanceof ForgeError && error.status === status) return value as T;
+    throw error;
+  };
 }
 
 /**

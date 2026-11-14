@@ -1,7 +1,15 @@
 import { SymbioteError } from '@symbiote/core';
-import { hostOf } from './github.js';
+import { hostOf, unless } from './github.js';
 import { api, paged, read, type ReadAnswer } from './http.js';
-import { COMMENTS, ISSUES_PER_PAGE, labelOf, readCursor, writeCursor } from './issues.js';
+import {
+  COMMENTS,
+  ISSUES_PER_PAGE,
+  knowLabel,
+  labelKnown,
+  labelOf,
+  readCursor,
+  writeCursor,
+} from './issues.js';
 import type {
   ChangeRequest,
   Env,
@@ -9,11 +17,15 @@ import type {
   Issue,
   IssueAuthor,
   IssueAuthorRole,
+  IssueLabelChange,
   IssuePage,
   IssueQuery,
   IssueSummary,
+  IssueWriteState,
   NewChangeRequest,
+  NewLabel,
   Review,
+  TokenAccount,
 } from './types.js';
 
 const TOKEN_HINT = 'GITLAB_TOKEN (a personal or project access token with api scope)';
@@ -48,6 +60,8 @@ interface GitLabIssue {
   created_at: string;
   updated_at: string;
   description?: string | null;
+  /** Only members may comment (HV11). */
+  discussion_locked?: boolean | null;
 }
 
 interface GitLabNote {
@@ -227,6 +241,82 @@ export class GitLabForge implements Forge {
       thread,
       moreComments: Math.max(0, summary.comments - thread.length),
     };
+  }
+
+  /** Comments on an issue with a note (HV11, decision 1018); its page is the issue's, with its id. */
+  async commentOnIssue(number: number, body: string): Promise<{ url: string }> {
+    this.requireToken('Commenting on an issue');
+    const note = await this.request<{ id: number }>(`/issues/${number}/notes`, 'POST', { body });
+    return { url: `https://${this.host}/${this.project}/-/issues/${number}#note_${note.id}` };
+  }
+
+  /** Closes an issue (HV11): GitLab keeps no reason. */
+  async closeIssue(number: number): Promise<void> {
+    this.requireToken('Closing an issue');
+    await this.request(`/issues/${number}`, 'PUT', { state_event: 'close' });
+  }
+
+  /**
+   * Adds and removes labels in one edit (HV11). Each label to add is made first if missing, once
+   * a project: GitLab's add would make it itself, without its colour and description.
+   */
+  async labelIssue(number: number, { add, remove }: IssueLabelChange): Promise<void> {
+    this.requireToken('Labelling an issue');
+    if (add.length === 0 && remove.length === 0) return;
+    for (const label of add) await this.ensureLabel(label);
+    await this.request(`/issues/${number}`, 'PUT', {
+      ...(add.length > 0 ? { add_labels: add.map((l) => l.name).join(',') } : {}),
+      ...(remove.length > 0 ? { remove_labels: remove.join(',') } : {}),
+    });
+  }
+
+  /** Makes `label` in the project unless it is there; one made meanwhile (409) is taken. */
+  private async ensureLabel(label: NewLabel): Promise<void> {
+    if (labelKnown(this.apiBase, this.project, label.name)) return;
+    const found = await this.request(`/labels/${encodeURIComponent(label.name)}`).then(
+      () => true,
+      unless(404, false),
+    );
+    if (!found) {
+      await this.request('/labels', 'POST', {
+        name: label.name,
+        color: label.color,
+        description: label.description,
+      }).catch(unless(409));
+    }
+    knowLabel(this.apiBase, this.project, label.name);
+  }
+
+  /** An issue's state, its locked discussion and its labels: a conditional read (HV11). */
+  async issueState(number: number): Promise<IssueWriteState> {
+    const { body: issue } = await this.read<GitLabIssue>(`/issues/${number}`);
+    return {
+      state: issue.state === 'closed' ? 'closed' : 'open',
+      locked: issue.discussion_locked === true,
+      labels: issue.labels.map((label) => labelOf(label).name),
+    };
+  }
+
+  /**
+   * Who the token is (decision 1077): its user, and whether its scopes hold `api`, which writes
+   * notes and edits issues; `unknown` when the token's own read fails.
+   */
+  async tokenAccount(): Promise<TokenAccount> {
+    this.requireToken('Reading the account');
+    const user = await this.global<{ username: string }>('/user');
+    const scopes = await this.global<{ scopes?: string[] }>('/personal_access_tokens/self').then(
+      (self) => self.scopes ?? null,
+      () => null,
+    );
+    return {
+      login: user.username,
+      write: scopes === null ? 'unknown' : scopes.includes('api') ? 'yes' : 'no',
+    };
+  }
+
+  /** A read outside the project's API: the token's user and the token itself. */
+  private global<T>(path: string): Promise<T> {
+    return api<T>(`${this.apiBase}${path}`, { tokenHint: TOKEN_HINT, headers: this.headers });
   }
 
   /** A user's access level in the project, inherited ones too; undefined outside it. */

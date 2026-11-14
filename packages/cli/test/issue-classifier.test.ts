@@ -145,6 +145,27 @@ describe('the classifier in symbiote view (HV9b)', () => {
     ]);
   });
 
+  it('an ask is due to be answered on the issue, its question cleaned; a take is not (HV11)', async () => {
+    await serve((path) => (path === '/repos/acme/app/issues/3' ? { body: ISSUE } : undefined));
+    const repo = repository(ABOUT);
+    const ask = ANSWERS.h21!.answer;
+    const { service } = await classifier(repo, { answers: [result(ask), result(ask)] });
+    const record = await service.classify(3);
+    const events = await readIssueEvents(join(repo.root, 'symbiote'), 3);
+    expect(events.map((e) => e.event)).toEqual(['classified', 'due']);
+    expect(events[1]).toMatchObject({
+      key: `asked:${record.snapshot.hash}`,
+      forge: { kind: 'github', host: 'github.com', project: 'acme/app' },
+      step: { step: 'asked', hash: record.snapshot.hash },
+    });
+    const question = (events[1] as { step: { question: string } }).step.question;
+    expect(question).toContain('Would it work for you if we fixed the flakiness in');
+    expect(question).not.toContain('`');
+    expect(
+      readFileSync(join(repo.root, 'symbiote', 'issues', 'answers.jsonl'), 'utf8').trim(),
+    ).toBe(JSON.stringify({ number: 3, key: `asked:${record.snapshot.hash}`, at: events[1]!.at }));
+  });
+
   it('records a failed classification as an event, and as the record', async () => {
     await serve((path) => (path === '/repos/acme/app/issues/3' ? { body: ISSUE } : undefined));
     const repo = repository(ABOUT);

@@ -242,6 +242,13 @@ export function parseLandsBy(text: string): { by: 'queue' | 'request' } {
   return { by: value.by };
 }
 
+/** `{ answer }`: whether Hive answers issues on the forge (HV11, `hive.issues.answer`). */
+export function parseAnswer(text: string): { answer: boolean } {
+  const value = JSON.parse(text) as Record<string, unknown> | null;
+  if (typeof value?.answer !== 'boolean') throw new Error('answer: true or false');
+  return { answer: value.answer };
+}
+
 /** `{ allowedDomains }`: the hosts an issue's writer may reach beyond its ecosystems' (HV10b). */
 export function parseSandboxDomains(text: string): { allowedDomains: string[] } {
   const value = JSON.parse(text) as Record<string, unknown> | null;

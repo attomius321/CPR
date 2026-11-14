@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import type {
   AgentLevels,
   ClassifierSettings,
+  HiveAnsweringSetting,
   HiveLandingSetting,
   HiveLandsBy,
   HivePacingSetting,
@@ -236,6 +237,7 @@ export function HivePage({
       <Group name="Issues" about="the classifier reads each issue before Hive starts anything">
         <IssuesClassifier onSaid={setSaid} />
         <WriterNetwork onSaid={setSaid} />
+        <IssueAnswers onSaid={setSaid} />
       </Group>
       {said && (
         <p className={`settings-notice${said.error ? ' error' : ''}`} role="status">
@@ -248,6 +250,7 @@ export function HivePage({
           Kept in <code>symbiote/config.json</code> as <code>hive.lands</code>,{' '}
           <code>hive.usage.pauseAt</code>, <code>hive.budget</code>, <code>hive.reviewer.*</code>,{' '}
           <code>hive.issues.about</code>, <code>hive.issues.lands</code>,{' '}
+          <code>hive.issues.answer</code>, <code>hive.issues.labels</code>,{' '}
           <code>hive.sandbox.allowedDomains</code> and <code>hive.classifier.*</code>. On or off:{' '}
           <code>symbiote/hive.json</code>, never committed.
         </span>
@@ -691,6 +694,138 @@ function LevelSelects({
  * repository's root files name, and the repository's own (`hive.sandbox.allowedDomains`), one a
  * line; the list in force.
  */
+/** Whether Hive answers issues, and how a choice reads. */
+const ANSWER_CHOICES = [
+  { on: true, label: 'On' },
+  { on: false, label: 'Off' },
+] as const;
+
+/** What the token's account may do, in words (decision 1077). */
+const WRITE_WORDS: Record<NonNullable<HiveAnsweringSetting['account']>['write'], string> = {
+  yes: 'May write',
+  no: 'Cannot write to issues',
+  unknown: 'Not known until the first write',
+};
+
+/**
+ * The issue answered (HV11, decisions 1018–1023, 1077): whether Hive writes to issues
+ * (`hive.issues.answer`), the account its comments appear under and whether its token may write,
+ * the labels' names (`hive.issues.labels`).
+ */
+function IssueAnswers({ onSaid }: { onSaid: (said: Said) => void }) {
+  const [setting, setSetting] = useState<HiveAnsweringSetting | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    let live = true;
+    getJson<HiveAnsweringSetting>('/api/hive/answering')
+      .then((read) => live && setSetting(read))
+      .catch((failed: unknown) => live && onSaid({ text: (failed as Error).message, error: true }));
+    return () => {
+      live = false;
+    };
+  }, [onSaid]);
+  const pick = async (answer: boolean) => {
+    setBusy(true);
+    try {
+      setSetting(await postJson<HiveAnsweringSetting>('/api/hive/answering', { answer }));
+      onSaid({
+        text: answer
+          ? 'Saved. Hive answers each issue it works from.'
+          : 'Saved. Nothing is written to issues.',
+      });
+    } catch (failed) {
+      onSaid({ text: `Answers could not be set: ${(failed as Error).message}`, error: true });
+    } finally {
+      setBusy(false);
+    }
+  };
+  const forge = setting?.forge;
+  const forgeName = forge ? (forge.kind === 'github' ? 'GitHub' : 'GitLab') : null;
+  const account = setting?.account;
+  return (
+    <>
+      <Row
+        id="hive-issues-answer"
+        name="Answers on the issue"
+        help={
+          setting?.answer === false
+            ? 'Nothing is written to issues. Requests still say Closes #n.'
+            : 'A comment and a label when Hive takes, asks, refuses, opens a request, lands or stops; closed once landed. Only Symbiote’s own sentences, and the classifier’s question cleaned.'
+        }
+      >
+        <span className="scopes" role="group" aria-label="Answers on or off">
+          {ANSWER_CHOICES.map((choice) => (
+            <button
+              key={choice.label}
+              type="button"
+              className={setting?.answer === choice.on ? 'scope active' : 'scope'}
+              aria-pressed={setting?.answer === choice.on}
+              disabled={busy || !setting}
+              onClick={() => void pick(choice.on)}
+            >
+              {choice.label}
+            </button>
+          ))}
+        </span>
+      </Row>
+      <Row
+        id="hive-issues-account"
+        name="Posted as"
+        tone={account?.write === 'no' ? 'fail' : undefined}
+        help={
+          !setting ? (
+            <Loading inline>Reading…</Loading>
+          ) : account && forgeName ? (
+            <>
+              Comments, labels and closing appear under <code>{account.login}</code> on {forgeName}:
+              your token’s account, in your name.
+            </>
+          ) : (
+            (setting.why ?? 'No token is found').replace(/\.$/, '')
+          )
+        }
+      >
+        {account ? (
+          <span
+            className={`hive-value${account.write === 'yes' ? ' is-ok' : account.write === 'no' ? ' is-warning' : ''}`}
+          >
+            {account.write === 'yes' ? (
+              <CheckIcon />
+            ) : account.write === 'no' ? (
+              <AlertIcon />
+            ) : null}
+            {WRITE_WORDS[account.write]}
+          </span>
+        ) : (
+          setting && (
+            <span className="hive-value is-warning">
+              <AlertIcon />
+              Nothing can be written
+            </span>
+          )
+        )}
+      </Row>
+      {setting && (
+        <Row
+          id="hive-issues-labels"
+          name="Labels"
+          help={
+            <>
+              Made once in the project; renamed in <code>hive.issues.labels</code>.
+            </>
+          }
+        >
+          <span className="hive-commands">
+            {Object.values(setting.labels).map((name) => (
+              <code key={name}>{name}</code>
+            ))}
+          </span>
+        </Row>
+      )}
+    </>
+  );
+}
+
 function WriterNetwork({ onSaid }: { onSaid: (said: Said) => void }) {
   const [read, setRead] = useState<HiveSandboxSetting | null>(null);
   const [typed, setTyped] = useState('');

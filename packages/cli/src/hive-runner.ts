@@ -15,7 +15,8 @@
 // person merges or closes it on the forge (decisions 788–792). HV5: every agent Hive starts — the
 // writer's first start, each message, a restart, each running review — goes through one gate
 // (`paced`), which holds it while Claude's usage is at or over the threshold, or unknown, and stops
-// a workspace that reached its budget (decisions 796–801).
+// a workspace that reached its budget (decisions 796–801). HV11: the steps of a workspace from an
+// issue answered on it, after each look (decisions 1071–1075).
 import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import type { GitRepo } from '@symbiote/core';
@@ -28,6 +29,7 @@ import { reviewPlace, type ReviewPlace } from './reviews.js';
 import { symbioteFolder } from './workspace-record.js';
 import type { Running, Reviewing, HiveRunnerOptions, HiveContext } from './hive-context.js';
 import { hiveRound, slug } from './hive-round.js';
+import { issueAnswerer } from './issue-answering.js';
 import { hiveWriting } from './hive-writing.js';
 import { hiveChecking } from './hive-checking.js';
 import { hiveReviewing } from './hive-reviewing.js';
@@ -144,6 +146,21 @@ export function hiveRunner(
   const { checking, watchCheck } = checkSteps;
   const { reviewing, watchReview } = reviewSteps;
   const { watchRequest } = forge;
+  // HV11: the steps of workspaces from an issue, answered on it at each tick while Hive is on, with
+  // origin's forge, the token Hive lands by request with; a retry and a request's closing a poll
+  // apart (decisions 1071, 1074, 1075).
+  const requests = lander?.requests;
+  const answerer = requests
+    ? issueAnswerer({
+        folder: async () => symbioteFolder(await reviewPlace(repo, cacheDir)),
+        root,
+        forge: () => requests.forge(),
+        now,
+        retryMs: requestPollMs,
+        settleMs: requestPollMs,
+        ...(log ? { log } : {}),
+      })
+    : undefined;
 
   const writtenAt = (file: string) =>
     stat(file).then(
@@ -245,6 +262,7 @@ export function hiveRunner(
         log?.warn({ branch: record.branch, error: (error as Error).message }, 'hive step failed');
       }
     }
+    if (!ctx.closed) await answerer?.tick();
   }
 
   function tick(): Promise<void> {

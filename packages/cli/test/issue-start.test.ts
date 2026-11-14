@@ -102,6 +102,7 @@ function starter(
   dirs.push(folder);
   const started: WorkspaceRequest[] = [];
   const classified: number[] = [];
+  const dues: unknown[] = [];
   const ctx: IssueStartContext = {
     hive: () => Promise.resolve(over.hive ?? true),
     classifier: {
@@ -115,6 +116,10 @@ function starter(
     folder: () => Promise.resolve(folder),
     workspaces: () => Promise.resolve(over.workspaces ?? []),
     taken: (branch) => Promise.resolve((over.taken ?? []).includes(branch)),
+    due: (number, step, forge, at) => {
+      dues.push({ number, step, forge, at });
+      return Promise.resolve();
+    },
     start: (request) => {
       started.push(request);
       return Promise.resolve({
@@ -123,7 +128,7 @@ function starter(
       });
     },
   };
-  return { service: issueStarter(ctx), started, classified, folder };
+  return { service: issueStarter(ctx), started, classified, folder, dues };
 }
 
 const refusal = async (task: Promise<unknown>) => {
@@ -166,6 +171,19 @@ describe('startFromIssue (HV10b)', () => {
         at: '2026-11-13T19:00:00.000Z',
         branch: 'fix/3-forge-errors-log-the-authorization',
         identity: 'id-1',
+      },
+    ]);
+  });
+
+  it('its author is due to hear it was taken, in the branch (HV11)', async () => {
+    const { service, dues } = starter();
+    await service.start(3, { by: 'page' });
+    expect(dues).toEqual([
+      {
+        number: 3,
+        step: { step: 'taken', branch: 'fix/3-forge-errors-log-the-authorization' },
+        forge: FORGE,
+        at: '2026-11-13T19:00:00.000Z',
       },
     ]);
   });

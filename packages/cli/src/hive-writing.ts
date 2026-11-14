@@ -112,7 +112,7 @@ export function hiveWriting(
       await workspaces.startAgent(record.branch);
     } catch (error) {
       const note = `its agent could not be started: ${(error as Error).message}`;
-      await moveTo(where, next, { step: 'stuck', note }, 'stuck', { note });
+      await moveTo(where, next, { step: 'stuck', note }, 'stuck', { note, stop: 'failed' });
       return;
     }
     await event(where, record.branch, 'writer-started');
@@ -133,7 +133,7 @@ export function hiveWriting(
       const stuck: HiveFile = { ...record, step: 'stuck', since: stamp(), note };
       delete stuck.message;
       await save(where, stuck);
-      await event(where, record.branch, 'stuck', { note });
+      await event(where, record.branch, 'stuck', { note, stop: 'asked' });
       return;
     }
     const next = await queue(
@@ -158,7 +158,7 @@ export function hiveWriting(
       const stuck: HiveFile = { ...record, step: 'stuck', since: stamp(), note };
       delete stuck.message;
       await save(where, stuck);
-      await event(where, record.branch, 'stuck', { note });
+      await event(where, record.branch, 'stuck', { note, stop: 'failed' });
       return;
     }
     const gated = await paced(where, record);
@@ -171,7 +171,7 @@ export function hiveWriting(
       await workspaces.startAgent(record.branch);
     } catch (error) {
       const note = `its agent could not be started again: ${(error as Error).message}`;
-      await moveTo(where, next, { step: 'stuck', note }, 'stuck', { note });
+      await moveTo(where, next, { step: 'stuck', note }, 'stuck', { note, stop: 'failed' });
     }
   }
 
@@ -214,6 +214,7 @@ export function hiveWriting(
         const note = `Claude Code's sandbox refused ${refused.join(', ')}: add it to hive.sandbox.allowedDomains in Settings → Hive if the writer needs it, then start the agent again`;
         return void (await moveTo(where, record, { step: 'stuck', note }, 'stuck', {
           note,
+          stop: 'sandbox',
           refused,
         }));
       }

@@ -691,6 +691,11 @@ export interface RunningWorkspaces extends Running, Opens {
       gate?: string;
     }[],
   ): void;
+  /**
+   * What the fake Claude Code answers as the classifier (HV9c), run by run: an answer as its
+   * schema holds it (HV11's e2e: a workspace from an issue driven by Hive).
+   */
+  classifyAnswers(answers: Record<string, unknown>[]): void;
   /** Each running reviewer's run: its arguments, its prompt and its folder. */
   reviewCalls(): { args: string[]; input: string; cwd: string }[];
   /** The sessions the fake stopped, by ID. */
@@ -1524,6 +1529,9 @@ export async function serveWorkspaces({
       ),
     reviewAnswers(answers) {
       writeFileSync(join(fake, 'review-answers.json'), JSON.stringify(answers));
+    },
+    classifyAnswers(answers) {
+      writeFileSync(join(fake, 'classify-answers.json'), JSON.stringify(answers));
     },
     reviewCalls: () =>
       lines('review-calls.jsonl').map(

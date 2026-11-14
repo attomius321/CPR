@@ -53,6 +53,7 @@ import { scribe } from './scribe.js';
 import { skillsService } from './skills.js';
 import { readClaudeUsage, readCodexUsage, usageService } from './usage.js';
 import { workspaces } from './workspaces.js';
+import { dueAnswer, hiveAnsweringService } from './issue-answering.js';
 import { viewIssueStarter } from './issue-start.js';
 import { hiveSandboxService } from './writer-reach.js';
 import { symbioteFolder } from './workspace-record.js';
@@ -227,6 +228,13 @@ export async function view(argv: string[], given: CliContext): Promise<number> {
     issues: repoIssues,
     workspaces: repoWorkspaces,
     folder: async () => symbioteFolder(await reviewPlace(repo, cacheDir)),
+    // HV11: the take answered on the issue; Hive's runner writes it.
+    due: async (number, step, forge, at) =>
+      dueAnswer(symbioteFolder(await reviewPlace(repo, cacheDir)), number, step, {
+        root: repo.root,
+        forge,
+        at,
+      }),
   });
   // Branch reviews (V15) and the merger (V26): the review pages', and Hive's landings (HV4).
   const repoReviews = branchReviews(repo, cacheDir);
@@ -377,6 +385,7 @@ export async function view(argv: string[], given: CliContext): Promise<number> {
     intro: introOf(ctx),
     hiveReviewer: reviewerSettingsService(repo.root, claudeOf),
     hiveLanding: hiveLandingService(repo, repo.root, ctx.env),
+    hiveAnswering: hiveAnsweringService(repo, repo.root, ctx.env),
     hiveSandbox: hiveSandboxService(repo.root),
     hivePacing: hivePacingService(repo.root, pacing, { read: ctx.env.SYMBIOTE_USAGE !== 'off' }),
     // Settings' switch: the runner told at once (HV2), another process's change read at its tick.

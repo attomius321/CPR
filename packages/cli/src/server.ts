@@ -7,6 +7,7 @@ import { silentLog } from '@symbiote/log';
 import type { Pair } from './diffs.js';
 import {
   parseHiveChange,
+  parseAnswer,
   parseLandsBy,
   parseSandboxDomains,
   parseHivePacing,
@@ -297,6 +298,14 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     // HV10c: how a workspace from an issue lands, `hive.issues.lands`.
     if (landing && url.pathname === '/api/hive/landing/issues') {
       return written(req, res, parseLandsBy, ({ by }) => answer(res, () => landing.setIssues(by)));
+    }
+    // HV11: whether Hive answers issues, the labels, the token's account.
+    const answering = options.hiveAnswering;
+    if (answering && url.pathname === '/api/hive/answering') {
+      if (req.method === 'GET') return read(req, res, () => answering.read());
+      return written(req, res, parseAnswer, ({ answer: on }) =>
+        answer(res, () => answering.set(on)),
+      );
     }
     // HV10b: the hosts an issue's writer may reach.
     const sandbox = options.hiveSandbox;

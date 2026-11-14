@@ -1,6 +1,22 @@
 import { createHash } from 'node:crypto';
 import { SymbioteError } from '@symbiote/core';
 
+/**
+ * A forge's refusal (HV11, decision 1023): its HTTP status and its answer, cut, kept for the
+ * record; 0 when the forge was not reached.
+ */
+export class ForgeError extends SymbioteError {
+  override name = 'ForgeError';
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly answer: string,
+    options?: ErrorOptions,
+  ) {
+    super(message, options);
+  }
+}
+
 export interface ApiOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
@@ -11,9 +27,21 @@ export interface ApiOptions {
 
 /** A JSON API call with errors a person can act on (missing token, no access, not found). */
 export async function api<T>(url: string, options: ApiOptions): Promise<T> {
-  const text = await (await call(url, options)).text();
-  return (text ? JSON.parse(text) : undefined) as T;
+  return (await answered<T>(url, options)).body;
 }
+
+/** A JSON API call, its body and its answer's headers (HV11: GitHub's `x-oauth-scopes`). */
+export async function answered<T>(
+  url: string,
+  options: ApiOptions,
+): Promise<{ body: T; headers: Headers }> {
+  const response = await call(url, options);
+  const text = await response.text();
+  return { body: (text ? JSON.parse(text) : undefined) as T, headers: response.headers };
+}
+
+/** The most of a forge's answer an error keeps. */
+const ANSWER = 300;
 
 /** What a read gave besides its body: where the list goes on. */
 export interface ReadAnswer<T> {
@@ -100,34 +128,41 @@ async function call(
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
   } catch (error) {
-    throw new SymbioteError(`could not reach ${new URL(url).host}: ${(error as Error).message}`, {
+    const message = (error as Error).message;
+    throw new ForgeError(`could not reach ${new URL(url).host}: ${message}`, 0, message, {
       cause: error,
     });
   }
 
-  if (response.status === 401) {
-    throw new SymbioteError(
+  const { status } = response;
+  if (status === 401) {
+    throw new ForgeError(
       `${new URL(url).host} rejected the request: authentication failed (set ${tokenHint})`,
+      status,
+      (await response.text()).slice(0, ANSWER),
     );
   }
   const limited = rateLimited(response);
   if (limited) {
-    throw new SymbioteError(
+    throw new ForgeError(
       `${new URL(url).host}'s rate limit is used up${limited === true ? '' : `; it resets at ${limited}`} (set ${tokenHint} for more)`,
+      status,
+      (await response.text()).slice(0, ANSWER),
     );
   }
-  if (response.status === 403 || response.status === 404) {
+  if (status === 403 || status === 404) {
     const text = await response.text();
-    throw new SymbioteError(
-      `${new URL(url).host} answered ${response.status} for ${new URL(url).pathname}: ` +
+    throw new ForgeError(
+      `${new URL(url).host} answered ${status} for ${new URL(url).pathname}: ` +
         `not found, or no access with the current token (${tokenHint})${text ? ` — ${text.slice(0, 200)}` : ''}`,
+      status,
+      text.slice(0, ANSWER),
     );
   }
-  if (response.status === 304) return response;
+  if (status === 304) return response;
   if (!response.ok) {
-    throw new SymbioteError(
-      `${new URL(url).host} answered ${response.status}: ${(await response.text()).slice(0, 300)}`,
-    );
+    const text = (await response.text()).slice(0, ANSWER);
+    throw new ForgeError(`${new URL(url).host} answered ${status}: ${text}`, status, text);
   }
   return response;
 }

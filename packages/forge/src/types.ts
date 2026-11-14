@@ -68,6 +68,42 @@ export interface Review {
   comments: ReviewComment[];
 }
 
+/** Why an issue is closed (HV11): GitHub's `state_reason`; GitLab keeps none. */
+export type IssueCloseReason = 'completed' | 'not-planned';
+
+/** What Symbiote reads of an issue before it writes to it (HV11, decision 1022). */
+export interface IssueWriteState {
+  state: 'open' | 'closed';
+  /** Its conversation is locked: only members may comment (GitHub's `locked`, GitLab's
+   * `discussion_locked`). */
+  locked: boolean;
+  /** The names of its labels. */
+  labels: string[];
+}
+
+/** A label Symbiote sets (HV11): made in the project with this colour and description if missing. */
+export interface NewLabel {
+  name: string;
+  /** `#rrggbb`. */
+  color: string;
+  description: string;
+}
+
+/** Labels to add to an issue and to remove from it (HV11). */
+export interface IssueLabelChange {
+  add: NewLabel[];
+  remove: string[];
+}
+
+/**
+ * The account a token writes as (HV11, decision 1077), and whether it may write to issues:
+ * `unknown` where the forge does not say (a fine-grained GitHub token).
+ */
+export interface TokenAccount {
+  login: string;
+  write: 'yes' | 'no' | 'unknown';
+}
+
 export interface Forge {
   readonly kind: ForgeKind;
   /** `owner/repo` or `group/subgroup/project`. */
@@ -90,6 +126,19 @@ export interface Forge {
   listIssues(query: IssueQuery): Promise<IssuePage>;
   /** One issue whole: its text and its first 100 comments (IS1). */
   getIssue(number: number): Promise<Issue>;
+  /** Comments on issue `number`; returns the comment's page (HV11, decision 1018). */
+  commentOnIssue(number: number, body: string): Promise<{ url: string }>;
+  /** Closes issue `number` (HV11); GitLab keeps no reason. */
+  closeIssue(number: number, reason: IssueCloseReason): Promise<void>;
+  /**
+   * Adds and removes labels (HV11): a label to add is made in the project first, once, if it is
+   * missing; removing one the issue does not have is no error.
+   */
+  labelIssue(number: number, change: IssueLabelChange): Promise<void>;
+  /** Issue `number`'s state, whether it is locked, its labels: a conditional read (HV11). */
+  issueState(number: number): Promise<IssueWriteState>;
+  /** Who the token writes as, and whether it may write to issues (HV11, decision 1077). */
+  tokenAccount(): Promise<TokenAccount>;
 }
 
 /** What a forge adapter reads from the environment: tokens and API URL overrides. */
