@@ -37,6 +37,8 @@ export interface JudgedEvent {
   right: boolean;
   /** How it ended, in a word: `landed`, `declined`, `closed`, `stopped`. */
   why: string;
+  /** The workspace judged (HV10, decision 1066): each is judged once. */
+  branch?: string;
 }
 
 /**
@@ -139,4 +141,30 @@ export async function readIssueEvents(folder: string, number: number): Promise<I
         return [];
       }
     });
+}
+
+/**
+ * Judges the take behind `branch`'s workspace (HV10, decision 1066): under the identity its
+ * `started` event recorded, once per workspace; nothing for a workspace no start recorded.
+ */
+export async function judgeTake(
+  folder: string,
+  number: number,
+  branch: string,
+  { right, why, at }: { right: boolean; why: string; at: string },
+): Promise<void> {
+  const events = await readIssueEvents(folder, number);
+  if (events.some((e) => e.event === 'judged' && e.branch === branch)) return;
+  const started = events.findLast(
+    (e): e is StartedEvent => e.event === 'started' && e.branch === branch,
+  );
+  if (!started?.identity) return;
+  await appendIssueEvent(folder, number, {
+    event: 'judged',
+    at,
+    identity: started.identity,
+    right,
+    why,
+    branch,
+  });
 }

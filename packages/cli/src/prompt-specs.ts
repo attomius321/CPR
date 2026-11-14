@@ -243,6 +243,17 @@ export const SPECS: Readonly<Record<PromptKey, PromptSpec>> = {
     ],
     max: MAX_LINE,
   },
+  'hive.issue': {
+    group: 'Hive',
+    title: 'Start from an issue',
+    about:
+      "Added after Start for a workspace started from an issue: where the brief came from, and what the writer's sandbox reaches.",
+    placeholders: [
+      { name: 'number', about: "the issue's number" },
+      { name: 'url', about: "the issue's address on the forge" },
+    ],
+    max: MAX_LINE,
+  },
   'hive.check': {
     group: 'Hive',
     title: 'Check failed',

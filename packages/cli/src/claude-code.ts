@@ -328,6 +328,8 @@ export interface ClaudeCode {
     addDir: string;
     /** Symbiote's settings file (V18c): the hooks that record the thread. */
     settings?: string;
+    /** No MCP server of the person's (HV10, decision 1054): an issue's writer. */
+    strictMcpConfig?: boolean;
     /** Its effort level (V30b, `--effort`): the session keeps it, through a resume too. */
     effort?: string;
     /** Its model (V47, `--model`), over the project's: the session keeps it, as its level. */
@@ -376,6 +378,12 @@ export interface ClaudeCode {
     sessionId: string;
     cwd: string;
     text: string;
+    /**
+     * An issue's writer (HV10, decision 1063): its settings and `--strict-mcp-config` given again,
+     * as a wake that made a copy might not carry them.
+     */
+    settings?: string;
+    strictMcpConfig?: boolean;
   }): Promise<{ ok: true } | { ok: false; error: string }>;
   /** Removes a background session (`claude rm <id>`); a worktree Symbiote made stays. */
   remove(id: string): Promise<{ ok: true } | { ok: false; error: string }>;
@@ -494,6 +502,7 @@ export function claudeCode(
         '--add-dir',
         request.addDir,
         ...(request.settings ? ['--settings', request.settings] : []),
+        ...(request.strictMcpConfig ? ['--strict-mcp-config'] : []),
         ...(await permission(request.permissionMode)),
         ...choose(request.model, model),
         ...(request.effort ? ['--effort', request.effort] : []),
@@ -542,7 +551,15 @@ export function claudeCode(
       return { ok: false, error: wordsOf(result) || `could not stop ${id}` };
     },
     async resume(request) {
-      const args = ['--bg', '--resume', request.sessionId, '--', request.text];
+      const args = [
+        '--bg',
+        '--resume',
+        request.sessionId,
+        ...(request.settings ? ['--settings', request.settings] : []),
+        ...(request.strictMcpConfig ? ['--strict-mcp-config'] : []),
+        '--',
+        request.text,
+      ];
       const result = await run(command, args, { cwd: request.cwd, timeoutMs: 60_000 });
       sessions = null;
       if (result.code === 0) return { ok: true };

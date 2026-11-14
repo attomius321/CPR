@@ -242,6 +242,16 @@ export function parseLandsBy(text: string): { by: 'queue' | 'request' } {
   return { by: value.by };
 }
 
+/** `{ allowedDomains }`: the hosts an issue's writer may reach beyond its ecosystems' (HV10b). */
+export function parseSandboxDomains(text: string): { allowedDomains: string[] } {
+  const value = JSON.parse(text) as Record<string, unknown> | null;
+  const list = value?.allowedDomains;
+  if (!Array.isArray(list) || !list.every((h) => typeof h === 'string') || list.length > 200) {
+    throw new Error('allowedDomains: a list of hosts');
+  }
+  return { allowedDomains: list };
+}
+
 /**
  * `{ pauseAt?, budget? }`: Hive's pacing (HV5): a percent or `false`, dollars or `null`; their
  * ranges are the setting's to refuse.

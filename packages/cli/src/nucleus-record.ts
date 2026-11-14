@@ -15,13 +15,13 @@ import { activityEntry, MAX_COMMAND } from './tool-activity.js';
  * gate starts with every call.
  */
 const SECRET_WORDS = ['TOKEN', 'SECRET', 'PASSWORD', 'PASSWD', 'CREDENTIAL', 'COOKIE', 'PRIVATE'];
-const secretName = (name: string) => {
+export const secretName = (name: string) => {
   const upper = name.toUpperCase();
   if (SECRET_WORDS.some((word) => upper.includes(word))) return true;
   const parts = upper.split('_');
   return parts.includes('KEY') || parts.includes('APIKEY');
 };
-const FORGE_TOKENS = [
+export const FORGE_TOKENS = [
   'GITHUB_TOKEN',
   'GH_TOKEN',
   'GH_ENTERPRISE_TOKEN',

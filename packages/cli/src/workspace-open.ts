@@ -45,9 +45,9 @@ export function workspaceOpen(
     changesBase,
     endedAt,
     agentOf,
-    settingsFile,
+    sessionSettings,
   }: Pick<WorkspaceTrunk, 'changesBase' | 'endedAt'> &
-    Pick<WorkspaceAgent, 'agentOf' | 'settingsFile'>,
+    Pick<WorkspaceAgent, 'agentOf' | 'sessionSettings'>,
 ) {
   /** Commits' files as VS Code's diffs are given them (V43, decision 288), by commit and path. */
   const revisions = join(cacheDir, 'state', repo.id, 'revisions');
@@ -146,7 +146,7 @@ export function workspaceOpen(
         throw new WorkspaceRefused(`its worktree is gone: ${workspace.worktree}`, 409);
       }
       // A session that wakes reads its settings file again, and does not start without it.
-      if (workspace.agent?.hooks) await settingsFile(where);
+      if (workspace.agent?.hooks) await sessionSettings(where, workspace);
       // `attach` to an ID Claude Code does not know exits 0, saying "No job matching…".
       const session = newestSession(workspace, await agent.sessions(), real);
       if (!session?.id) {

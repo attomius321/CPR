@@ -5,6 +5,25 @@ import type { ReviewPlace } from './reviews.js';
 import type { HiveContext } from './hive-context.js';
 import { type HiveRoundSteps, plural, arrived } from './hive-round.js';
 import type { HiveCheckSteps } from './hive-checking.js';
+import { readActivityEnd } from './thread.js';
+import { symbioteFolder } from './workspace-record.js';
+import { refusedHosts } from './writer-reach.js';
+
+/** How much of the activity file's end a turn's refused hosts are read from. */
+const REFUSED_BYTES = 512_000;
+
+/**
+ * The hosts Claude Code's sandbox refused an issue's writer since `since` (decision 1064), as its
+ * commands' recorded output names them.
+ */
+async function refusedSince(where: ReviewPlace, branch: string, since: string): Promise<string[]> {
+  const tools = await readActivityEnd(symbioteFolder(where), branch, REFUSED_BYTES).catch(() => []);
+  const text = tools
+    .filter((t) => t.phase === 'end' && t.at >= since && t.output)
+    .map((t) => t.output)
+    .join('\n');
+  return refusedHosts(text);
+}
 
 /** The agent's states with a session at work or done with a turn: whose turns Hive must see. */
 const SESSION_STATES: ReadonlySet<AgentStateName> = new Set<AgentStateName>([
@@ -188,6 +207,17 @@ export function hiveWriting(
     if (asks(summary.agent)) return answer(where, record, 'hive.decide');
     if (!turn.ended) return;
     await event(where, record.branch, 'turn-ended', { round: record.round });
+    // An issue's writer the sandbox refused a host: stopped, never the host allowed (1064).
+    if (summary.issue) {
+      const refused = await refusedSince(where, record.branch, record.since);
+      if (refused.length > 0) {
+        const note = `Claude Code's sandbox refused ${refused.join(', ')}: add it to hive.sandbox.allowedDomains in Settings → Hive if the writer needs it, then start the agent again`;
+        return void (await moveTo(where, record, { step: 'stuck', note }, 'stuck', {
+          note,
+          refused,
+        }));
+      }
+    }
     // Claude Code wrote its count of the session at the turn's end (HV5): kept for the Review tab.
     if (pacing) record = await noteSpent(where, record, await pacing.writer(turn.thread));
     const changed = summary.worktree.changed ?? 0;

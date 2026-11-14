@@ -4062,6 +4062,57 @@ describe('claudeCode', () => {
     ]);
   });
 
+  it("starts and resumes an issue's writer with its settings and --strict-mcp-config (HV10, 1054, 1063)", async () => {
+    const calls: string[][] = [];
+    const run: Run = (_command, args) => {
+      calls.push(args);
+      return Promise.resolve({ code: 0, stdout: '', stderr: '' });
+    };
+    const claude = claudeCode('/usr/bin/claude', { run, cwd: '/repo' });
+    await claude.start({
+      cwd: '/w',
+      name: 'fix/12-x',
+      prompt: 'Do it',
+      permissionMode: 'auto',
+      addDir: '/repo/symbiote',
+      settings: '/c/writers/a/settings.json',
+      strictMcpConfig: true,
+    });
+    await claude.resume({
+      sessionId: 'session-1',
+      cwd: '/w',
+      text: 'OK',
+      settings: '/c/writers/a/settings.json',
+      strictMcpConfig: true,
+    });
+    expect(calls).toEqual([
+      [
+        '--bg',
+        '--name',
+        'fix/12-x',
+        '--add-dir',
+        '/repo/symbiote',
+        '--settings',
+        '/c/writers/a/settings.json',
+        '--strict-mcp-config',
+        '--permission-mode',
+        'auto',
+        '--',
+        'Do it',
+      ],
+      [
+        '--bg',
+        '--resume',
+        'session-1',
+        '--settings',
+        '/c/writers/a/settings.json',
+        '--strict-mcp-config',
+        '--',
+        'OK',
+      ],
+    ]);
+  });
+
   it("starts on the model picked, else the project's, with --model (V47)", async () => {
     const calls: string[][] = [];
     const run: Run = (_command, args) => {

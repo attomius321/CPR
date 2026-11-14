@@ -54,6 +54,7 @@ import { skillsService } from './skills.js';
 import { readClaudeUsage, readCodexUsage, usageService } from './usage.js';
 import { workspaces } from './workspaces.js';
 import { viewIssueStarter } from './issue-start.js';
+import { hiveSandboxService } from './writer-reach.js';
 import { symbioteFolder } from './workspace-record.js';
 import { findClaude } from './claude-code.js';
 import { removeViewRecord, viewFile, writeViewRecord } from './mcp-bridge.js';
@@ -376,6 +377,7 @@ export async function view(argv: string[], given: CliContext): Promise<number> {
     intro: introOf(ctx),
     hiveReviewer: reviewerSettingsService(repo.root, claudeOf),
     hiveLanding: hiveLandingService(repo, repo.root, ctx.env),
+    hiveSandbox: hiveSandboxService(repo.root),
     hivePacing: hivePacingService(repo.root, pacing, { read: ctx.env.SYMBIOTE_USAGE !== 'off' }),
     // Settings' switch: the runner told at once (HV2), another process's change read at its tick.
     hive: {

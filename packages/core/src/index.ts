@@ -358,6 +358,8 @@ export {
   type HiveFinding,
   type HiveLanding,
   type HiveLandingSetting,
+  type HiveSandboxSetting,
+  type WriterEcosystem,
   type HiveLandsBy,
   type HivePacingSetting,
   type HivePause,

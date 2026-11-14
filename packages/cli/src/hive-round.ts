@@ -25,7 +25,8 @@ import { readPrompts } from './prompts.js';
 import { fillPrompt } from './prompt-text.js';
 import type { ReviewPlace } from './reviews.js';
 import { readThreadEnd } from './thread.js';
-import { symbioteFolder } from './workspace-record.js';
+import { readRecord, symbioteFolder } from './workspace-record.js';
+import { judgeTake } from './issue-record.js';
 import type { HiveContext, WatchRequest, Landing } from './hive-context.js';
 
 /** Lines of a check's output kept and sent, and their characters at most (a message's limit is 20,000). */
@@ -116,8 +117,35 @@ export function hiveRound(
     data: Record<string, unknown> = {},
   ): Promise<void> {
     if (ctx.closed) return;
-    await hiveEvent(where, branch, stamp(), kind, data);
+    const at = stamp();
+    await hiveEvent(where, branch, at, kind, data);
     log?.info({ branch, hive: kind, ...data }, `hive ${kind}`);
+    await judged(where, branch, kind, data, at);
+  }
+
+  /**
+   * A take judged by how its workspace ended (HV10, decision 1066): right once landed; wrong when
+   * its request was closed without a merge. Hive's own stops judge nothing.
+   */
+  async function judged(
+    where: ReviewPlace,
+    branch: string,
+    kind: string,
+    data: Record<string, unknown>,
+    at: string,
+  ): Promise<void> {
+    const closed =
+      kind === 'stuck' &&
+      typeof data.note === 'string' &&
+      data.note.includes('closed without a merge');
+    if (kind !== 'landed' && !closed) return;
+    const workspace = await readRecord(where, branch).catch(() => null);
+    if (!workspace?.issue) return;
+    await judgeTake(symbioteFolder(where), workspace.issue.number, branch, {
+      right: kind === 'landed',
+      why: kind === 'landed' ? 'landed' : 'closed',
+      at,
+    }).catch(() => undefined);
   }
 
   /**

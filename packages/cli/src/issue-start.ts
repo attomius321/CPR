@@ -122,7 +122,10 @@ export function issueStarter(ctx: IssueStartContext) {
     { by, from }: { by: IssueStartBy; from?: string },
   ): Promise<WorkspaceStart> {
     if (!(await ctx.hive())) {
-      throw new IssueRefused('Hive mode is off: work starts from an issue only while it is on', 409);
+      throw new IssueRefused(
+        'Hive mode is off: work starts from an issue only while it is on',
+        409,
+      );
     }
     let record = await ctx.classifier.record(number);
     if (!record) {

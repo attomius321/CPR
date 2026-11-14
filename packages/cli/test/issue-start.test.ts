@@ -11,7 +11,7 @@ import type {
 import { afterEach, describe, expect, it } from 'vitest';
 import { tempDir } from '../../core/test/helpers/git-repo.js';
 import { IssueRefused } from '../src/issue-classifier.js';
-import { readIssueEvents } from '../src/issue-record.js';
+import { appendIssueEvent, judgeTake, readIssueEvents } from '../src/issue-record.js';
 import {
   issueBranch,
   issueSlug,
@@ -302,5 +302,31 @@ describe("a start's request (decision 1061)", () => {
       }),
     );
     expect(request.issue).toBeUndefined();
+  });
+});
+
+describe('a take judged (decision 1066)', () => {
+  it('once per workspace, under the identity its start recorded; never a workspace with no start', async () => {
+    const folder = tempDir();
+    await judgeTake(folder, 3, 'fix/3-x', { right: true, why: 'landed', at: 'T1' });
+    expect(await readIssueEvents(folder, 3)).toEqual([]);
+    await appendIssueEvent(folder, 3, {
+      event: 'started',
+      at: 'T0',
+      branch: 'fix/3-x',
+      identity: 'id-1',
+    });
+    await judgeTake(folder, 3, 'fix/3-x', { right: false, why: 'closed', at: 'T1' });
+    await judgeTake(folder, 3, 'fix/3-x', { right: true, why: 'landed', at: 'T2' });
+    expect((await readIssueEvents(folder, 3)).filter((e) => e.event === 'judged')).toEqual([
+      {
+        event: 'judged',
+        at: 'T1',
+        identity: 'id-1',
+        right: false,
+        why: 'closed',
+        branch: 'fix/3-x',
+      },
+    ]);
   });
 });

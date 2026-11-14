@@ -281,8 +281,10 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
         // MC3: a lapsed Confirm stays on the person's bar; several starts or clean-ups, one call.
         const lapse =
           ' Unanswered, a Confirm stays on their Symbiote bar to confirm later: do not ask again unless they say so. Several starts or clean-ups go in one call, one Confirm.';
+        const fromIssue =
+          why === 'hive' && tools.some((t) => t.name === 'start_from_issue' && listedNow(t));
         const waits = why
-          ? `start_workspace${why === 'hive' ? ' and start_from_issue start' : ' starts'} at once, without the person's Confirm (${
+          ? `start_workspace${fromIssue ? ' and start_from_issue start' : ' starts'} at once, without the person's Confirm (${
               why === 'hive' ? 'Hive mode is on' : 'their setting in Symbiote'
             }): say first in one line what you start. The tools that start an agent again, record a verdict, act on a merge, mark merged work or clean up wait for the person's Confirm in Symbiote, 10 minutes at most: say first in one line what you will ask.${lapse}`
           : `The tools that start an agent, record a verdict, act on a merge, mark merged work or clean up wait for the person's Confirm in Symbiote, 10 minutes at most: say first in one line what you will ask.${lapse}`;

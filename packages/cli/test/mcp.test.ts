@@ -1272,8 +1272,12 @@ describe("Symbiote's MCP: start_from_issue (HV10b, decisions 1011, 1012, 1061)",
     expect(tool?.annotations).toEqual({ readOnlyHint: false, destructiveHint: false });
     expect(tool?.description).toContain("the person's Confirm");
     expect(tool?.description).toContain('start_workspace');
-    const hive = await listed(server(fakes().services, { withoutConfirm: () => Promise.resolve('hive') }));
-    expect(hive?.description).toContain("Starts at once, without the person's Confirm: Hive mode is on.");
+    const hive = await listed(
+      server(fakes().services, { withoutConfirm: () => Promise.resolve('hive') }),
+    );
+    expect(hive?.description).toContain(
+      "Starts at once, without the person's Confirm: Hive mode is on.",
+    );
   });
 
   it("starts Nucleus's at once while Hive is on: by Nucleus, from the branch given", async () => {
@@ -1302,7 +1306,8 @@ describe("Symbiote's MCP: start_from_issue (HV10b, decisions 1011, 1012, 1061)",
 
   it("answers a refusal in the start's words, and a wrong number before anything runs", async () => {
     const { services, calls } = fakes({
-      startFromIssue: () => Promise.reject(new Error('Issue #12 is not taken: the classifier refused it')),
+      startFromIssue: () =>
+        Promise.reject(new Error('Issue #12 is not taken: the classifier refused it')),
     });
     const mcp = server(services, { withoutConfirm: () => Promise.resolve('hive') });
     const refused = await call(mcp, 'start_from_issue', { number: 12 });

@@ -139,7 +139,9 @@ export function hiveLand(
     let record = await readHive(where, branch);
     if (!record || record.step !== 'landing' || ctx.closed) return;
     // HV8: by a pull or merge request where the repository says so, read at each landing.
-    const requests = lander.requests?.by() === 'request' ? lander.requests : undefined;
+    // HV10c: a workspace from an issue by `hive.issues.lands`, a request unless set otherwise.
+    const requests =
+      lander.requests?.by(summary.issue !== undefined) === 'request' ? lander.requests : undefined;
     if (!record.pushed?.ok || record.pushed.sha !== tip) {
       await pushOut(where, branch, tip);
       record = (await readHive(where, branch)) ?? record;

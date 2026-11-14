@@ -36,6 +36,7 @@ import {
   type WorkspaceFile,
 } from './workspace-record.js';
 import { startPoint, workOf, worktreeFolder } from './workspace-start.js';
+import { removeWriter } from './writer-reach.js';
 import { prepareSymbioteFolder, type ReviewPlace } from './reviews.js';
 import { appendSent, readThreadEnd, real } from './thread.js';
 import type { WorkspacesContext, Workspaces } from './workspace-context.js';
@@ -49,6 +50,7 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 /** A workspace started, its agent driven, and cleaned up. */
 export function workspaceLifecycle(
   {
+    cacheDir,
     claude,
     codex,
     config,
@@ -66,6 +68,7 @@ export function workspaceLifecycle(
     viaCodex,
   }: Pick<
     WorkspacesContext,
+    | 'cacheDir'
     | 'claude'
     | 'codex'
     | 'config'
@@ -92,7 +95,7 @@ export function workspaceLifecycle(
     modelFor,
     processEnded,
     promptOf,
-    settingsFile,
+    sessionSettings,
     summary,
     openShells,
   }: Pick<WorkspaceTrunk, 'trunkOf'> &
@@ -106,7 +109,7 @@ export function workspaceLifecycle(
       | 'modelFor'
       | 'processEnded'
       | 'promptOf'
-      | 'settingsFile'
+      | 'sessionSettings'
     > &
     Pick<WorkspaceSummaries, 'summary'> &
     Pick<WorkspaceOpen, 'openShells'>,
@@ -343,8 +346,9 @@ export function workspaceLifecycle(
       if (!existsSync(workspace.worktree)) {
         throw new WorkspaceRefused(`its worktree is gone: ${workspace.worktree}`, 409);
       }
-      // A session that wakes reads its settings file again, and does not start without it.
-      if (workspace.agent?.hooks) await settingsFile(where);
+      // A session that wakes reads its settings file again, and does not start without it; an
+      // issue's writer is given its own again (HV10, decision 1063).
+      const again = workspace.agent?.hooks ? await sessionSettings(where, workspace) : null;
       const session = newestSession(workspace, await agent.sessions(), real);
       if (!session?.sessionId || !session.id) {
         throw new WorkspaceRefused(
@@ -376,6 +380,7 @@ export function workspaceLifecycle(
         sessionId: session.sessionId,
         cwd: workspace.worktree,
         text,
+        ...(again?.strictMcpConfig ? again : {}),
       });
       if (!resumed.ok) throw new WorkspaceRefused(resumed.error, 502);
       const refs = await listRefs(repo);
@@ -446,6 +451,8 @@ export function workspaceLifecycle(
       }
       // Its documents go with its worktree; the record keeps their names (V40).
       if (workspace.documents) await removeDocuments(where, workspace.branch);
+      // An issue's writer's settings and install cache go with it too (HV10, decision 1053).
+      if (workspace.issue) await removeWriter(cacheDir, workspace.worktree);
       workspace.finished = now().toISOString();
       // Where its branch ended (V77, decision 566): History reads it once the branch is gone.
       if (tip) workspace.tip = tip;

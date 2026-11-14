@@ -8,6 +8,7 @@ import type { Pair } from './diffs.js';
 import {
   parseHiveChange,
   parseLandsBy,
+  parseSandboxDomains,
   parseHivePacing,
   parseModelChange,
   parseEffortChange,
@@ -292,6 +293,18 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     if (landing && url.pathname === '/api/hive/landing') {
       if (req.method === 'GET') return read(req, res, () => landing.read());
       return written(req, res, parseLandsBy, ({ by }) => answer(res, () => landing.set(by)));
+    }
+    // HV10c: how a workspace from an issue lands, `hive.issues.lands`.
+    if (landing && url.pathname === '/api/hive/landing/issues') {
+      return written(req, res, parseLandsBy, ({ by }) => answer(res, () => landing.setIssues(by)));
+    }
+    // HV10b: the hosts an issue's writer may reach.
+    const sandbox = options.hiveSandbox;
+    if (sandbox && url.pathname === '/api/hive/sandbox') {
+      if (req.method === 'GET') return read(req, res, () => sandbox.read());
+      return written(req, res, parseSandboxDomains, ({ allowedDomains }) =>
+        answer(res, () => sandbox.set(allowedDomains)),
+      );
     }
     const pacing = options.hivePacing;
     if (pacing && url.pathname === '/api/hive/pacing') {

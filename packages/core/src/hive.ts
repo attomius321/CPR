@@ -92,10 +92,30 @@ export type HiveLandsBy = 'queue' | 'request';
  */
 export interface HiveLandingSetting {
   by: HiveLandsBy;
+  /** How a workspace from an issue lands (HV10c, `hive.issues.lands`): a request by default. */
+  issues?: HiveLandsBy;
   forge?: { kind: 'github' | 'gitlab'; host: string; project: string };
   token: boolean;
   /** Why a request could not be opened now: no `origin`, no forge, no token. */
   why?: string;
+}
+
+/** An ecosystem a repository's root files name, and its hosts (HV10, decision 1052). */
+export interface WriterEcosystem {
+  name: string;
+  files: string[];
+  hosts: string[];
+}
+
+/**
+ * `GET /api/hive/sandbox` (HV10b): the network an issue's writer gets in Claude Code's sandbox,
+ * read from the main checkout's root files: each ecosystem and its hosts, the repository's own
+ * (`hive.sandbox.allowedDomains`), and the list in force.
+ */
+export interface HiveSandboxSetting {
+  ecosystems: WriterEcosystem[];
+  allowedDomains: string[];
+  hosts: string[];
 }
 
 /**

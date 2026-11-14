@@ -46,7 +46,8 @@ import {
   reviewPlace,
   type ReviewPlace,
 } from '../src/reviews.js';
-import { readThreadEnd, recordEvent } from '../src/thread.js';
+import { activityPath, readThreadEnd, recordEvent } from '../src/thread.js';
+import { appendIssueEvent, readIssueEvents } from '../src/issue-record.js';
 import {
   readRecord,
   serializeWorkspace,
@@ -2999,5 +3000,207 @@ describe('Hive lands by request without a forge (HV8, decision 792)', () => {
       /^Hive lands by pull or merge request, but origin is not a GitHub or GitLab repository/,
     );
     expect((await s.merges?.list())?.merges).toEqual([]);
+  });
+});
+
+/** Issue #12 on GitHub, as the start from an issue gives it (HV10). */
+const ISSUE_12 = {
+  forge: 'github' as const,
+  host: 'github.com',
+  project: 'acme/app',
+  number: 12,
+  url: 'https://github.com/acme/app/issues/12',
+  title: 'Config is null',
+  hash: 'e'.repeat(64),
+};
+
+/** A workspace from issue #12, as `startFromIssue` starts it: its worktree. */
+async function startIssue(s: Setup, branch = 'fix/12-config-is-null'): Promise<string> {
+  await appendIssueEvent(symbioteFolder(s.where), 12, {
+    event: 'started',
+    at: '2026-10-31T09:00:00.000Z',
+    branch,
+    identity: 'id-1',
+  });
+  const { workspace } = await s.service.start({
+    kind: 'fix',
+    title: 'Config is null',
+    parts: { happens: 'The config reads null.' },
+    branch,
+    planFirst: false,
+    agent: 'claude',
+    issue: ISSUE_12,
+  });
+  return workspace.worktree.path;
+}
+
+describe('A Hive workspace from an issue (HV10b, decisions 1013, 1050–1054, 1063, 1064)', () => {
+  it('starts its writer confined: its own settings, no MCP server, hive.issue in its prompt', async () => {
+    const repo = repository(['true']);
+    repo.write({ 'package-lock.json': '{}\n' });
+    repo.commit('lockfile');
+    const s = await setup(repo);
+    await s.turn(true);
+    const worktree = await startIssue(s);
+    const record = await readRecord(s.where, 'fix/12-config-is-null');
+    expect(record.issue).toEqual(ISSUE_12);
+    expect(record.brief).toMatch(
+      /^From issue #12 \(https:\/\/github\.com\/acme\/app\/issues\/12\)\.\n\n# Fix: Config is null\n/,
+    );
+    const call = s.fake.start.mock.calls[0]?.[0];
+    expect(call?.strictMcpConfig).toBe(true);
+    expect(call?.settings?.startsWith(join(cache, 'writers'))).toBe(true);
+    const settings = JSON.parse(readFileSync(call?.settings ?? '', 'utf8')) as {
+      hooks: unknown;
+      sandbox: { enabled: boolean; network: { allowedDomains: string[] } };
+    };
+    expect(settings.sandbox.enabled).toBe(true);
+    expect(settings.sandbox.network.allowedDomains).toEqual(['registry.npmjs.org']);
+    // Its hooks are Symbiote's: its turns are seen.
+    const shared = JSON.parse(
+      readFileSync(join(symbioteFolder(s.where), 'claude-settings.json'), 'utf8'),
+    ) as { hooks: unknown };
+    expect(settings.hooks).toEqual(shared.hooks);
+    expect(call?.prompt).toContain('This brief came from issue #12');
+    expect(call?.prompt).toContain('do not read the issue or its comments');
+    expect(readFileSync(join(repo.root, '.git', 'info', 'exclude'), 'utf8')).toContain('/.bashrc');
+    expect(worktree).toBe(record.worktree);
+  });
+
+  it('starts a workspace from a brief as before: the shared settings, its MCP servers', async () => {
+    const repo = repository(['true']);
+    const s = await setup(repo);
+    await s.turn(true);
+    await s.start('feature/one');
+    const call = s.fake.start.mock.calls[0]?.[0];
+    expect(call?.settings).toBe(join(symbioteFolder(s.where), 'claude-settings.json'));
+    expect(call?.strictMcpConfig).toBeUndefined();
+    expect(call?.prompt).not.toContain('came from issue');
+    expect(existsSync(join(cache, 'writers'))).toBe(false);
+  });
+
+  it("gives Hive's message to it with its settings and --strict-mcp-config again", async () => {
+    const repo = repository(['test -f two.txt']);
+    const s = await setup(repo);
+    await s.turn(true);
+    const worktree = await startIssue(s);
+    const runner = s.runner();
+    await s.fake.endTurn(worktree, { files: { 'one.txt': 'one\n' } });
+    await runner.tick();
+    await runner.idle();
+    await until(() => s.fake.resume.mock.calls.length > 0, 'the check sent');
+    const resumed = s.fake.resume.mock.calls.at(-1)?.[0];
+    expect(resumed?.text).toContain('`test -f two.txt` failed');
+    expect(resumed?.settings).toBe(s.fake.start.mock.calls[0]?.[0].settings);
+    expect(resumed?.strictMcpConfig).toBe(true);
+  });
+
+  it('stops a writer the sandbox refused a host, naming it and the setting', async () => {
+    const repo = repository(['true']);
+    const s = await setup(repo);
+    await s.turn(true);
+    const worktree = await startIssue(s);
+    const runner = s.runner();
+    const session = s.fake.sessionIn(worktree);
+    const activity = activityPath(symbioteFolder(s.where), 'fix/12-config-is-null');
+    mkdirSync(dirname(activity), { recursive: true });
+    appendFileSync(
+      activity,
+      `${JSON.stringify({
+        at: '2026-10-31T23:00:00.000Z',
+        session: session?.sessionId,
+        id: 't1',
+        tool: 'Bash',
+        phase: 'end',
+        failed: true,
+        output:
+          'npm error network\n<sandbox_violations>\ndeny network-outbound npm.corp.example:443\n</sandbox_violations>',
+      })}\n`,
+    );
+    await s.fake.endTurn(worktree, { files: { 'one.txt': 'one\n' } });
+    await runner.tick();
+    await runner.idle();
+    expect(await readHive(s.where, 'fix/12-config-is-null')).toMatchObject({
+      step: 'stuck',
+      note: "Claude Code's sandbox refused npm.corp.example:443: add it to hive.sandbox.allowedDomains in Settings → Hive if the writer needs it, then start the agent again",
+    });
+  });
+
+  it('is refused with Hive off, and its writer folder goes with it at Clean up', async () => {
+    const repo = repository(['true']);
+    const s = await setup(repo);
+    await expect(startIssue(s)).rejects.toThrow(
+      'Hive mode is off: work starts from an issue only while it is on',
+    );
+    await s.turn(true);
+    const worktree = await startIssue(s);
+    const settings = s.fake.start.mock.calls[0]?.[0].settings ?? '';
+    expect(existsSync(settings)).toBe(true);
+    await s.turn(false);
+    await s.service.clean({ branch: 'fix/12-config-is-null', unmerged: true });
+    expect(existsSync(dirname(settings))).toBe(false);
+    expect(existsSync(worktree)).toBe(false);
+  });
+});
+
+describe('A workspace from an issue lands (HV10c, decisions 1016, 1017, 1065, 1066)', () => {
+  it('by request by default, whatever hive.lands says', async () => {
+    const repo = repository(['true']);
+    origin(repo);
+    const git = await openRepo(repo.root);
+    const requests = hiveRequests(git, { env: {}, graphOf: () => Promise.reject(new Error('no')) });
+    const s = await setup(repo, { land: true, requests });
+    await s.turn(true);
+    const worktree = await startIssue(s);
+    const runner = s.runner();
+    await s.fake.endTurn(worktree, { files: { 'one.txt': 'one\n' } });
+    await settle(
+      runner,
+      s,
+      async () => (await stepOf(s, 'fix/12-config-is-null')) === 'stuck',
+      'stuck',
+    );
+    expect((await readHive(s.where, 'fix/12-config-is-null'))?.note).toMatch(
+      /^Hive lands by pull or merge request, but origin is not a GitHub or GitLab repository/,
+    );
+  });
+
+  it('through the queue when hive.issues.lands says so: Closes #n in the merge commit, the take judged right', async () => {
+    const repo = repository(['true']);
+    origin(repo);
+    const config = join(repo.root, 'symbiote', 'config.json');
+    const value = JSON.parse(readFileSync(config, 'utf8')) as Record<string, unknown>;
+    writeFileSync(config, JSON.stringify({ ...value, hive: { issues: { lands: 'queue' } } }));
+    const git = await openRepo(repo.root);
+    const requests = hiveRequests(git, { env: {}, graphOf: () => Promise.reject(new Error('no')) });
+    const s = await setup(repo, { land: true, requests });
+    await s.turn(true);
+    const worktree = await startIssue(s);
+    const runner = s.runner();
+    await s.fake.endTurn(worktree, { files: { 'one.txt': 'one\n' } });
+    await settle(
+      runner,
+      s,
+      async () => (await stepOf(s, 'fix/12-config-is-null')) === 'landed',
+      'landed',
+    );
+    const main = repo.git('rev-parse', 'main');
+    expect(repo.git('log', '-1', '--format=%s', main)).toBe(
+      'Merge fix/12-config-is-null: Config is null',
+    );
+    expect(repo.git('log', '-1', '--format=%b', main).trim()).toBe('Closes #12');
+    const judged = (await readIssueEvents(symbioteFolder(s.where), 12)).filter(
+      (e) => e.event === 'judged',
+    );
+    expect(judged).toEqual([
+      {
+        event: 'judged',
+        at: expect.any(String) as string,
+        identity: 'id-1',
+        right: true,
+        why: 'landed',
+        branch: 'fix/12-config-is-null',
+      },
+    ]);
   });
 });

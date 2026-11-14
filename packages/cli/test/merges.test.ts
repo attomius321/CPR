@@ -281,7 +281,10 @@ function issueWorkspace(repo: TestRepo, base: string) {
     worktree: join(repo.root, '..', 'wt'),
   };
   mkdirSync(join(repo.root, 'symbiote', 'workspaces'), { recursive: true });
-  writeFileSync(join(repo.root, 'symbiote', 'workspaces', 'topic.json'), serializeWorkspace(record));
+  writeFileSync(
+    join(repo.root, 'symbiote', 'workspaces', 'topic.json'),
+    serializeWorkspace(record),
+  );
 }
 
 const body = (repo: TestRepo, sha: string) => repo.git('log', '-1', '--format=%b', sha);
@@ -311,7 +314,7 @@ describe('the merge commit of a workspace from an issue (HV10, decisions 1017, 1
     expect(body(repo, merge).trim()).toBe('Closes #12');
   });
 
-  it("keeps Closes #n in a merge the merger agent resolved", async () => {
+  it('keeps Closes #n in a merge the merger agent resolved', async () => {
     const { repo, shas } = conflicting();
     issueWorkspace(repo, shas.A);
     config(repo, { checks: 'ok' });

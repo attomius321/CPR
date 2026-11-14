@@ -9,8 +9,10 @@ import { firstRecord } from '../src/hive-record.js';
 import {
   landingSetting,
   originForge,
+  readIssueLandsBy,
   readLandsBy,
   requestBody,
+  setIssueLandsBy,
   setLandsBy,
 } from '../src/hive-request.js';
 
@@ -47,6 +49,30 @@ describe('hive.lands', () => {
   });
 });
 
+describe('hive.issues.lands (HV10c, decision 1016)', () => {
+  it('is a request unless the config says queue, whatever hive.lands says; Settings writes it', async () => {
+    const repo = repository();
+    expect(readIssueLandsBy(repo.root)).toBe('request');
+    mkdirSync(join(repo.root, 'symbiote'), { recursive: true });
+    writeFileSync(join(repo.root, 'symbiote', 'config.json'), '{ "hive": { "lands": "queue" } }\n');
+    expect(readLandsBy(repo.root)).toBe('queue');
+    expect(readIssueLandsBy(repo.root)).toBe('request');
+    await setIssueLandsBy(repo.root, 'queue');
+    expect(readIssueLandsBy(repo.root)).toBe('queue');
+    expect(JSON.parse(readFileSync(join(repo.root, 'symbiote', 'config.json'), 'utf8'))).toEqual({
+      hive: { lands: 'queue', issues: { lands: 'queue' } },
+    });
+    await setIssueLandsBy(repo.root, 'request');
+    expect(readIssueLandsBy(repo.root)).toBe('request');
+    expect(JSON.parse(readFileSync(join(repo.root, 'symbiote', 'config.json'), 'utf8'))).toEqual({
+      hive: { lands: 'queue' },
+    });
+    await expect(setIssueLandsBy(repo.root, 'merge')).rejects.toThrow(
+      'Work from an issue lands by "queue" or "request"',
+    );
+  });
+});
+
 describe("origin's forge", () => {
   const make = (token: boolean) => (url: string) =>
     url.includes('gitlab')
@@ -79,6 +105,8 @@ describe("origin's forge", () => {
     expect('why' in found).toBe(false);
     expect(await landingSetting(git, repo.root, {}, make(true))).toEqual({
       by: 'queue',
+      // HV10c: a workspace from an issue lands by request unless set.
+      issues: 'request',
       forge: { kind: 'github', host: 'github.com', project: 'acme/app' },
       token: true,
     });
@@ -97,6 +125,8 @@ describe("origin's forge", () => {
     repo.git('remote', 'set-url', 'origin', 'https://gitlab.com/acme/app.git');
     expect(await landingSetting(git, repo.root, {}, make(false))).toEqual({
       by: 'queue',
+      // HV10c: a workspace from an issue lands by request unless set.
+      issues: 'request',
       forge: { kind: 'gitlab', host: 'gitlab.com', project: 'acme/app' },
       token: false,
       why: 'no GitLab token for gitlab.com: set GITLAB_TOKEN (a personal or project access token with api scope)',
@@ -141,5 +171,23 @@ describe("the request's description", () => {
         "Opened by Symbiote's Hive. Merge this pull request to land it; close it to stop the workspace. The forge's CI is not waited on.",
       ].join('\n\n'),
     );
+  });
+});
+
+describe("the request's description of a workspace from an issue (HV10c, decision 1017)", () => {
+  it('starts with Closes #n., then the brief', () => {
+    const record = firstRecord('fix/12-x', '2026-11-02T10:00:00Z');
+    const body = requestBody(record, {
+      brief: 'From issue #12 (https://github.com/acme/app/issues/12).\n\n# Fix: X',
+      approval: 'Approved by Hive.',
+      kind: 'gitlab',
+      issue: { number: 12 },
+    });
+    expect(body.split('\n\n').slice(0, 3)).toEqual([
+      'Closes #12.',
+      'From issue #12 (https://github.com/acme/app/issues/12).',
+      '# Fix: X',
+    ]);
+    expect(requestBody(record, { brief: 'B', approval: 'A', kind: 'github' })).toMatch(/^B\n/);
   });
 });
