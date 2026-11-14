@@ -33,5 +33,8 @@ Built in one branch from `main` at `d8193b4`, after the person agreed the detail
   mutations of the writer each failed a test.
 - e2e: `issues-answered.spec.ts`, 3 passed (24 s): the queue on GitHub, a merge request on GitLab,
   Settings' rows. Settings' rows looked at in both themes at 1440 × 1000.
-- `pnpm check`, `pnpm build`, `pnpm test:e2e`: see the branch's last commit.
+- `pnpm check`: 277 files, 3,862 tests passed. `pnpm build` passed. `pnpm test:e2e`: viewer 496
+  passed, nexus 32 passed. Its first run failed one test of `issues-classify.spec.ts`: its
+  `getByRole('group', { name: 'Issues' })` matches any name holding "issues", and the new On/Off
+  group was named "Answer issues". Renamed "Answers on or off"; then the whole suite passed.
 - Not verified: a real forge (HV12).

@@ -753,7 +753,7 @@ function IssueAnswers({ onSaid }: { onSaid: (said: Said) => void }) {
             : 'A comment and a label when Hive takes, asks, refuses, opens a request, lands or stops; closed once landed. Only Symbiote’s own sentences, and the classifier’s question cleaned.'
         }
       >
-        <span className="scopes" role="group" aria-label="Answer issues">
+        <span className="scopes" role="group" aria-label="Answers on or off">
           {ANSWER_CHOICES.map((choice) => (
             <button
               key={choice.label}
