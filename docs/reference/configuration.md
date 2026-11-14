@@ -750,6 +750,13 @@ What the keys do not keep out:
 The keys stop a call that anything can find by using Symbiote's API. Keeping your own agents out
 completely needs them to run as another user or in a sandbox that cannot reach `127.0.0.1`.
 
+Every agent Symbiote starts with Claude Code runs without `ListAgents` and `RemoteTrigger`: the
+workspace agents, Nucleus, Scribe, the running reviewer, the merger and the advisor. It cannot
+list your other Claude Code sessions or run your claude.ai routines. It keeps `SendMessage`, which
+follows up its own subagents. With it, an agent can still write to a session whose name it knows,
+such as Nucleus. A writer started from an issue loses `SendMessage` too. An agent started before
+Symbiote denied them keeps them until it is started again: a resumed session keeps its tools.
+
 ## Branches hidden from Git, `symbiote/git.json`
 
 A branch hidden from Git's graph (right-click it in the branches panel, **Hide from the graph**)

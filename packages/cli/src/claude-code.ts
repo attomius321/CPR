@@ -618,6 +618,18 @@ export function shellWord(path: string, platform: NodeJS.Platform): string {
   return platform === 'win32' ? `"${path}"` : `'${path.replaceAll("'", "'\\''")}'`;
 }
 
+/**
+ * Claude Code's tools that reach the person's other sessions on their own (decision 1078):
+ * `ListAgents` lists them, Nucleus among them; `RemoteTrigger` runs a claude.ai routine as the
+ * person, which may post into a session. Every agent Symbiote starts is denied them. `SendMessage`
+ * stays: it also follows up an agent's own subagents, and an agent keeps every ability it has.
+ * Listed again on each Claude Code version (2.1.325).
+ */
+export const SESSION_TOOLS = ['ListAgents', 'RemoteTrigger'] as const;
+
+/** `--disallowedTools` with `SESSION_TOOLS`: for an agent started without a settings file. */
+export const SESSION_TOOLS_ARGS = ['--disallowedTools', SESSION_TOOLS.join(',')] as const;
+
 /** The tools' events (V48f): every tool's start, its end, its failure. */
 const TOOL_EVENTS = ['PreToolUse', 'PostToolUse', 'PostToolUseFailure'] as const;
 
@@ -626,7 +638,8 @@ const TOOL_EVENTS = ['PreToolUse', 'PostToolUse', 'PostToolUseFailure'] as const
  * runs `agent-hook.js` with the `symbiote/` folder; `PreToolUse` only for questions. With V48f,
  * every tool's start, end and failure run it in its `activity` mode, in the background (`async`:
  * a run costs ~30 ms, the tool does not wait for it). It decides nothing. With `cache` (V94c),
- * `--cache=<dir>` ends each command: where the hook finds the running views to tell.
+ * `--cache=<dir>` ends each command: where the hook finds the running views to tell. `ListAgents`
+ * and `RemoteTrigger` are denied (decision 1078).
  */
 export function agentSettings(
   where: { node: string; hook: string; symbiote: string; cache?: string },
@@ -654,5 +667,5 @@ export function agentSettings(
     ]),
   );
   for (const event of TOOL_EVENTS) hooks[event] = [...(hooks[event] ?? []), tools];
-  return `${JSON.stringify({ hooks }, null, 2)}\n`;
+  return `${JSON.stringify({ hooks, permissions: { deny: [...SESSION_TOOLS] } }, null, 2)}\n`;
 }

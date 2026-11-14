@@ -27,7 +27,7 @@ import {
   modelProblem,
   modelWordProblem,
 } from './agent-levels.js';
-import { shellWord, type ClaudeCode } from './claude-code.js';
+import { SESSION_TOOLS, shellWord, type ClaudeCode } from './claude-code.js';
 import { localHost, onPath } from './editor.js';
 import { claudeLine } from './merge-agent.js';
 import type { MergeLog } from './merge-log.js';
@@ -120,7 +120,11 @@ export const REVIEW_SCHEMA = {
 export function reviewerSettings(): string {
   const settings = {
     disableAllHooks: true,
-    permissions: { defaultMode: 'dontAsk', allow: ['Bash', 'Edit(./**)', 'Write(./**)'] },
+    permissions: {
+      defaultMode: 'dontAsk',
+      allow: ['Bash', 'Edit(./**)', 'Write(./**)'],
+      deny: [...SESSION_TOOLS],
+    },
     sandbox: {
       enabled: true,
       failIfUnavailable: true,

@@ -9,6 +9,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { appendFile, chmod, mkdir, readFile, readdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { HiveSandboxSetting } from '@symbiote/core';
+import { SESSION_TOOLS } from './claude-code.js';
 import { writeConfig } from './config-write.js';
 import { writeFileWhole } from './file-write.js';
 import { FORGE_TOKENS, secretName } from './nucleus-record.js';
@@ -219,12 +220,12 @@ const DENIED_TOOLS = [
   'ArtifactData',
   'ArtifactComments',
   'DesignSync',
-  'RemoteTrigger',
   'SendToProject',
   'SendToProjectContext',
   'PushNotification',
-  // The person's other sessions on this machine, Nucleus among them.
-  'ListAgents',
+  // The person's other sessions, Nucleus among them, and their routines (`ListAgents` and
+  // `RemoteTrigger` every agent's, 1078); a message to one.
+  ...SESSION_TOOLS,
   'SendMessage',
 ];
 

@@ -484,3 +484,4 @@ merge commit.
 - 2026-11-14 [Fix — normal mode's Ask asks: the permission mode passed to Claude Code by its name](journal/fix-default-permission-mode.md)
 - 2026-11-14 [HV10b, HV10c — the start from an issue, the writer's reach, landing with Closes #n](journal/hv10-workspace-from-issue.md)
 - 2026-11-14 [HV11a, HV11b — the forge writes to issues; Hive answers each step, within limits](journal/hv11-issue-answered.md)
+- 2026-11-14 [Fix — no agent lists your other sessions or runs your routines: `ListAgents` and `RemoteTrigger` denied](journal/fix-agents-no-session-messages.md)

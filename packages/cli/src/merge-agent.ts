@@ -3,6 +3,7 @@
 // the markers, commits the merge, and the person reviews each region before it lands.
 import { isAbsolute, relative } from 'node:path';
 import type { AgentKind, MergeAgentEvent } from '@symbiote/core';
+import { SESSION_TOOLS_ARGS } from './claude-code.js';
 import { runWithInput, type RunWithInput } from './programs.js';
 import { DEFAULT_PROMPTS, MERGER_ANSWER } from './prompt-text.js';
 
@@ -416,6 +417,7 @@ export function claudeMerger(
         ...(thinking ? ['--thinking-display', 'summarized'] : []),
         '--tools',
         'Read,Grep,Glob',
+        ...SESSION_TOOLS_ARGS,
         '--strict-mcp-config',
         '--no-session-persistence',
         ...(model ? ['--model', model] : []),

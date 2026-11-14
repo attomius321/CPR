@@ -247,6 +247,8 @@ describe("the agents' arguments", () => {
       '--strict-mcp-config',
       '--tools',
       '',
+      '--disallowedTools',
+      'ListAgents,RemoteTrigger',
       '--no-session-persistence',
     ]);
     expect(claudeAdviceArgs({ instructions: 'x', schema })).not.toContain('--model');

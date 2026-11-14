@@ -118,6 +118,7 @@ describe("the reviewer's run (decisions 676, 677)", () => {
     expect(settings.permissions).toEqual({
       defaultMode: 'dontAsk',
       allow: ['Bash', 'Edit(./**)', 'Write(./**)'],
+      deny: ['ListAgents', 'RemoteTrigger'],
     });
     expect(settings.disableAllHooks).toBe(true);
   });
