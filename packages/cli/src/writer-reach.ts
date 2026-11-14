@@ -206,17 +206,26 @@ const CREDENTIAL_FILES = [
 ];
 
 /**
- * Claude Code's tools that reach claude.ai or the web: no sandbox stands between them and the
- * network (HV10a). `WebFetch` lives in the built-in `web-fetch` agent since 2.1.323; the deny
- * removes it.
+ * Claude Code's tools that reach the web, claude.ai or the person's other sessions: no sandbox
+ * stands between them and the network (HV10a). `WebFetch` lives in the built-in `web-fetch` agent
+ * since 2.1.323; the deny removes it. A new Claude Code may add more: list a writer's tools again
+ * on each version (HV10b's probe 14).
  */
 const DENIED_TOOLS = [
   'WebFetch',
   'WebSearch',
+  // claude.ai's, as Claude Code 2.1.325 listed them to a writer (HV10b's real run).
+  'Artifact',
+  'ArtifactData',
+  'ArtifactComments',
+  'DesignSync',
   'RemoteTrigger',
   'SendToProject',
-  'ArtifactComments',
+  'SendToProjectContext',
   'PushNotification',
+  // The person's other sessions on this machine, Nucleus among them.
+  'ListAgents',
+  'SendMessage',
 ];
 
 /**
@@ -261,7 +270,9 @@ export function issueWriterSettings({
     permissions: {
       deny: [
         ...DENIED_TOOLS,
-        `Edit(${absolute(join(cacheDir, 'writers'))}/**)`,
+        // Its own settings file only: an Edit deny is a write deny in the sandbox too, and one on
+        // the writers' folder made the install cache read-only (HV10b's real run).
+        `Edit(${absolute(join(folder, 'settings.json'))})`,
         `Edit(${absolute(join(cacheDir, 'hooks'))}/**)`,
         ...protect.map((path) => `Edit(${absolute(path)})`),
       ],
@@ -271,7 +282,9 @@ export function issueWriterSettings({
       failIfUnavailable: true,
       autoAllowBashIfSandboxed: true,
       allowUnsandboxedCommands: false,
-      network: { allowLocalBinding: true, allowedDomains: [...hosts] },
+      // No command widens it: Claude Code 2.1.325 lets a Bash call add hosts of its own
+      // (`allowed_domains`, reviewed by auto mode's classifier) unless the allowlist is strict.
+      network: { allowLocalBinding: true, allowedDomains: [...hosts], strictAllowlist: true },
       filesystem: { allowWrite: [join(folder, 'cache')] },
       credentials: {
         files: CREDENTIAL_FILES.map((path) => ({ path, mode: 'deny' })),
@@ -391,6 +404,8 @@ export async function removeWriter(cacheDir: string, worktree: string): Promise<
 
 /** Each host Claude Code's sandbox refused, as its commands' output names it (decision 1064). */
 export function refusedHosts(text: string): string[] {
-  const hosts = [...text.matchAll(/\bdeny network-outbound (\S+)/g)].map((m) => m[1] ?? '');
+  const hosts = [...text.matchAll(/\bdeny network-outbound ([\w.*\-[\]:]+[\w\]])/g)].map(
+    (m) => m[1] ?? '',
+  );
   return [...new Set(hosts.filter((h) => h !== ''))];
 }

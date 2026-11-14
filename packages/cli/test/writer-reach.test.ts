@@ -147,7 +147,13 @@ describe("an issue writer's settings (decisions 1050–1054, 1063)", () => {
       failIfUnavailable: true,
       autoAllowBashIfSandboxed: true,
       allowUnsandboxedCommands: false,
-      network: { allowLocalBinding: true, allowedDomains: ['registry.npmjs.org'] },
+      // strictAllowlist: no command widens it with its own allowed_domains (2.1.325 lets one,
+      // reviewed by auto mode's classifier).
+      network: {
+        allowLocalBinding: true,
+        allowedDomains: ['registry.npmjs.org'],
+        strictAllowlist: true,
+      },
       filesystem: { allowWrite: [join(folder, 'cache')] },
     });
   });
@@ -167,16 +173,26 @@ describe("an issue writer's settings (decisions 1050–1054, 1063)", () => {
     ]);
   });
 
-  it("denies the web tools, the claude.ai tools and edits of Symbiote's own files", () => {
+  it("denies the web, claude.ai's and other sessions' tools, and edits of Symbiote's own files", () => {
     expect(settings().permissions).toEqual({
       deny: [
         'WebFetch',
         'WebSearch',
+        // claude.ai's, as Claude Code 2.1.325 lists them to a writer (HV10b's real run).
+        'Artifact',
+        'ArtifactData',
+        'ArtifactComments',
+        'DesignSync',
         'RemoteTrigger',
         'SendToProject',
-        'ArtifactComments',
+        'SendToProjectContext',
         'PushNotification',
-        'Edit(//c/symbiote/writers/**)',
+        // The person's other sessions on this machine, Nucleus among them.
+        'ListAgents',
+        'SendMessage',
+        // Its own settings file only: an Edit deny is a write deny in the sandbox too, and one on
+        // the writers' folder made the install cache read-only (the real run's npm).
+        `Edit(/${folder}/settings.json)`,
         'Edit(//c/symbiote/hooks/**)',
         'Edit(//r/symbiote/claude-settings.json)',
       ],
@@ -265,9 +281,11 @@ describe('a host the sandbox refused (decision 1064)', () => {
     expect(
       refusedHosts(
         'npm error network request failed\ndeny network-outbound api.github.com:443\n' +
-          'deny network-outbound evil.example\ndeny network-outbound api.github.com:443',
+          'deny network-outbound evil.example\ndeny network-outbound api.github.com:443\n' +
+          // The writer's own words around it, as the real run's probes.txt had them.
+          '6. 2026/11/14 1 (sandbox: deny network-outbound github.com:22)',
       ),
-    ).toEqual(['api.github.com:443', 'evil.example']);
+    ).toEqual(['api.github.com:443', 'evil.example', 'github.com:22']);
     expect(refusedHosts('all good')).toEqual([]);
   });
 });
