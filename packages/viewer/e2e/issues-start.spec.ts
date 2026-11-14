@@ -142,6 +142,15 @@ test('Start in Hive: the workspace on the card, the row and the sidenav, its wri
   // The writer started with its own settings, in Symbiote's cache, and no MCP server of the person's.
   const [args] = starts();
   expect(args).toContain('--strict-mcp-config');
+  // The classifier's model and effort for the work (decision 1011's request from the decision).
+  expect(args?.slice(args.indexOf('--model'), args.indexOf('--model') + 2)).toEqual([
+    '--model',
+    'sonnet',
+  ]);
+  expect(args?.slice(args.indexOf('--effort'), args.indexOf('--effort') + 2)).toEqual([
+    '--effort',
+    'medium',
+  ]);
   const settings = args?.[(args?.indexOf('--settings') ?? 0) + 1] ?? '';
   expect(settings).toMatch(/[\\/]writers[\\/][0-9a-f]{16}[\\/]settings\.json$/);
   const written = JSON.parse(readFileSync(settings, 'utf8')) as {

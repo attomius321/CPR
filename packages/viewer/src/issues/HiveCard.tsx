@@ -186,7 +186,6 @@ export function HiveCard({
           )}
         </p>
       )}
-      {started.held && <p className="issues-hive-note">{started.held}</p>}
       {startRefused && (
         <p className="error issues-hive-refused" role="alert">
           {startRefused}

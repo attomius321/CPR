@@ -738,33 +738,35 @@ function WriterNetwork({ onSaid }: { onSaid: (said: Said) => void }) {
           An issue's writer runs in Claude Code's sandbox, without the forge's credentials or the
           web. Its commands reach the registries of the ecosystems found here, and the hosts you
           add: a private registry, a git dependency. A host it is refused stops the workspace.
+          {read && (
+            <ul className="hive-standing-facts hive-hosts-found" aria-label="Hosts in force">
+              {read.ecosystems.map((e) => (
+                <li key={e.name}>
+                  {e.name} ({e.files.join(', ')}):{' '}
+                  <span className="hive-commands">
+                    {e.hosts.map((h) => (
+                      <code key={h}>{h}</code>
+                    ))}
+                  </span>
+                </li>
+              ))}
+              {read.ecosystems.length === 0 && (
+                <li>No ecosystem found at the repository's root.</li>
+              )}
+              {read.allowedDomains.length > 0 && (
+                <li>
+                  Yours:{' '}
+                  <span className="hive-commands">
+                    {read.allowedDomains.map((h) => (
+                      <code key={h}>{h}</code>
+                    ))}
+                  </span>
+                </li>
+              )}
+              <li>In force: {plural(read.hosts.length, 'host')}.</li>
+            </ul>
+          )}
         </span>
-        {read && (
-          <ul className="hive-standing-facts hive-hosts-found" aria-label="Hosts in force">
-            {read.ecosystems.map((e) => (
-              <li key={e.name}>
-                {e.name} ({e.files.join(', ')}):{' '}
-                <span className="hive-commands">
-                  {e.hosts.map((h) => (
-                    <code key={h}>{h}</code>
-                  ))}
-                </span>
-              </li>
-            ))}
-            {read.ecosystems.length === 0 && <li>No ecosystem found at the repository's root.</li>}
-            {read.allowedDomains.length > 0 && (
-              <li>
-                Yours:{' '}
-                <span className="hive-commands">
-                  {read.allowedDomains.map((h) => (
-                    <code key={h}>{h}</code>
-                  ))}
-                </span>
-              </li>
-            )}
-            <li>In force: {plural(read.hosts.length, 'host')}.</li>
-          </ul>
-        )}
       </div>
       <form
         className="hive-about-form"
@@ -779,7 +781,7 @@ function WriterNetwork({ onSaid }: { onSaid: (said: Said) => void }) {
           rows={3}
           disabled={!read || busy}
           spellCheck={false}
-          placeholder={'npm.example.com\n*.corp.example'}
+          placeholder="One host a line, as npm.example.com"
           onChange={(event) => setTyped(event.target.value)}
         />
         <div className="hive-about-foot">
