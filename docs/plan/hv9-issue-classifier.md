@@ -3,8 +3,8 @@
 [Index](../PLAN.md) · [Journal](../journal/hv9-issue-classifier.md); the loop's first
 measurements are in [the chore's journal](../journal/chore-hive-issue-loop-gaps.md)
 
-**Status:** HV9b built (2026-11-13) on `feature/hv9b-issue-classifier`, ready for review (Plan and As built (HV9b), below). HV9a measured (2026-11-13) on `spike/hv9a-classifier-eval`, ready for review: Opus
-at `high` with the prompt p2 (As built, below); HV9c not started. Planned (2026-11-12) by
+**Status:** HV9c built (2026-11-14) on `feature/hv9c-classifier-page`, ready for review (Plan and As built (HV9c), below). HV9b built (2026-11-13) on `feature/hv9b-issue-classifier`, ready for review (Plan and As built (HV9b), below). HV9a measured (2026-11-13) on `spike/hv9a-classifier-eval`, ready for review: Opus
+at `high` with the prompt p2 (As built, below). Planned (2026-11-12) by
 the chore `chore/hive-issue-loop-gaps` (from `main` at `a47dda3`). It is the first of five milestones that bring a forge's issues into
 Hive's loop (HV9 to HV13). The chore's journal ranks them and says what each step of the loop has
 today.
@@ -526,3 +526,95 @@ What differs from the plan:
 as HV9a's Opus answers on all 10, 8 of 10 as the author labelled them (the two others are HV9a's
 borderline asks). 5 takes and 5 refusals: 1 unsafe, 2 not a change, 2 out of scope. $0.48 in
 all, $0.040 at the median, 11.8 s at the median.
+
+## Plan (HV9c)
+
+Planned on 2026-11-14 in the workspace `feature/hv9c-classifier-page` (from `main` at
+`edd3b28`), and agreed by the person before any code ("Go with recommended"): the four choices
+below took the plan's first answer each.
+
+What HV9b left:
+
+- The record holds everything the card shows (the decision, the hold, the refusal, the answer,
+  the brief, the snapshot, the identity, the run's time and cost), but its types are the CLI's,
+  and the viewer imports only types from core.
+- Nothing lists the records: the rows come from the forge, and `GET /api/issues/<n>/classification`
+  reads one.
+- Whether an issue changed since its snapshot needs the snapshot's hash of the issue as it is now,
+  which only the CLI computes (`issueSnapshot`). A second forge read per card would double the
+  requests: an issue is 2 of GitHub's 60 an hour without a token.
+- Nothing writes `hive.issues.about`, `hive.classifier.model` or `.effort`; Settings lists the
+  prompt only.
+- Decision 1040's count has the identity, but no `judged` or `ended` event exists (HV10 writes
+  them), and nothing runs HV9a's hostile sets (37 issues in `scripts/classifier-eval/`, not
+  shipped) with a repository's card.
+
+What it builds:
+
+1. **Core**: the record's types move to `core/src/issues.ts`; `IssueAnswer.snapshot`, the hash the
+   classifier's snapshot of the issue would have now.
+2. **The server**: `GET /api/issues/<n>` carries `snapshot`, computed from the read it made (no
+   forge request more). `GET /api/issues/classifications`: each record of origin's forge as a row's
+   decision, whether `hive.issues.about` is set, and the classifier's current identity. `GET
+   /api/hive/classifier` and `POST …/about`, `…/model`, `…/effort` (the page key): the text (at most
+   4,000 characters, a longer one refused with words, an empty one removed), the model and effort
+   checked against Claude Code's list as the reviewer's, and the standing. One function gives the
+   identity, to classifying and to the standing.
+3. **The Issues page**: a chip on each row; a Hive card at the top of the issue's view with the
+   decision and everything the record says of it, its actions at the end of its head (room for
+   HV10's Start); Classify and Classify again as decision 1056 says.
+4. **Settings → Hive**: a group "Issues" with the project's text, the classifier's model and
+   effort, and the standing, in no repository's words.
+5. **Nucleus**: `classify_issue`, an issue's number, with no Confirm.
+
+**The person's choices**: a held take's chip says Held; Classify again also after a failure and
+after the classifier changed; the hostile sets show "not run" until HV13 runs them; the `judged`
+event's shape is fixed now, for HV10 to write.
+
+**Verification (HV9c)**: the plan's 4 and 6, red first: the chips' and the card's words and what
+the card offers, per state; the routes, the settings, the identity shared with classifying, the
+standing's counts; `classify_issue` on the MCP tests' fake; an e2e spec on the fake forge with a
+fake classifier (Classify, each decision, the chips, Classify again after an edit, Hive off with no
+Classify, no `hive.issues.about` refused with words, Settings saving the text and the model);
+screenshots of every state at 1x in both themes; 3 real vite issues through the built view, read
+only.
+
+**Decisions (HV9c)**
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 1055 | What does a row show? (details 1008) | **A chip: Taken, Held (a take that waits for the person's click, 1034), Asked, Refused or Failed, an icon and a word; none for an issue never classified; in both modes** | The person sees every decision at a glance; a hold is the person's turn, not a take that may start |
+| 1056 | When does the card offer Classify? (details 1008) | **With Hive on: Classify when there is no record and `hive.issues.about` is set; Classify again when the issue changed since its snapshot, when the classifier changed (its identity, 1041), or when the last one failed, the card saying which. Without `hive.issues.about`, the refusal's words and a link to Settings. With Hive off, a past decision shows with "Hive is off"; an issue never classified shows no card** | Normal mode stays IS1's page; a failure or a new prompt, model or card deserves a new answer |
+| 1057 | How does the page know the issue changed? | **The server puts the hash of the snapshot the classifier would read now in `GET /api/issues/<n>`, from the read it made; the browser compares it with the record's** | No second forge read; the hash is the classifier's own (1001) |
+| 1058 | What is `classify_issue`? (details 1008) | **An issue's number in; the decision, reasons, question, the take's fields, the brief and the cost out; refusals in the page's words; marked as acting, not destructive (it writes a record); no Confirm, as `suggest_settings` (582)** | It changes nothing in the repository and starts nothing |
+| 1059 | What does Settings count for 1040? | **Under the current identity: the records by decision, the judged takes right and wrong from `judged` events (`{ event: 'judged', right, why }`, written from HV10 on), the bar (20, 95 %), and the hostile sets' result, "not run" until HV13 runs them** | The person's live count; nothing judges a take before HV10 |
+| 1060 | What of a `hive.issues.about` over 4,000 characters? | **Settings refuses to save it, with words; a longer text written by hand is still cut at reading (HV9b)** | What the person sees saved is what the classifier reads |
+
+## As built (HV9c)
+
+HV9c was built on 2026-11-14 on `feature/hv9c-classifier-page`, as its plan above says. The code
+is `packages/viewer/src/issues/HiveCard.tsx` and `classification.ts` (the words, pure), the
+classifier's settings in `settings/HivePage.tsx` and `classifier-words.ts`, the routes in
+`issue-classifier.ts` and `server.ts`, and `mcp-issues.ts`. The journal has the measurements and
+what was learned.
+
+What differs from the plan:
+
+- **A failed classification shows none of its answer.** The plan's card showed the reasons and
+  flags of any record. A failed record keeps the model's last answer, which did not fit: its four
+  reasons read as the decision's in the first screenshots. The card shows only why it failed, and
+  Classify again needs no line of its own for a failure.
+- **The judged event carries the identity that took the take** (`JudgedEvent.identity`, decision
+  1059). A record keeps its last classification only: after Classify again under a new identity,
+  the record could not say which classifier a judged take belonged to.
+- **The record's types moved to core**, the flags' and refusals' lists with them
+  (`CLASSIFIER_FLAGS`, `CLASSIFIER_REFUSALS`); the CLI imports them.
+- **The running reviewer's model and effort selects are shared** with the classifier's
+  (`LevelSelects`): one list, the same short words ("Opus 5.5 (default)").
+
+**Results (HV9c)**: 3 of HV9b's vite issues (the clone at `f898888`, HV9b's) through the built
+page, read only: the same decisions as HV9b's: #24083 taken (a fix, large, Opus at high),
+#23151 refused as unsafe by Symbiote's rules (`outside-actions`, the model also flagging
+`ci-or-release`), #23936 refused as out of scope. $0.145 in all; the classifier's own time 18.3,
+9.3 and 5.6 s; from the click to the card 20.3, 11.1 and 7.5 s. The identity Settings computes
+equals the three records', so no card offered Classify again on unchanged issues.

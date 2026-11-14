@@ -815,6 +815,14 @@ export const IdleIcon = () => (
   </Icon>
 );
 
+/** An issue the classifier refused (HV9c): lucide's ban. */
+export const RefusedIcon = () => (
+  <Icon lucide>
+    <circle cx="12" cy="12" r="10" />
+    <path d="m4.9 4.9 14.2 14.2" />
+  </Icon>
+);
+
 /** Stop, on an analysis's page (V71): lucide's circle-stop. */
 export const StopIcon = () => (
   <Icon lucide>

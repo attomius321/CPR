@@ -5,13 +5,16 @@
 // would not show (HTML comments, scripts, zero-width and bidirectional characters) is dropped
 // and flagged.
 import { createHash } from 'node:crypto';
-import type { Issue, IssueAuthor, IssueComment } from '@symbiote/core';
+import type {
+  Issue,
+  IssueAuthor,
+  IssueComment,
+  IssueSnapshot,
+  IssueSnapshotFlag,
+} from '@symbiote/core';
 
 /** The longest text the classifier reads (decision 1001): longer is cut and flagged. */
 export const MAX_ISSUE = 20_000;
-
-/** What Symbiote flags itself, before the model (decision 1005). */
-export type SymbioteFlag = 'hidden-text' | 'cut';
 
 /** Roles of a project's members (GitHub's `OWNER`, `MEMBER`, `COLLABORATOR`; GitLab's levels). */
 const MEMBER_ROLES = new Set(['owner', 'maintainer', 'member', 'collaborator']);
@@ -109,24 +112,6 @@ export function cleanIssueText(markdown: string): { text: string; hidden: boolea
   };
 }
 
-/** The snapshot of an issue the classifier read, kept in its record. */
-export interface IssueSnapshot {
-  /** SHA-256 of what was read, raw: any edit to it changes the hash (decision 1001). */
-  hash: string;
-  /** When it was taken. */
-  at: string;
-  /** The text between `<issue>` tags. */
-  text: string;
-  /** How many comments were read: the members' and the author's. */
-  read: { members: number; author: number };
-  /** Comments left out: by people outside the project, past the first 100, or needing a token. */
-  outside: number;
-  /** GitLab reads no comment without a token. */
-  commentsNeedToken?: true;
-  /** Symbiote's own flags (decision 1005). */
-  flags: SymbioteFlag[];
-}
-
 /** Who wrote a comment the classifier reads: a member, the issue's author, or neither. */
 function commenter(issue: Issue, comment: IssueComment): 'member' | 'author' | null {
   if (isMember(comment.author, issue.forge)) return 'member';
@@ -160,7 +145,7 @@ export function issueSnapshot(issue: Issue, at: string): IssueSnapshot {
     const who = by === 'member' ? `a ${comment.author.role ?? 'member'}` : "the issue's author";
     lines.push('', `Comment by ${who}, ${comment.created}:`, clean(comment.body) || '(empty)');
   }
-  const flags: SymbioteFlag[] = hidden ? ['hidden-text'] : [];
+  const flags: IssueSnapshotFlag[] = hidden ? ['hidden-text'] : [];
   let text = lines.join('\n');
   if (text.length > MAX_ISSUE) {
     text = `${text.slice(0, MAX_ISSUE)}\n[cut at ${MAX_ISSUE} characters]`;

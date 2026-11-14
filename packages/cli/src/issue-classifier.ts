@@ -8,20 +8,50 @@ import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import {
+  CLASSIFIER_BAR,
   EFFORT_LEVEL,
   MODEL_ID,
   SymbioteError,
   userEmail,
+  type AgentLevels,
   type AgentModel,
+  type ClassifierSettings,
+  type ClassifierStanding,
   type GitRepo,
+  type IssueDecision,
+  type IssueDecisions,
+  type IssueForge,
+  type IssueRecord,
 } from '@symbiote/core';
 import type { Env, Forge } from '@symbiote/forge';
 import type { ClaudeCode } from './claude-code.js';
 import { originForge } from './hive-request.js';
 import { foundCheck, readMergeConfig } from './merge-config.js';
 import { prepareSymbioteFolder, reviewPlace } from './reviews.js';
-import { classifyIssue, projectCard, type PersonalMarker } from './issue-classify.js';
-import { readIssueRecord, writeIssueRecord, type IssueRecord } from './issue-record.js';
+import {
+  AGENT_NAMES,
+  effortOnProblem,
+  effortWordProblem,
+  levelsOn,
+  modelProblem,
+  modelWordProblem,
+} from './agent-levels.js';
+import { writeConfig } from './config-write.js';
+import {
+  CLASSIFIER_EFFORT,
+  CLASSIFIER_MODEL,
+  classifierIdentity,
+  classifierOn,
+  classifyIssue,
+  projectCard,
+  type PersonalMarker,
+} from './issue-classify.js';
+import {
+  readIssueEvents,
+  readIssueRecord,
+  readIssueRecords,
+  writeIssueRecord,
+} from './issue-record.js';
 import { CONFIG_FILES } from './plugins.js';
 import { runProgram, type Run, type RunWithInput } from './programs.js';
 import { readPrompts } from './prompts.js';
@@ -37,11 +67,24 @@ export class IssueRefused extends Error {
   }
 }
 
-/** `POST /api/issues/<n>/classify` and `GET /api/issues/<n>/classification`. */
+/**
+ * `POST /api/issues/<n>/classify`, `GET /api/issues/<n>/classification`; since HV9c the rows'
+ * decisions (`GET /api/issues/classifications`) and Settings' Issues group (`/api/hive/classifier`).
+ */
 export interface IssueClassifier {
   classify(number: number): Promise<IssueRecord>;
   /** The issue's record on origin's forge; null without one, or without a forge. */
   record(number: number): Promise<IssueRecord | null>;
+  /** Each record's decision, whether `hive.issues.about` is set, the classifier's identity now. */
+  decisions(): Promise<IssueDecisions>;
+  /** The project's text, the classifier's model and effort, the standing (decision 1059). */
+  settings(): Promise<ClassifierSettings>;
+  /** `hive.issues.about`: at most `MAX_ABOUT` characters (1060); null or blank removes it. */
+  setAbout(about: string | null): Promise<ClassifierSettings>;
+  /** `hive.classifier.model`: one Claude Code lists; null for Opus. */
+  setModel(model: string | null): Promise<ClassifierSettings>;
+  /** `hive.classifier.effort`: one the model takes; null for high. */
+  setEffort(effort: string | null): Promise<ClassifierSettings>;
 }
 
 /** The longest `hive.issues.about`: the card's text, on the classifier's every run. */
@@ -74,6 +117,37 @@ export function readClassifierConfig(root: string): {
 
 type Found = { forge: Forge } | { why: string; forge?: Forge };
 
+const NO_ABOUT =
+  'Write what the project is and what Hive may take on first: hive.issues.about in symbiote/config.json';
+const NO_CLAUDE = 'Claude Code is not found: the classifier runs on it';
+
+/** The classifier as it would run now: its card and identity, or why it cannot. */
+type Current =
+  | {
+      forge: Forge;
+      card: string;
+      prompt: string;
+      claude: { command: string; models: AgentModel[]; version?: string };
+      config: ReturnType<typeof readClassifierConfig>;
+      identity: string;
+    }
+  | { why: string; forge?: Forge };
+
+const forgeOfRecord = (forge: Forge): IssueForge => ({
+  kind: forge.kind,
+  host: forge.host,
+  project: forge.project,
+});
+
+/** A record as a row shows it (decision 1055). */
+const rowOf = (record: IssueRecord): IssueDecision => ({
+  number: record.number,
+  decision: record.decision,
+  ...(record.held?.length ? { held: record.held } : {}),
+  ...(record.refusal ? { refusal: record.refusal } : {}),
+  at: record.run?.at ?? record.snapshot?.at ?? '',
+});
+
 /** The classifier of the repository at `root`, its records in `folder()` (a `symbiote/`). */
 export function issueClassifier(ctx: {
   root: string;
@@ -98,20 +172,40 @@ export function issueClassifier(ctx: {
     throw new IssueRefused(`No forge to read issues from: ${'why' in found ? found.why : ''}`, 409);
   }
 
+  /** The project's card (1038): its forge's project, the check's commands, the person's text. */
+  const cardOf = async (forge: Forge, about: string) =>
+    projectCard({ forge: forgeOfRecord(forge), checks: await ctx.checks(), about });
+
+  /**
+   * The classifier as it would run now, in classify's order of refusals: the text, the forge,
+   * Claude Code; its identity is the one a classification would record (1041).
+   */
+  async function current(): Promise<Current> {
+    const config = readClassifierConfig(ctx.root);
+    if (!config.about) return { why: NO_ABOUT };
+    const found = await ctx.forge();
+    if (!found.forge) {
+      return { why: `No forge to read issues from: ${'why' in found ? found.why : ''}` };
+    }
+    const forge = found.forge;
+    const claude = await ctx.claude();
+    if (!claude) return { why: NO_CLAUDE, forge };
+    const card = await cardOf(forge, config.about);
+    const prompt = readPrompts(ctx.root).text['hive.classify'];
+    const on = classifierOn(claude.models, config);
+    const { identity } = classifierIdentity({ prompt, card, on });
+    return { forge, card, prompt, claude, config, identity };
+  }
+
   async function classify(number: number): Promise<IssueRecord> {
     if (!(await ctx.hive())) {
       throw new IssueRefused('Hive mode is off: the classifier runs only while it is on', 409);
     }
     const config = readClassifierConfig(ctx.root);
-    if (!config.about) {
-      throw new IssueRefused(
-        'Write what the project is and what Hive may take on first: hive.issues.about in symbiote/config.json',
-        409,
-      );
-    }
+    if (!config.about) throw new IssueRefused(NO_ABOUT, 409);
     const forge = await forgeOf();
     const claude = await ctx.claude();
-    if (!claude) throw new IssueRefused('Claude Code is not found: the classifier runs on it', 409);
+    if (!claude) throw new IssueRefused(NO_CLAUDE, 409);
     let issue;
     try {
       issue = await forge.getIssue(number);
@@ -119,14 +213,9 @@ export function issueClassifier(ctx: {
       if (error instanceof SymbioteError) throw new IssueRefused(error.message, 409);
       throw error;
     }
-    const card = projectCard({
-      forge: { kind: forge.kind, host: forge.host, project: forge.project },
-      checks: await ctx.checks(),
-      about: config.about,
-    });
     const classified = await classifyIssue({
       issue,
-      card,
+      card: await cardOf(forge, config.about),
       prompt: readPrompts(ctx.root).text['hive.classify'],
       models: claude.models,
       config,
@@ -138,7 +227,7 @@ export function issueClassifier(ctx: {
       ...(ctx.now ? { now: ctx.now } : {}),
     });
     const record: IssueRecord = {
-      forge: { kind: forge.kind, host: forge.host, project: forge.project },
+      forge: forgeOfRecord(forge),
       number,
       url: issue.url,
       title: issue.title,
@@ -148,6 +237,96 @@ export function issueClassifier(ctx: {
     const folder = await ctx.folder();
     await writeIssueRecord(folder, record);
     return (await readIssueRecord(folder, number, record.forge)) ?? record;
+  }
+
+  /**
+   * The standing against 1040's bar under `identity`: the records it classified, the takes it
+   * made that were judged (`judged` events carry the identity that took them), the bar. HV9a's
+   * hostile sets have not run with a repository's card: null until HV13 runs them.
+   */
+  async function standing(forge: Forge, identity: string): Promise<ClassifierStanding> {
+    const folder = await ctx.folder();
+    const records = await readIssueRecords(folder, forgeOfRecord(forge));
+    const classified = { take: 0, held: 0, ask: 0, refuse: 0, failed: 0 };
+    let since: string | undefined;
+    for (const record of records) {
+      if (record.classifier?.identity !== identity) continue;
+      classified[record.decision] += 1;
+      if (record.decision === 'take' && record.held?.length) classified.held += 1;
+      const at = record.run?.at;
+      if (at && (!since || at < since)) since = at;
+    }
+    const judged = { right: 0, wrong: 0 };
+    for (const record of records) {
+      for (const event of await readIssueEvents(folder, record.number)) {
+        if (event.event !== 'judged' || event.identity !== identity) continue;
+        judged[event.right ? 'right' : 'wrong'] += 1;
+      }
+    }
+    const hostile = null as ClassifierStanding['hostile'];
+    const total = judged.right + judged.wrong;
+    const meets =
+      total >= CLASSIFIER_BAR.takes &&
+      judged.right / total >= CLASSIFIER_BAR.right &&
+      hostile !== null &&
+      hostile.taken === 0;
+    return {
+      identity,
+      ...(since ? { since } : {}),
+      classified,
+      judged,
+      bar: CLASSIFIER_BAR,
+      hostile,
+      meets,
+    };
+  }
+
+  /** Claude Code's models and the levels on the classifier's model, as the reviewer's (V92). */
+  async function levels(): Promise<AgentLevels> {
+    const config = readClassifierConfig(ctx.root);
+    const about = {
+      ...(config.effort ? { effort: config.effort } : {}),
+      ...(config.model ? { model: config.model } : {}),
+      file: readPrompts(ctx.root).file,
+    };
+    const claude = await ctx.claude();
+    if (!claude) return { agents: [], ...about };
+    const models = claude.models.length > 0 ? claude.models : null;
+    const on = levelsOn(models, config.model ?? CLASSIFIER_MODEL, null);
+    return {
+      agents: [
+        {
+          kind: 'claude',
+          ...(on
+            ? { efforts: { ...on, default: CLASSIFIER_EFFORT, by: 'symbiote' as const } }
+            : {}),
+          ...(models
+            ? { models, defaultModel: { id: CLASSIFIER_MODEL, by: 'symbiote' as const } }
+            : {}),
+        },
+      ],
+      ...about,
+    };
+  }
+
+  async function settings(): Promise<ClassifierSettings> {
+    const config = readClassifierConfig(ctx.root);
+    const [now, read] = await Promise.all([current(), levels()]);
+    return {
+      about: config.about ?? null,
+      maxAbout: MAX_ABOUT,
+      levels: read,
+      ...('why' in now
+        ? { standing: null, why: now.why }
+        : { standing: await standing(now.forge, now.identity) }),
+    };
+  }
+
+  /** Claude Code, for a model or level to be checked against its list; refused without it. */
+  async function claudeModels(): Promise<AgentModel[] | null> {
+    const claude = await ctx.claude();
+    if (!claude) throw new IssueRefused(NO_CLAUDE, 409);
+    return claude.models.length > 0 ? claude.models : null;
   }
 
   return {
@@ -163,8 +342,50 @@ export function issueClassifier(ctx: {
     async record(number) {
       const found = await ctx.forge();
       if (!found.forge) return null;
-      const { kind, host, project } = found.forge;
-      return readIssueRecord(await ctx.folder(), number, { kind, host, project });
+      return readIssueRecord(await ctx.folder(), number, forgeOfRecord(found.forge));
+    },
+    async decisions() {
+      const config = readClassifierConfig(ctx.root);
+      const now = await current();
+      const forge = now.forge ?? (await ctx.forge()).forge;
+      const records = forge ? await readIssueRecords(await ctx.folder(), forgeOfRecord(forge)) : [];
+      return {
+        decisions: records.map(rowOf),
+        about: config.about !== undefined,
+        ...('identity' in now ? { identity: now.identity } : {}),
+      };
+    },
+    settings,
+    async setAbout(about) {
+      const text = about?.trim() ?? '';
+      if (text.length > MAX_ABOUT) {
+        throw new IssueRefused(
+          `At most ${MAX_ABOUT.toLocaleString('en-US')} characters: this text has ${text.length.toLocaleString('en-US')}`,
+          400,
+        );
+      }
+      await writeConfig(ctx.root, ['hive', 'issues', 'about'], text || undefined);
+      return settings();
+    },
+    async setModel(model) {
+      if (model !== null) {
+        if (!MODEL_ID.test(model)) throw new IssueRefused(modelWordProblem(model), 400);
+        const problem = modelProblem(model, AGENT_NAMES.claude, await claudeModels());
+        if (problem) throw new IssueRefused(problem, 400);
+      }
+      await writeConfig(ctx.root, ['hive', 'classifier', 'model'], model ?? undefined);
+      return settings();
+    },
+    async setEffort(effort) {
+      if (effort !== null) {
+        if (!EFFORT_LEVEL.test(effort)) throw new IssueRefused(effortWordProblem(effort), 400);
+        const models = await claudeModels();
+        const model = readClassifierConfig(ctx.root).model ?? CLASSIFIER_MODEL;
+        const problem = effortOnProblem(effort, AGENT_NAMES.claude, models, model, null);
+        if (problem) throw new IssueRefused(problem, 400);
+      }
+      await writeConfig(ctx.root, ['hive', 'classifier', 'effort'], effort ?? undefined);
+      return settings();
     },
   };
 }

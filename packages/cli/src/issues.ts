@@ -11,6 +11,7 @@ import {
 } from '@symbiote/core';
 import type { Env, Forge } from '@symbiote/forge';
 import { originForge } from './hive-request.js';
+import { issueSnapshot } from './issue-snapshot.js';
 
 export interface IssuesService {
   list(query: IssueQuery): Promise<IssueListAnswer>;
@@ -72,6 +73,12 @@ export function issuesService(
 
   return {
     list: (query) => ask((forge) => forge.listIssues(query)),
-    one: (number) => ask(async (forge) => ({ issue: await forge.getIssue(number) })),
+    one: (number) =>
+      ask(async (forge) => {
+        const issue = await forge.getIssue(number);
+        // The hash the classifier's snapshot would have now (HV9c, decision 1057): the page sees
+        // an edit since a classification with no read of the forge more.
+        return { issue, snapshot: issueSnapshot(issue, new Date().toISOString()).hash };
+      }),
   };
 }

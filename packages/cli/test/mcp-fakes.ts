@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import type {
   BranchReviewInfo,
   Graph,
+  IssueRecord,
   LocalReview,
   McpCaller,
   MergeEntry,
@@ -35,6 +36,50 @@ export const SUGGESTION: WorkspaceSuggestion = {
   why: 'Three parts of the app change together.',
   by: { model: 'gpt-6-luna', name: 'GPT-6 Luna', effort: 'low' },
 };
+/** A take the fake classifier records for any number (HV9c). */
+export const TAKEN = {
+  forge: { kind: 'github', host: 'github.com', project: 'acme/app' },
+  number: 12,
+  url: 'https://github.com/acme/app/issues/12',
+  title: 'The search ignores case',
+  state: 'open',
+  snapshot: {
+    hash: 'h'.repeat(64),
+    at: '2026-11-14T10:00:00.000Z',
+    text: 'Title: The search ignores case',
+    read: { members: 1, author: 0 },
+    outside: 2,
+    flags: [],
+  },
+  decision: 'take',
+  held: ['new-dependency'],
+  answer: {
+    decision: 'take',
+    reasons: ['A clear bug with a reproduction.'],
+    refusal: 'none',
+    question: '',
+    kind: 'fix',
+    title: 'Make the search ignore case',
+    parts: { happens: 'Searching Foo misses foo.' },
+    size: 'small',
+    model: 'sonnet',
+    effort: 'medium',
+    flags: ['new-dependency'],
+  },
+  brief:
+    'From issue #12 (https://github.com/acme/app/issues/12), classified at 2026-11-14T10:00:00.000Z.\n\n# Make the search ignore case',
+  classifier: {
+    agent: 'claude',
+    model: 'opus',
+    effort: 'high',
+    prompt: 'p'.repeat(64),
+    card: 'c'.repeat(64),
+    rules: 1,
+    identity: 'i'.repeat(64),
+  },
+  run: { at: '2026-11-14T10:00:00.000Z', ms: 11_000, cost: 0.031, tries: 1 },
+} satisfies IssueRecord;
+
 export const BASE = 'a'.repeat(40);
 export const HEAD = 'b'.repeat(40);
 /** The tip of a branch nobody approved (MC3). */
@@ -102,6 +147,8 @@ export function fakes(
     };
     /** Branches a review resolves, beside fix/a: none approved, at TIP (MC3). */
     reviewable?: string[];
+    /** The classifier's record of an issue, or its refusal (HV9c). */
+    classify?: (number: number) => Promise<IssueRecord>;
   } = {},
 ) {
   const calls: unknown[][] = [];
@@ -333,6 +380,12 @@ export function fakes(
         ),
     },
     usage: { report: () => Promise.resolve({ subscriptions: [] }) },
+    issueClassifier: {
+      classify: (number) => {
+        calls.push(['classify', number]);
+        return options.classify ? options.classify(number) : Promise.resolve({ ...TAKEN, number });
+      },
+    },
     monitor: {
       map: () =>
         Promise.resolve({

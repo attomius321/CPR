@@ -1,5 +1,6 @@
-import type { McpCaller, NucleusActivityLine } from '@symbiote/core';
+import type { IssueRecord, McpCaller, NucleusActivityLine } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
+import { IssueRefused } from '../src/issue-classifier.js';
 import { MCP_TOOLS } from '../src/mcp-tools.js';
 import { parseSuggestRequest } from '../src/server-requests.js';
 import { WorkspaceRefused } from '../src/workspace-record.js';
@@ -8,6 +9,7 @@ import {
   HEAD,
   NUCLEUS,
   SUGGESTION,
+  TAKEN,
   askOf,
   call,
   entry,
@@ -101,6 +103,7 @@ describe("Symbiote's MCP: the protocol (MC1, decision 359)", () => {
       'start_options',
       'suggest_settings',
       'start_workspace',
+      'classify_issue',
       'reply',
       'stop_agent',
       'restart_agent',
@@ -808,6 +811,151 @@ describe("Symbiote's MCP: the advisor's proposal (MC2)", () => {
       result: { tools: { name: string }[] };
     };
     expect(answer.result.tools.map((t) => t.name)).not.toContain('suggest_settings');
+  });
+});
+
+describe("Symbiote's MCP: classify_issue (HV9c, decision 1058)", () => {
+  const listed = async (services: ReturnType<typeof fakes>['services']) =>
+    (
+      (await server(services).handle({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, NUCLEUS)) as {
+        result: {
+          tools: {
+            name: string;
+            description: string;
+            inputSchema: Record<string, unknown>;
+            annotations: Record<string, unknown>;
+          }[];
+        };
+      }
+    ).result.tools;
+
+  it("is listed with the classifier: an issue's number, acting, with no Confirm", async () => {
+    const tool = (await listed(fakes().services)).find((t) => t.name === 'classify_issue');
+    expect(tool?.inputSchema).toEqual({
+      type: 'object',
+      properties: {
+        number: { type: 'integer', minimum: 1, description: expect.any(String) as unknown },
+      },
+      required: ['number'],
+      additionalProperties: false,
+    });
+    // It writes a record and starts nothing: acting, not destructive, never asked.
+    expect(tool?.annotations).toEqual({ readOnlyHint: false, destructiveHint: false });
+    expect(tool?.description).not.toContain("the person's Confirm");
+    expect(tool?.description).toContain('starts nothing');
+  });
+
+  it('answers the decision at once: the reasons, the work, the brief, the cost', async () => {
+    const { services, calls } = fakes();
+    const mcp = server(services);
+    const answer = await call(mcp, 'classify_issue', { number: 12 });
+    expect(answer.isError).toBe(false);
+    expect(answer.value).toEqual({
+      issue: 12,
+      url: 'https://github.com/acme/app/issues/12',
+      title: 'The search ignores case',
+      decision: 'take',
+      held: ['new-dependency'],
+      reasons: ['A clear bug with a reproduction.'],
+      work: {
+        kind: 'fix',
+        title: 'Make the search ignore case',
+        size: 'small',
+        model: 'sonnet',
+        effort: 'medium',
+      },
+      flags: ['new-dependency'],
+      brief: TAKEN.brief,
+      commentsLeftOut: 2,
+      classifier: { model: 'opus', effort: 'high' },
+      cost: 0.031,
+      at: '2026-11-14T10:00:00.000Z',
+      page: 'http://127.0.0.1:4100/issues?number=12',
+    });
+    expect(calls).toEqual([['classify', 12]]);
+    expect(mcp.asks().asks).toEqual([]);
+  });
+
+  it('answers an ask with its question, a refusal with its word, a failure with why', async () => {
+    const answers: Record<number, IssueRecord> = {
+      3: {
+        ...TAKEN,
+        number: 3,
+        decision: 'ask',
+        held: undefined,
+        brief: undefined,
+        answer: { ...TAKEN.answer, decision: 'ask', question: 'Which browser?', flags: [] },
+      } as unknown as IssueRecord,
+      4: {
+        ...TAKEN,
+        number: 4,
+        decision: 'refuse',
+        refusal: 'unsafe',
+        refusedBy: ['secrets'],
+        held: undefined,
+        brief: undefined,
+        answer: { ...TAKEN.answer, decision: 'take', flags: ['secrets'] },
+      } as unknown as IssueRecord,
+      5: {
+        ...TAKEN,
+        number: 5,
+        decision: 'failed',
+        failed: 'reasons',
+        held: undefined,
+        brief: undefined,
+        answer: undefined,
+      } as unknown as IssueRecord,
+    };
+    const mcp = server(
+      fakes({ classify: (number) => Promise.resolve(answers[number] as IssueRecord) }).services,
+    );
+    expect((await call(mcp, 'classify_issue', { number: 3 })).value).toMatchObject({
+      decision: 'ask',
+      question: 'Which browser?',
+    });
+    const refused = (await call(mcp, 'classify_issue', { number: 4 })).value;
+    expect(refused).toMatchObject({
+      decision: 'refuse',
+      refusal: 'unsafe',
+      refusedBy: ['secrets'],
+    });
+    expect(refused).not.toHaveProperty('work');
+    expect(refused).not.toHaveProperty('brief');
+    expect((await call(mcp, 'classify_issue', { number: 5 })).value).toMatchObject({
+      decision: 'failed',
+      failed: 'reasons',
+    });
+  });
+
+  it("passes the classifier's refusal through in the page's words", async () => {
+    const words = 'Hive mode is off: the classifier runs only while it is on';
+    const mcp = server(
+      fakes({ classify: () => Promise.reject(new IssueRefused(words, 409)) }).services,
+    );
+    expect(await call(mcp, 'classify_issue', { number: 12 })).toEqual({
+      text: words,
+      isError: true,
+      value: undefined,
+    });
+  });
+
+  it("refuses what is not an issue's number, before the classifier runs", async () => {
+    const { services, calls } = fakes();
+    const mcp = server(services);
+    for (const number of [0, -1, 1.5, '12', null, 1e11]) {
+      expect(await call(mcp, 'classify_issue', { number }), String(number)).toEqual({
+        text: "number: an issue's number, as 12",
+        isError: true,
+        value: undefined,
+      });
+    }
+    expect(calls).toEqual([]);
+  });
+
+  it('is left out without the classifier', async () => {
+    const { services } = fakes();
+    const tools = await listed({ ...services, issueClassifier: undefined });
+    expect(tools.map((t) => t.name)).not.toContain('classify_issue');
   });
 });
 

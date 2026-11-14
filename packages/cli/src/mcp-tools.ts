@@ -36,7 +36,8 @@ export class ToolProblem extends Error {
 }
 
 /** The services a tool needs; without one it is left out. */
-export type Need = 'workspaces' | 'reviews' | 'merges' | 'usage' | 'monitor' | 'marks';
+export type Need =
+  'workspaces' | 'reviews' | 'merges' | 'usage' | 'monitor' | 'marks' | 'issueClassifier';
 
 /**
  * What a tool is, for its client (fix-mcp-annotations, MC3 decision 997): whether it only reads;
@@ -240,6 +241,23 @@ export const MCP_TOOLS: readonly ToolSpec[] = [
     }),
     needs: ['workspaces'],
     asks: true,
+  },
+  {
+    name: 'classify_issue',
+    annotations: ACTS,
+    description:
+      "Classifies an issue of origin's GitHub or GitLab for Hive, as Classify on the Issues page: take, ask or refuse, with its reasons; for a take, the work's kind, title and size, the writer's model and effort, and the brief a writer would get in place of the issue's text; flags for what the issue asks beyond a change to the code. Runs one turn of the classifier (Opus at high unless Settings say otherwise, about $0.03 and 10 to 20 s) on the person's subscription, records the decision and starts nothing. Only with Hive mode on and the project's text (hive.issues.about) written. Call it only when the person asks for an issue's classification.",
+    inputSchema: object(
+      {
+        number: {
+          type: 'integer',
+          minimum: 1,
+          description: "The issue's number, as the Issues page shows it (#12)",
+        },
+      },
+      ['number'],
+    ),
+    needs: ['issueClassifier'],
   },
   {
     name: 'reply',

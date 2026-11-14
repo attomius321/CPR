@@ -11,6 +11,7 @@ import {
   parseHivePacing,
   parseModelChange,
   parseEffortChange,
+  parseAboutChange,
   parseEventsListen,
   parseEventsPing,
   SHA,
@@ -468,6 +469,10 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       if (url.pathname === '/api/monitor') return monitorMap(req, res, monitor);
       if (url.pathname === '/api/monitor/open') return monitorOpen(req, res, monitor);
     }
+    // The rows' decisions (HV9c): before an issue's number takes the path.
+    if (issueClassifier && url.pathname === '/api/issues/classifications') {
+      return read(req, res, () => issueClassifier.decisions());
+    }
     if (issues) {
       // The Issues page (IS1), a page of the shell's, and its reads.
       if (url.pathname === '/issues') return serveSite(req, res, url, '/', undefined);
@@ -483,6 +488,25 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       }
       const kept = /^\/api\/issues\/([^/]*)\/classification$/.exec(url.pathname);
       if (kept) return issueClassification(req, res, kept[1] ?? '', issueClassifier);
+      // Settings' Issues group (HV9c): the project's text, the model and effort, the standing.
+      if (url.pathname === '/api/hive/classifier') {
+        return read(req, res, () => issueClassifier.settings());
+      }
+      if (url.pathname === '/api/hive/classifier/about') {
+        return written(req, res, parseAboutChange, ({ about }) =>
+          answer(res, () => issueClassifier.setAbout(about)),
+        );
+      }
+      if (url.pathname === '/api/hive/classifier/model') {
+        return written(req, res, parseModelChange, ({ model }) =>
+          answer(res, () => issueClassifier.setModel(model)),
+        );
+      }
+      if (url.pathname === '/api/hive/classifier/effort') {
+        return written(req, res, parseEffortChange, ({ effort }) =>
+          answer(res, () => issueClassifier.setEffort(effort)),
+        );
+      }
     }
     // Each subscription's windows of use (V29c): read only, the tokens stay in this process.
     if (usage && url.pathname === '/api/usage') {

@@ -21,6 +21,7 @@
 .git-field input,
 .git-field textarea,
 .git-commit-message,
+.hive-about textarea,
 .hive-budget input,
 select,
 .start-from-field {
@@ -51,6 +52,7 @@ select,
 .git-field input:hover:not(:focus, :disabled),
 .git-field textarea:hover:not(:focus, :disabled),
 .git-commit-message:hover:not(:focus, :disabled),
+.hive-about textarea:hover:not(:focus, :disabled),
 .hive-budget input:hover:not(:focus, :disabled),
 select:hover:not(:focus, :disabled),
 .start-from-field:hover:not(:focus, [aria-expanded='true']) {
@@ -74,6 +76,7 @@ select:hover:not(:focus, :disabled),
 .git-field input:focus-visible,
 .git-field textarea:focus-visible,
 .git-commit-message:focus-visible,
+.hive-about textarea:focus-visible,
 .hive-budget input:focus-visible,
 select:focus-visible,
 .start-from-field:focus-visible {
@@ -90,7 +93,8 @@ select:focus-visible,
 .settings-editor textarea,
 .skills-field textarea,
 .merge-change textarea,
-.git-commit-message {
+.git-commit-message,
+.hive-about textarea {
   padding: 8px 10px;
   line-height: 1.45;
   field-sizing: content;

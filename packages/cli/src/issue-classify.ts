@@ -6,13 +6,24 @@
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { WORK_KINDS, type AgentModel, type Issue, type WorkKind } from '@symbiote/core';
 import {
-  issueSnapshot,
-  withoutOwnTags,
+  CLASSIFIER_FLAGS,
+  CLASSIFIER_REFUSALS,
+  WORK_KINDS,
+  type AgentModel,
+  type ClassifierAnswer,
+  type ClassifierFlag,
+  type ClassifierHold,
+  type ClassifierIdentity,
+  type ClassifierPersonal,
+  type ClassifierRefusal,
+  type Issue,
+  type IssueClassification,
   type IssueSnapshot,
-  type SymbioteFlag,
-} from './issue-snapshot.js';
+  type IssueSnapshotFlag,
+  type WorkKind,
+} from '@symbiote/core';
+import { issueSnapshot, withoutOwnTags } from './issue-snapshot.js';
 import { runWithInput, type RunWithInput } from './programs.js';
 import { claudeAdviceArgs } from './workspace-advice.js';
 import { BRIEF_PARTS, KINDS, MAX_BRIEF, MAX_TITLE, briefOf } from './workspace-brief.js';
@@ -30,48 +41,10 @@ export const CLASSIFIER_TIMEOUT_MS = 180_000;
  */
 export const CLASSIFIER_RULES = 1;
 
-/** What the issue asks beyond a change to the code: p2's flags (decisions 1003, 1035). */
-export const CLASSIFIER_FLAGS = [
-  'agent-instructions',
-  'secrets',
-  'outside-actions',
-  'ci-or-release',
-  'new-dependency',
-  'weakens-checks',
-] as const;
-export type ClassifierFlag = (typeof CLASSIFIER_FLAGS)[number];
-
 /** Flags that refuse an answer as unsafe, whatever the model decided (decision 1005). */
 const REFUSING: readonly ClassifierFlag[] = ['agent-instructions', 'secrets', 'outside-actions'];
 /** The model's flags and Symbiote's own that hold a take for a click (decision 1034). */
 const HOLDING: readonly string[] = ['new-dependency', 'weakens-checks', 'hidden-text', 'cut'];
-
-export const REFUSALS = ['none', 'not-a-change', 'out-of-scope', 'too-large', 'unsafe'] as const;
-export type Refusal = Exclude<(typeof REFUSALS)[number], 'none'>;
-
-/** The classifier's answer, as its schema holds it (HV9's table). */
-export interface ClassifierAnswer {
-  decision: 'take' | 'ask' | 'refuse';
-  reasons: string[];
-  refusal: (typeof REFUSALS)[number];
-  question: string;
-  kind: WorkKind;
-  title: string;
-  parts: Record<string, string>;
-  size: 'small' | 'medium' | 'large';
-  model: string;
-  effort: string;
-  flags: ClassifierFlag[];
-}
-
-/** Why a take waits for a click: a holding flag, or a brief that names the person (1042). */
-export type Hold = 'new-dependency' | 'weakens-checks' | SymbioteFlag | 'personal';
-
-/** What the person's own names an answer holds, by name (decisions 1037, 1042). */
-export interface Personal {
-  question?: string[];
-  brief?: string[];
-}
 
 /** What of the person must not leave through an answer: the email, the folders. */
 export interface PersonalMarker {
@@ -82,47 +55,9 @@ export interface PersonalMarker {
 /** The decision after Symbiote's rules. */
 export interface Ruling {
   decision: ClassifierAnswer['decision'];
-  refusal?: Refusal;
+  refusal?: ClassifierRefusal;
   refusedBy?: ClassifierFlag[];
-  held?: Hold[];
-}
-
-/** Who classified: what a repository's count is kept for (decisions 1040, 1041). */
-export interface ClassifierIdentity {
-  agent: 'claude';
-  /** Claude Code's version: recorded, not part of `identity`. */
-  version?: string;
-  model: string;
-  effort?: string;
-  /** SHA-256 of the prompt's text, of the card's, and of them with the model, effort and rules. */
-  prompt: string;
-  card: string;
-  rules: number;
-  identity: string;
-}
-
-/** One classification: the snapshot, the run, the answer and the decision after the rules. */
-export interface IssueClassification extends Omit<Ruling, 'decision'> {
-  snapshot: IssueSnapshot;
-  decision: Ruling['decision'] | 'failed';
-  /** Why it failed: what did not fit, `declined`, `no answer`, `exit <code>`. */
-  failed?: string;
-  /** The model's last answer, as given. */
-  answer?: ClassifierAnswer;
-  personal?: Personal;
-  /** For a take: what the writer would get in place of the issue's text (decision 1004). */
-  brief?: string;
-  classifier: ClassifierIdentity;
-  run: {
-    at: string;
-    ms: number;
-    /** Claude Code's `total_cost_usd`, both tries. */
-    cost: number;
-    tries: number;
-    /** What did not fit the first time, when it was asked again. */
-    retried?: string;
-    usage?: { input: number; output: number; cacheRead: number; cacheWrite: number };
-  };
+  held?: ClassifierHold[];
 }
 
 /**
@@ -137,7 +72,7 @@ export function classifierSchema(models: readonly AgentModel[]): Record<string, 
     properties: {
       decision: { type: 'string', enum: ['take', 'ask', 'refuse'] },
       reasons: { type: 'array', items: { type: 'string' } },
-      refusal: { type: 'string', enum: [...REFUSALS] },
+      refusal: { type: 'string', enum: [...CLASSIFIER_REFUSALS] },
       question: { type: 'string' },
       kind: { type: 'string', enum: [...WORK_KINDS] },
       title: { type: 'string' },
@@ -224,7 +159,7 @@ export function answerMisfit(value: unknown): string | null {
   if (a.decision !== 'take' && a.decision !== 'ask' && a.decision !== 'refuse') return 'decision';
   if (!Array.isArray(a.reasons) || a.reasons.length < 1 || a.reasons.length > 3) return 'reasons';
   if (a.reasons.some((r) => typeof r !== 'string' || !r.trim() || r.length > 300)) return 'reason';
-  if (!REFUSALS.includes(a.refusal as never)) return 'refusal';
+  if (!CLASSIFIER_REFUSALS.includes(a.refusal as never)) return 'refusal';
   if ((a.decision === 'refuse') !== (a.refusal !== 'none')) return 'refusal';
   if (typeof a.question !== 'string') return 'question';
   if (a.decision === 'ask' && (!a.question.trim() || a.question.length > 500)) return 'question';
@@ -249,19 +184,19 @@ export function answerMisfit(value: unknown): string | null {
  */
 export function ruling(
   answer: ClassifierAnswer,
-  symbioteFlags: readonly SymbioteFlag[],
-  personal: Personal,
+  symbioteFlags: readonly IssueSnapshotFlag[],
+  personal: ClassifierPersonal,
 ): Ruling {
   const refusedBy = answer.flags.filter((f) => REFUSING.includes(f));
   if (refusedBy.length > 0) return { decision: 'refuse', refusal: 'unsafe', refusedBy };
   if (answer.decision === 'refuse') {
-    return { decision: 'refuse', refusal: answer.refusal as Refusal };
+    return { decision: 'refuse', refusal: answer.refusal as ClassifierRefusal };
   }
   if (answer.decision === 'ask') return { decision: 'ask' };
   const flags: string[] = [...answer.flags, ...symbioteFlags];
   const held = [
     ...new Set([
-      ...(flags.filter((f) => HOLDING.includes(f)) as Hold[]),
+      ...(flags.filter((f) => HOLDING.includes(f)) as ClassifierHold[]),
       ...(personal.brief?.length ? (['personal'] as const) : []),
     ]),
   ];
@@ -290,6 +225,44 @@ export function issueBrief(
 
 const sha256 = (text: string) => createHash('sha256').update(text).digest('hex');
 const dollars = (n: number) => Math.round(n * 1e6) / 1e6;
+
+/**
+ * Who classifies (decision 1041): Claude Code's version, the model and effort it runs on, the
+ * hashes of the prompt and the card, Symbiote's rules; `identity` is them but the version. One
+ * function for a classification and for a repository's standing (1040, HV9c).
+ */
+export function classifierIdentity({
+  prompt,
+  card,
+  on,
+  version,
+}: {
+  prompt: string;
+  card: string;
+  on: { model?: string; effort?: string };
+  version?: string | undefined;
+}): ClassifierIdentity {
+  const promptHash = sha256(prompt);
+  const cardHash = sha256(card);
+  return {
+    agent: 'claude',
+    ...(version ? { version } : {}),
+    model: on.model ?? 'default',
+    ...(on.effort ? { effort: on.effort } : {}),
+    prompt: promptHash,
+    card: cardHash,
+    rules: CLASSIFIER_RULES,
+    identity: sha256(
+      JSON.stringify([
+        promptHash,
+        on.model ?? 'default',
+        on.effort ?? 'default',
+        cardHash,
+        CLASSIFIER_RULES,
+      ]),
+    ),
+  };
+}
 
 /** One try's result: Claude Code's answer, or why there is none. */
 interface Try {
@@ -379,26 +352,7 @@ export async function classifyIssue({
   const on = classifierOn(models, config);
   const schema = classifierSchema(models);
   const input = classifierMessage(card, snapshot);
-  const promptHash = sha256(prompt);
-  const cardHash = sha256(card);
-  const classifier: ClassifierIdentity = {
-    agent: 'claude',
-    ...(version ? { version } : {}),
-    model: on.model ?? 'default',
-    ...(on.effort ? { effort: on.effort } : {}),
-    prompt: promptHash,
-    card: cardHash,
-    rules: CLASSIFIER_RULES,
-    identity: sha256(
-      JSON.stringify([
-        promptHash,
-        on.model ?? 'default',
-        on.effort ?? 'default',
-        cardHash,
-        CLASSIFIER_RULES,
-      ]),
-    ),
-  };
+  const classifier = classifierIdentity({ prompt, card, on, version });
   const args = claudeAdviceArgs({ ...on, instructions: prompt, schema });
   const tries: Try[] = [];
   for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -435,7 +389,7 @@ export async function classifyIssue({
     };
   }
   const brief = answer.decision === 'take' ? issueBrief(issue, at, answer) : undefined;
-  const personal: Personal = {
+  const personal: ClassifierPersonal = {
     ...(answer.decision === 'ask' && personalIn(answer.question, markers).length
       ? { question: personalIn(answer.question, markers) }
       : {}),

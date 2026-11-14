@@ -22,6 +22,9 @@ import {
   type SkillChange,
   type SkillsState,
   type UsageReport,
+  type ClassifierSettings,
+  type IssueDecisions,
+  type IssueRecord,
   SymbioteError,
   BranchNotMerged,
   GitRefused,
@@ -38,7 +41,6 @@ import type { CodeMap } from '@symbiote/monitor';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { tempDir } from '../../core/test/helpers/git-repo.js';
 import { IssueRefused } from '../src/issue-classifier.js';
-import type { IssueRecord } from '../src/issue-record.js';
 import { sourceFiles, startViewServer, type ViewServer } from '../src/server.js';
 import { serverKeys } from '../src/server-keys.js';
 import { parseReview } from '../src/server-requests.js';
@@ -3086,6 +3088,19 @@ describe('symbiote view: the Issues page (IS1)', () => {
     number: 3,
     decision: 'ask',
   } as unknown as IssueRecord;
+  const DECISIONS: IssueDecisions = {
+    decisions: [{ number: 3, decision: 'ask', at: '2026-11-14T10:00:00.000Z' }],
+    about: true,
+    identity: 'i'.repeat(64),
+  };
+  const SETTINGS = {
+    about: 'A web app.',
+    maxAbout: 4_000,
+    levels: { agents: [], file: 'symbiote/config.json' },
+    standing: null,
+    why: 'Claude Code is not found',
+  } satisfies ClassifierSettings;
+  const changed: unknown[] = [];
   const source = {
     forge: { kind: 'github', host: 'github.com', project: 'acme/app' },
     token: true,
@@ -3132,6 +3147,24 @@ describe('symbiote view: the Issues page (IS1)', () => {
             return Promise.resolve({ ...RECORD, number });
           },
           record: (number) => Promise.resolve(number === 3 ? RECORD : null),
+          // HV9c: the rows' decisions, Settings' Issues group.
+          decisions: () => Promise.resolve(DECISIONS),
+          settings: () => Promise.resolve(SETTINGS),
+          setAbout: (about) => {
+            changed.push({ about });
+            if (about !== null && about.length > 4_000) {
+              return Promise.reject(new IssueRefused('too long', 400));
+            }
+            return Promise.resolve({ ...SETTINGS, about });
+          },
+          setModel: (model) => {
+            changed.push({ model });
+            return Promise.resolve(SETTINGS);
+          },
+          setEffort: (effort) => {
+            changed.push({ effort });
+            return Promise.resolve(SETTINGS);
+          },
         },
       },
     });
@@ -3204,6 +3237,51 @@ describe('symbiote view: the Issues page (IS1)', () => {
     expect((await get('/api/issues/5/classification')).status).toBe(404);
     expect((await get('/api/issues/x/classification')).status).toBe(400);
     expect((await classify('/api/issues/3/classification')).status).toBe(405);
+  });
+
+  it("lists the records' decisions for the rows (HV9c, decision 1055)", async () => {
+    const read = await get('/api/issues/classifications');
+    expect(read.status).toBe(200);
+    expect(await read.json()).toEqual(DECISIONS);
+    const post = await get('/api/issues/classifications', { method: 'POST', headers: { ...PAGE } });
+    expect(post.status).toBe(405);
+  });
+
+  it("reads and saves Settings' Issues group with the page key (HV9c, decisions 1059, 1060)", async () => {
+    const write = (path: string, body: unknown, headers: Record<string, string> = PAGE) =>
+      get(path, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', ...headers },
+        body: JSON.stringify(body),
+      });
+    const read = await get('/api/hive/classifier');
+    expect(read.status).toBe(200);
+    expect(await read.json()).toEqual(SETTINGS);
+    changed.length = 0;
+    const saved = await write('/api/hive/classifier/about', { about: 'A shop.' });
+    expect(saved.status).toBe(200);
+    expect(await saved.json()).toMatchObject({ about: 'A shop.' });
+    expect((await write('/api/hive/classifier/about', { about: null })).status).toBe(200);
+    expect((await write('/api/hive/classifier/about', { about: 'x'.repeat(4_001) })).status).toBe(
+      400,
+    );
+    expect((await write('/api/hive/classifier/model', { model: 'sonnet' })).status).toBe(200);
+    expect((await write('/api/hive/classifier/model', { model: null })).status).toBe(200);
+    expect((await write('/api/hive/classifier/effort', { effort: 'max' })).status).toBe(200);
+    // Not a string or null, another key, no page key: nothing asked.
+    expect((await write('/api/hive/classifier/about', { about: 3 })).status).toBe(400);
+    expect((await write('/api/hive/classifier/about', { text: 'A' })).status).toBe(400);
+    expect(
+      (await write('/api/hive/classifier/about', { about: 'A' }, { 'x-symbiote': '1' })).status,
+    ).toBe(403);
+    expect(changed).toEqual([
+      { about: 'A shop.' },
+      { about: null },
+      { about: 'x'.repeat(4_001) },
+      { model: 'sonnet' },
+      { model: null },
+      { effort: 'max' },
+    ]);
   });
 });
 

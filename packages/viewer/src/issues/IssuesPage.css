@@ -361,6 +361,153 @@
   font-size: var(--size-small);
 }
 
+/* A row's decision (HV9c, decision 1055): a status at the end of its title's line. */
+.issues-decision-tip {
+  flex: none;
+  align-self: flex-start;
+  margin-left: auto;
+}
+
+.issues-row-line > .issues-decision {
+  align-self: flex-start;
+  margin-left: auto;
+}
+
+/* The Hive card (HV9c, decision 1056): the classifier's decision, above the issue's text; its
+   actions at the end of its head (HV10's Start goes there). */
+.issues-hive {
+  margin: 0 0 20px;
+  padding: 10px 14px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.issues-hive-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  min-height: var(--height-control);
+}
+
+.issues-hive-head > .icon {
+  color: var(--hive-text);
+}
+
+.issues-hive-head h4 {
+  margin: 0 4px 0 0;
+  font-size: var(--size-body);
+  font-weight: 600;
+}
+
+.issues-hive-when {
+  font-size: var(--size-small);
+}
+
+.issues-hive-head > .end {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.issues-hive-note {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: var(--size-small);
+  line-height: 1.45;
+}
+
+.issues-hive-refused {
+  margin: 8px 0 0;
+  font-size: var(--size-small);
+  line-height: 1.45;
+}
+
+.issues-hive-body {
+  margin-top: 10px;
+}
+
+.issues-hive-line {
+  margin: 0 0 6px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.issues-hive-reasons {
+  margin: 0 0 12px;
+  padding-left: 20px;
+  line-height: 1.5;
+}
+
+.issues-hive-question {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--raised);
+}
+
+.issues-hive-question p {
+  margin: 0;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.issues-hive-label {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-weight: 500;
+}
+
+.issues-hive-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0 0 12px;
+}
+
+.issues-hive-facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px 12px;
+  margin: 0;
+  font-size: var(--size-small);
+  line-height: 1.45;
+}
+
+.issues-hive-facts > div {
+  display: contents;
+}
+
+.issues-hive-facts dt {
+  color: var(--muted);
+}
+
+.issues-hive-facts dd {
+  margin: 0;
+}
+
+.issues-hive-brief {
+  margin-top: 12px;
+}
+
+.issues-hive-brief > summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--height-row);
+  font-size: var(--size-small);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.issues-hive-brief > .issues-text {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--bg);
+}
+
 /* Narrow: the issue under the list. */
 @media (max-width: 900px) {
   .issues-body {

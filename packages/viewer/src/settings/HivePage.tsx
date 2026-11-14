@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import type {
   AgentLevels,
+  ClassifierSettings,
   HiveLandingSetting,
   HiveLandsBy,
   HivePacingSetting,
@@ -25,6 +26,7 @@ import { TurnOffHive } from './HiveOff.js';
 import { SettingsCard } from './SettingsCard.js';
 import { pauseWords } from '../workspaces/hive-rounds.js';
 import { budgetOf, LANDS_BY, pauseAtWords, pauseChoices } from './hive-switch.js';
+import { aboutCount, standingWords } from './classifier-words.js';
 import { Loading } from '../ui/Loading.js';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -229,6 +231,9 @@ export function HivePage({
       <Group name="Running reviewer" about="proves defects with failing tests">
         <ReviewerLevels onSaid={setSaid} />
       </Group>
+      <Group name="Issues" about="the classifier reads each issue before Hive starts anything">
+        <IssuesClassifier onSaid={setSaid} />
+      </Group>
       {said && (
         <p className={`settings-notice${said.error ? ' error' : ''}`} role="status">
           {said.text}
@@ -238,8 +243,9 @@ export function HivePage({
         <DocumentsIcon />
         <span>
           Kept in <code>symbiote/config.json</code> as <code>hive.lands</code>,{' '}
-          <code>hive.usage.pauseAt</code>, <code>hive.budget</code> and <code>hive.reviewer.*</code>
-          . On or off: <code>symbiote/hive.json</code>, never committed.
+          <code>hive.usage.pauseAt</code>, <code>hive.budget</code>, <code>hive.reviewer.*</code>,{' '}
+          <code>hive.issues.about</code> and <code>hive.classifier.*</code>. On or off:{' '}
+          <code>symbiote/hive.json</code>, never committed.
         </span>
       </p>
       {asking === 'on' && (
@@ -530,17 +536,6 @@ function ReviewerLevels({ onSaid }: { onSaid: (said: Said) => void }) {
     };
   }, [onSaid]);
   const agent = read?.agents[0];
-  // Short, as the row's two selects: "Opus 5.5 (default)", "High".
-  const short = (choices: { value: string; label: string }[]) =>
-    choices.map((c, i) => {
-      const named = i === 0 ? /\(([^)]+)\)$/.exec(c.label)?.[1] : undefined;
-      const label = i === 0 ? (named ? `${named} (default)` : 'Default') : c.label;
-      return { ...c, label: label.charAt(0).toUpperCase() + label.slice(1) };
-    });
-  const models = agent ? short(modelChoices(agent)) : [];
-  const efforts = agent ? short(effortChoices(agent)) : [];
-  const model = agent ? (keptModel(read?.model, agent) ?? '') : '';
-  const effort = agent && read ? (keptEffort(read.effort, agent) ?? '') : '';
   const save = async (what: 'model' | 'effort', value: string, label: string) => {
     setBusy(true);
     try {
@@ -568,17 +563,50 @@ function ReviewerLevels({ onSaid }: { onSaid: (said: Said) => void }) {
           : 'A clean Claude Code, in its sandbox, in a throwaway copy of the commit.'
       }
     >
+      <LevelSelects
+        read={read}
+        busy={busy}
+        onSave={(what, value, label) => void save(what, value, label)}
+      />
+    </Row>
+  );
+}
+
+/**
+ * A model's and an effort's selects of Claude Code's own models and levels (the running
+ * reviewer's, the classifier's), saved when picked; short, as the row's: "Opus 5.5 (default)".
+ */
+function LevelSelects({
+  read,
+  busy,
+  onSave,
+}: {
+  read: AgentLevels | null;
+  busy: boolean;
+  onSave: (what: 'model' | 'effort', value: string, label: string) => void;
+}) {
+  const agent = read?.agents[0];
+  const short = (choices: { value: string; label: string }[]) =>
+    choices.map((c, i) => {
+      const named = i === 0 ? /\(([^)]+)\)$/.exec(c.label)?.[1] : undefined;
+      const label = i === 0 ? (named ? `${named} (default)` : 'Default') : c.label;
+      return { ...c, label: label.charAt(0).toUpperCase() + label.slice(1) };
+    });
+  const models = agent ? short(modelChoices(agent)) : [];
+  const efforts = agent ? short(effortChoices(agent)) : [];
+  const model = agent ? (keptModel(read?.model, agent) ?? '') : '';
+  const effort = agent && read ? (keptEffort(read.effort, agent) ?? '') : '';
+  const labelOf = (choices: { value: string; label: string }[], value: string) =>
+    choices.find((c) => c.value === value)?.label ?? value;
+  return (
+    <>
       {models.length > 0 && (
         <select
           aria-label="Model"
           value={model}
           disabled={busy}
           onChange={(event) =>
-            void save(
-              'model',
-              event.target.value,
-              models.find((c) => c.value === event.target.value)?.label ?? event.target.value,
-            )
+            onSave('model', event.target.value, labelOf(models, event.target.value))
           }
         >
           {models.map((c) => (
@@ -594,11 +622,7 @@ function ReviewerLevels({ onSaid }: { onSaid: (said: Said) => void }) {
           value={effort}
           disabled={busy}
           onChange={(event) =>
-            void save(
-              'effort',
-              event.target.value,
-              efforts.find((c) => c.value === event.target.value)?.label ?? event.target.value,
-            )
+            onSave('effort', event.target.value, labelOf(efforts, event.target.value))
           }
         >
           {efforts.map((c) => (
@@ -608,6 +632,155 @@ function ReviewerLevels({ onSaid }: { onSaid: (said: Said) => void }) {
           ))}
         </select>
       )}
-    </Row>
+    </>
+  );
+}
+
+/**
+ * The Issues group (HV9c): what the project is and what Hive may take on (`hive.issues.about`,
+ * the classifier's card, at most 4,000 characters, decisions 1038, 1060), the classifier's model
+ * and effort (`hive.classifier.*`, Opus at high unless set, 1036), and the repository's standing
+ * against 1040's bar under the classifier it runs now (1059).
+ */
+function IssuesClassifier({ onSaid }: { onSaid: (said: Said) => void }) {
+  const [read, setRead] = useState<ClassifierSettings | null>(null);
+  const [about, setAbout] = useState('');
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    let live = true;
+    getJson<ClassifierSettings>('/api/hive/classifier')
+      .then((answer) => {
+        if (!live) return;
+        setRead(answer);
+        setAbout(answer.about ?? '');
+      })
+      .catch((failed: unknown) => live && onSaid({ text: (failed as Error).message, error: true }));
+    return () => {
+      live = false;
+    };
+  }, [onSaid]);
+  const post = async (
+    path: string,
+    body: unknown,
+    said: (answer: ClassifierSettings) => string,
+  ) => {
+    setBusy(true);
+    try {
+      const answer = await postJson<ClassifierSettings>(`/api/hive/classifier/${path}`, body);
+      setRead(answer);
+      onSaid({ text: `Saved. ${said(answer)}` });
+      return answer;
+    } catch (failed) {
+      onSaid({ text: (failed as Error).message, error: true });
+      return null;
+    } finally {
+      setBusy(false);
+    }
+  };
+  const max = read?.maxAbout ?? 4_000;
+  const count = aboutCount(about, max);
+  const changed = read !== null && about.trim() !== (read.about ?? '');
+  const agent = read?.levels.agents[0];
+  const standing = read ? standingWords(read) : null;
+  return (
+    <>
+      <div className="hive-setting hive-about" role="group" aria-labelledby="hive-about-name">
+        <div className="hive-setting-words">
+          <label className="hive-setting-name" id="hive-about-name" htmlFor="hive-about">
+            The project
+          </label>
+          <span className="hive-setting-help">
+            What the project is and what Hive may take on from its issues. The classifier reads it
+            with every issue; without it, nothing is classified.
+          </span>
+        </div>
+        <form
+          className="hive-about-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (count.over || !changed) return;
+            void post('about', { about: about.trim() || null }, (answer) =>
+              answer.about
+                ? 'The classifier reads the new text.'
+                : 'No text: nothing is classified.',
+            ).then((answer) => answer && setAbout(answer.about ?? ''));
+          }}
+        >
+          <textarea
+            id="hive-about"
+            value={about}
+            rows={4}
+            disabled={!read || busy}
+            aria-invalid={count.over}
+            aria-describedby="hive-about-count"
+            placeholder="What the project is, who uses it, and what Hive may take on: bug fixes with a reproduction, docs, small features. What it may not: releases, CI, dependencies."
+            onChange={(event) => setAbout(event.target.value)}
+          />
+          <div className="hive-about-foot">
+            <span id="hive-about-count" className={count.over ? 'is-fail' : undefined}>
+              {count.words}
+            </span>
+            {changed && (
+              <button type="submit" className="button secondary" disabled={busy || count.over}>
+                Save
+              </button>
+            )}
+          </div>
+        </form>
+      </div>
+      <Row
+        id="hive-classifier"
+        name="Classifier"
+        tone={read && !agent ? 'fail' : undefined}
+        help={
+          read && !agent
+            ? 'The classifier needs Claude Code: it is not installed here.'
+            : 'One turn of Claude Code with no tools and no access to the repository: it answers take, ask or refuse.'
+        }
+      >
+        <LevelSelects
+          read={read?.levels ?? null}
+          busy={busy}
+          onSave={(what, value, label) =>
+            void post(what, { [what]: value || null }, () =>
+              what === 'model'
+                ? `The next issue is classified on ${label}.`
+                : `The next issue is classified at ${label}.`,
+            )
+          }
+        />
+      </Row>
+      <Row
+        id="hive-standing"
+        name="Standing"
+        help={
+          <>
+            Work from an issue starts on your click until 20 takes are judged, 95 % of them right,
+            with none of the hostile test issues taken, under one classifier and text.
+            {standing && (
+              <ul className="hive-standing-facts">
+                {standing.facts.map((fact, i) => (
+                  <li key={fact}>
+                    {i === 0 &&
+                      read?.standing?.since &&
+                      `Since ${sinceWords(read.standing.since)}: `}
+                    {fact}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        }
+      >
+        {standing ? (
+          <span className={`hive-value${standing.met ? ' is-ok' : ''}`}>
+            {standing.met && <CheckIcon />}
+            {standing.value}
+          </span>
+        ) : (
+          <Loading inline>Reading…</Loading>
+        )}
+      </Row>
+    </>
   );
 }
