@@ -166,6 +166,14 @@ last one failed; the card says which. Without the project's text (`hive.issues.a
 says to write it in Settings first. With Hive off, the page shows past decisions and offers no
 **Classify**.
 
+**Start in Hive.** On a take of the issue's current text, with Hive on, the card offers **Start in
+Hive**: a Hive workspace from the classifier's brief, never the issue's text, on the branch
+`<kind>/<number>-<slug>`, its writer kept from the forge's credentials and the web (see [Starting
+work from an issue](../reference/configuration.md#starting-work-from-an-issue)). A held take
+starts only with this click. Once started, the card and the issue's row show the workspace's
+branch and Hive's step, and the workspace's card and page show `#n`; on its page `#n` opens the
+issue here. While the workspace is open, the issue offers no second start.
+
 ## Settings
 
 **Settings** (`s`) lists what you set, the same way in both modes. Type in **Find a setting**

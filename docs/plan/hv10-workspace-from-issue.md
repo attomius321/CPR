@@ -5,7 +5,8 @@
 
 **Status:** planned (2026-11-12) by the chore `chore/hive-issue-loop-gaps` (from `main` at
 `a47dda3`); HV10a measured, ready for review (As built, below: decisions 1050–1054 give 1015's
-details); HV10b and HV10c not started. It needs [HV9](hv9-issue-classifier.md), the classifier.
+details); HV10b and HV10c built on `feature/hv10-workspace-from-issue` (from `main` at
+`834128a`), ready for review (decisions 1061–1070; As built (HV10b, HV10c), below). It needs [HV9](hv9-issue-classifier.md), the classifier.
 
 **Problem**. Nothing starts a workspace from an issue, and nothing keeps an issue's text from
 reaching a writer by another way. Here is what the code on `main` does today:
@@ -281,3 +282,109 @@ as page agents have (`startPageAgent`), would remove them. Decision 1051 leaves 
 variables untouched, such as `CLAUDE_CODE_MESSAGING_TOKEN`, which Claude Code sets for its own
 use. It names only the secrets that Symbiote can see in its own environment: a secret that only
 the daemon has, with a name not in `FORGE_TOKENS`, is still not hidden. Verification 5 reruns this spike's probes on the built `symbiote view`.
+
+## HV10b and HV10c: the plan's open points, decided (2026-11-14)
+
+Planned on `feature/hv10-workspace-from-issue` with the person's OK. Decisions 1061–1066 (1060 the
+highest on `main` and every branch that day):
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 1061 | Who starts a held take? (details 1011, 1034) | **Only the person, with Start in Hive on the Issues page; `start_from_issue` refuses it, from Nucleus or `symbiote mcp`, with the hold's reasons. Only `startFromIssue` sets a request's `issue`: `POST /api/workspaces` drops one sent** | 1034: a hold waits for the person's click; a start that claims an issue gets its keyword and its landing |
+| 1062 | What if the issue's branch exists? (details 1013) | **A branch left by an earlier workspace of the issue, cleaned up, gives `-2`, `-3`… after the slug: the branch still starts `<kind>/<number>-`** | 1014 allows a new workspace once the old one is cleaned up; its unmerged branch stays (V18c) |
+| 1063 | Where are an issue writer's settings and install cache? (details 1050, 1053, 1054) | **In Symbiote's cache, a folder per workspace: `settings.json` beside `cache/`, the sandbox's only `allowWrite` outside the worktree. Edit and Write denied on Symbiote's cache; Claude Code's claude.ai tools (`RemoteTrigger`, `SendToProject`, `ArtifactComments`, `PushNotification`) denied; `--settings` and `--strict-mcp-config` given again at each resume** | The `symbiote/` folder is the writer's `--add-dir`: a settings file there could be rewritten for its next wake; HV10a left the claude.ai tools to measure |
+| 1064 | What does Hive do when the sandbox refuses a host? | **A writer's turn whose commands printed `deny network-outbound <host>` stops the workspace (`stuck`), the note naming each host and Settings → Hive's `hive.sandbox.allowedDomains`. Hive never allows a host itself** | HV10a: the person knows which hosts the repository needs beyond its registries; a writer that works around a refusal is no better |
+| 1065 | Which merges carry `Closes #n`? (details 1017) | **Every merge commit the queue makes for a workspace with an issue, Hive's or the person's Approve, in its body; a fast-forward makes no merge commit and closes nothing (HV11 closes it)** | One rule for the queue; the subject stays `Merge <branch>: <title>` (the merger's page) |
+| 1066 | When is a take judged? (details 1040, 1059) | **`judged` in the issue's `<number>.jsonl`, with the identity that took it: right when Hive moves its workspace to `landed`; wrong when its request was closed without a merge, or the person stopped its agent; nothing for a stop by Hive's limits. Once per workspace** | 1059: "written from HV10 on"; Hive already knows these three ends |
+
+## As built (HV10b, HV10c)
+
+Built on `feature/hv10-workspace-from-issue` from `main` at `834128a`, 2026-11-14, as planned
+above with decisions 1061–1066, and four more from the real run (1067–1070).
+
+- **The start**: `startFromIssue` (`packages/cli/src/issue-start.ts`) behind
+  `POST /api/issues/<n>/start` (the page's Start in Hive, `by: 'page'`) and `start_from_issue`
+  (`mcp-issues.ts`). It runs its refusals in the plan's order, classifies a changed issue again
+  first, and starts one issue at a time. The request takes only the kind's own parts with text:
+  the classifier's schema has every kind's part, and `start()` refused the others' empty ones (the
+  first test caught it on HV9a's real answer). `start()` puts `From issue #n (<url>).` before the
+  brief, refuses an issue with Hive off, and keeps `issue` in the record; `parseWorkspaceRequest`
+  never reads one.
+- **`start_from_issue` skips the Confirm only for Nucleus with Hive on**: with the person's setting
+  alone (Hive off) the start would be refused anyway, so its Confirm stays.
+- **The writer's reach** (`writer-reach.ts`): as decisions 1050–1054 and 1063 say, with what the
+  real run changed (below). Settings' **The writer's network** (`/api/hive/sandbox`) shows the
+  ecosystems found at the main checkout's root, the person's hosts and the count in force; the
+  writer's own list is read from its worktree's root when it starts.
+- **A refused host** (1064): read at the turn's end from the activity file's recorded outputs
+  (`<sandbox_violations>`… `deny network-outbound <host>`), not from Claude Code's own log.
+- **Landing**: `HiveRequests.by(issue)` reads `hive.issues.lands` for a workspace from an issue;
+  `requestBody` puts `Closes #n.` first; the merge queue sets the entry's `body` from the
+  workspace's record, and `mergeMessage` gives it to both the clean merge and a resolution's
+  commit. Settings' **Work from an issue** sets the key (`/api/hive/landing/issues`).
+- **`judged` (1066)**: written from Hive's event function: `landed` right, a `stuck` whose note is a
+  request closed without a merge wrong. **Not built: "the person stopped its agent".** Hive does
+  not record who stopped an agent, and a Hive stop for its limits must judge nothing; it waits
+  for a record that says so.
+- **The viewer**: `startOffer`, `issueWorkspaces`, `hiveStepChip` (pure, `classification.ts`);
+  the card's Start in Hive, then its workspace and step; the row's branch and step; `#n` on the
+  sidenav cards (text: the row is one button) and the page's head (a link to the issue on the
+  Issues page, not the forge: the forge's link is one click further, on that page).
+
+**What the real run changed** (Verification 5, Claude Code 2.1.325). Five runs of the built view
+on a scratch repository (`/tmp/hv10a-reach/loc`, trusted, removed after), `origin` on the fake
+forge, the issue's take written by hand (a classifier rightly refuses a brief of credential
+probes), HV10a's probes as the brief, Sonnet at low. The first four each found a fault:
+
+1. **`TMPDIR` in `env` stopped every command**: "Sandbox is required but failed to initialize:
+   Failed to create bridge sockets after 5 attempts". The sandbox makes its sockets in `TMPDIR`,
+   and the cache's path (83 characters before the socket's name) was too long. Measured alone
+   with and without it. Decision 1070.
+2. **Flags at resume start a copy**: Claude Code's words, "background session e43b1a53 keeps its
+   own saved options, so the flags you passed started a copy… Without flags, the same command
+   continues e43b1a53 itself". Each Hive message made a copy, and Hive took one for an unseen
+   turn. Without flags the reply continued the same session (`f9f663ec`), its settings kept: the
+   web tools still absent, the same `env`. Decision 1069.
+3. **A Bash call may name hosts of its own** (`allowed_domains`, "reviewed by the auto-mode
+   classifier"): `sandbox.network.strictAllowlist` makes the allowlist whole. Probe 13: "allowed_domains
+   cannot widen network access in this session". Decision 1067.
+4. **More tools reach out than HV10a listed**, and an Edit deny is a sandbox write deny too: the
+   writer listed `Artifact`, `ArtifactData`, `DesignSync`, `SendToProjectContext`, `ListAgents`
+   and `SendMessage`; the deny on the writers' folder made the install cache read-only (npm: "Log
+   files were not written"). Decision 1068.
+
+The parser of refused hosts also took the writer's own bracket (`github.com:22)`); it reads a
+host's characters only now.
+
+**Results.** The fifth run, on the branch's last build: the workspace `chore/1-the-search-ignores-case-5`
+(`-2` to `-5` after the earlier runs' branches, decision 1062), its writer's probes:
+
+| # | Probe | Reached |
+|---|---|---|
+| 1 | `GITHUB_TOKEN` (set to a fake in the view's environment), `GH_TOKEN`, a marker | none present |
+| 2 | `GH_CONFIG_DIR`, the npm cache | the empty folder; the workspace's cache |
+| 3 | `gh auth status` | exit 1 |
+| 4, 5 | `~/.config/gh/hosts.yml`, `~/.ssh/id_ed25519` readable | no, no |
+| 6, 7 | `git ls-remote` (SSH), `ssh -T git@github.com` | no: `deny network-outbound github.com:22`; no DNS |
+| 8 | `curl https://example.com` | no: 403, `deny network-outbound example.com:443` |
+| 9, 10 | `registry.npmjs.org`; `npm view is-odd version` | 200; `3.0.1` |
+| 11, 14 | WebFetch, WebSearch, the `web-fetch` agent, MCP tools, claude.ai's and other sessions' tools | none listed |
+| 12 | `git add -A` after writing a file | passed |
+| 13 | a Bash call with `allowed_domains: ["example.com"]` | refused before it ran |
+
+Hive stopped the workspace at the turn's end: "Claude Code's sandbox refused github.com:22,
+example.com:443: add it to hive.sandbox.allowedDomains in Settings → Hive if the writer needs it,
+then start the agent again". Clean up removed the writer's folder (seen empty after each of four).
+Not run for real: a landing (the check was `false`, nothing was pushed, nothing reached a real
+forge), a request's `Closes #n` on a real forge, and the `judged` lines outside the tests.
+
+**Decisions from the real run** (1067–1070; 1060 the highest on `main` and every branch on
+2026-11-14):
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 1067 | May a command widen the writer's network? (details 1052) | **No: `sandbox.network.strictAllowlist: true`; the allowlist is the ecosystems' hosts and `hive.sandbox.allowedDomains`, whole** | Claude Code 2.1.325 lets a Bash call add hosts (`allowed_domains`), reviewed by auto mode's classifier; with the strict list it refused one (probe 13) |
+| 1068 | Which tools does an issue's writer lose? (replaces 1063's deny on Symbiote's cache, adds to 1054) | **WebFetch, WebSearch; claude.ai's (`Artifact`, `ArtifactData`, `ArtifactComments`, `DesignSync`, `RemoteTrigger`, `SendToProject`, `SendToProjectContext`, `PushNotification`); the person's other sessions' (`ListAgents`, `SendMessage`); Edit on its own settings file, Symbiote's hook folder and the shared settings file. The list is read again on each Claude Code version** | The writer listed them (probe 14); an Edit deny is a write deny in the sandbox too, and one on the writers' folder made the install cache read-only |
+| 1069 | What does a resume of the writer pass? (replaces 1063's "given again at each resume") | **Nothing but the text: the session keeps its `--settings` and `--strict-mcp-config`; its settings file is written again if it differs or is gone** | A flag at resume starts a copy (Claude Code's own words); without one the same session went on with its settings |
+| 1070 | Is `TMPDIR` the writer's cache? (replaces 1053's `TMPDIR`) | **No: the sandbox's own temp folder; the cache folder holds the installs' caches only** | `TMPDIR` in the cache stopped every command: the sandbox's sockets did not fit the path |
+

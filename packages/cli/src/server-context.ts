@@ -34,6 +34,7 @@ import type { UsageService } from './usage.js';
 import type { IntroRecord } from './intro.js';
 import type { HiveRecord } from './hive.js';
 import type { ReviewerSettings } from './hive-review.js';
+import type { HiveSandboxService } from './writer-reach.js';
 import type { HiveLandingService } from './hive-request.js';
 import type { HivePacingService } from './hive-pacing.js';
 import type { HiveWorkspace } from './hive-workspace.js';
@@ -44,6 +45,7 @@ import type { Terminals } from './terminal.js';
 import type { PageAgent } from './page-agent.js';
 import type { SkillsService } from './skills.js';
 import type { SymbioteMcp } from './mcp.js';
+import type { IssueStarter } from './issue-start.js';
 import type { IssueClassifier } from './issue-classifier.js';
 import type { IssuesService } from './issues.js';
 import type { ServerKeys } from './server-keys.js';
@@ -127,6 +129,8 @@ export interface RepositoryOptions {
   issues?: IssuesService;
   /** The classifier (HV9b): `POST /api/issues/<n>/classify`, `GET …/classification`. */
   issueClassifier?: IssueClassifier;
+  /** A Hive workspace from an issue (HV10b): `POST /api/issues/<n>/start`, Start in Hive. */
+  issueStart?: IssueStarter;
   /** Each subscription's windows of use (V29c): `GET /api/usage`, from a 5-min copy. */
   usage?: Pick<UsageService, 'report' | 'settled'>;
   /**
@@ -192,6 +196,8 @@ export interface ViewServerOptions {
   hiveReviewer?: ReviewerSettings;
   /** Enables `/api/hive/landing` (HV8): how Hive lands, the forge and its token. */
   hiveLanding?: HiveLandingService;
+  /** Enables `/api/hive/sandbox` (HV10b): an issue writer's hosts, `hive.sandbox.allowedDomains`. */
+  hiveSandbox?: HiveSandboxService;
   /** Enables `/api/hive/pacing` (HV5): the usage threshold, the budget, Hive's pause now. */
   hivePacing?: HivePacingService;
   /**

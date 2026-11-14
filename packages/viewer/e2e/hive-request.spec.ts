@@ -134,8 +134,10 @@ test('Settings: Hive lands by, with the forge origin names and whether a token i
   const part = page.getByRole('region', { name: 'Hive mode' }).getByRole('group', {
     name: 'Landing',
   });
-  const queue = part.getByRole('button', { name: 'Merge queue' });
-  const request = part.getByRole('button', { name: 'Pull request' });
+  // HV10c: the row for work from an issue has the same two choices; this is Hive's own.
+  const lands = part.getByRole('group', { name: 'Lands through', exact: true });
+  const queue = lands.getByRole('button', { name: 'Merge queue' });
+  const request = lands.getByRole('button', { name: 'Pull request' });
   const requests = part.getByRole('group', { name: 'Pull and merge requests' });
   await expect(queue).toHaveAttribute('aria-pressed', 'true');
   await expect(part).toContainText('Into the branch the workspace started from');

@@ -8,6 +8,7 @@ import type { Pair } from './diffs.js';
 import {
   parseHiveChange,
   parseLandsBy,
+  parseSandboxDomains,
   parseHivePacing,
   parseModelChange,
   parseEffortChange,
@@ -45,6 +46,7 @@ import {
   monitorMap,
   issueClassification,
   issueClassify,
+  issueStartOne,
   issueList,
   issueOne,
   serverPages,
@@ -292,6 +294,18 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       if (req.method === 'GET') return read(req, res, () => landing.read());
       return written(req, res, parseLandsBy, ({ by }) => answer(res, () => landing.set(by)));
     }
+    // HV10c: how a workspace from an issue lands, `hive.issues.lands`.
+    if (landing && url.pathname === '/api/hive/landing/issues') {
+      return written(req, res, parseLandsBy, ({ by }) => answer(res, () => landing.setIssues(by)));
+    }
+    // HV10b: the hosts an issue's writer may reach.
+    const sandbox = options.hiveSandbox;
+    if (sandbox && url.pathname === '/api/hive/sandbox') {
+      if (req.method === 'GET') return read(req, res, () => sandbox.read());
+      return written(req, res, parseSandboxDomains, ({ allowedDomains }) =>
+        answer(res, () => sandbox.set(allowedDomains)),
+      );
+    }
     const pacing = options.hivePacing;
     if (pacing && url.pathname === '/api/hive/pacing') {
       if (req.method === 'GET') return read(req, res, () => pacing.read());
@@ -388,6 +402,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       monitor,
       issues,
       issueClassifier,
+      issueStart,
       settings,
       checks,
       usage,
@@ -485,6 +500,11 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       const classify = /^\/api\/issues\/([^/]*)\/classify$/.exec(url.pathname);
       if (classify) {
         return issueClassify(req, res, classify[1] ?? '', issueClassifier, written);
+      }
+      // Start in Hive (HV10b): the person's click, with the page key.
+      const start = /^\/api\/issues\/([^/]*)\/start$/.exec(url.pathname);
+      if (start && issueStart) {
+        return issueStartOne(req, res, start[1] ?? '', issueStart, written);
       }
       const kept = /^\/api\/issues\/([^/]*)\/classification$/.exec(url.pathname);
       if (kept) return issueClassification(req, res, kept[1] ?? '', issueClassifier);

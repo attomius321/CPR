@@ -24,6 +24,7 @@ import {
   timeWords,
   writerWords,
   type Chip,
+  type StartOffer,
 } from './classification.js';
 import { relativeTime } from './issues.js';
 
@@ -73,7 +74,8 @@ export function DecisionChip({
  * The Hive card on an issue (HV9c, decision 1056): the classifier's decision and what decided it,
  * the brief a take would start, the run; Classify, or Classify again once the issue or the
  * classifier changed or the last one failed. With Hive off, a past decision and nothing offered.
- * Its head's end has room for HV10's Start.
+ * HV10b: Start in Hive on a take of the issue's current text, the person's click; once started,
+ * its workspace's branch and Hive's step, linked.
  */
 export function HiveCard({
   number,
@@ -87,6 +89,10 @@ export function HiveCard({
   text,
   now,
   onClassify,
+  offer: started,
+  starting,
+  startRefused,
+  onStart,
 }: {
   number: number;
   record: IssueRecord | null;
@@ -100,6 +106,11 @@ export function HiveCard({
   text: (markdown: string) => ReactNode;
   now: number;
   onClassify: () => void;
+  /** What it offers to start (HV10b): Start in Hive, or the workspace open. */
+  offer: StartOffer;
+  starting: boolean;
+  startRefused: string | undefined;
+  onStart: () => void;
 }) {
   const shell = useShell();
   const offer = cardOffer({ hive, about, record, snapshot, identity });
@@ -138,8 +149,48 @@ export function HiveCard({
             {relativeTime(record.run.at, now)}
           </span>
         )}
-        {button && <div className="end">{button}</div>}
+        {(button || started.start) && (
+          <div className="end">
+            {button}
+            {started.start &&
+              (starting ? (
+                <button type="button" className="button" disabled>
+                  <Loading inline>Starting…</Loading>
+                </button>
+              ) : (
+                <button type="button" className="button" onClick={onStart} disabled={running}>
+                  <HexagonIcon />
+                  Start in Hive
+                </button>
+              ))}
+          </div>
+        )}
       </div>
+      {started.workspace && (
+        <p className="issues-hive-workspace">
+          <span className="issues-hive-label">Its workspace</span>
+          <a
+            href={`/?branch=${encodeURIComponent(started.workspace.branch)}`}
+            onClick={(event) => {
+              if (!shell || !started.workspace) return;
+              event.preventDefault();
+              shell.navigate({ page: 'workspace', branch: started.workspace.branch });
+            }}
+          >
+            {started.workspace.branch}
+          </a>
+          {started.workspace.step && started.workspace.tone && (
+            <StatusLabel tone={started.workspace.tone} className="issues-hive-step">
+              {started.workspace.step}
+            </StatusLabel>
+          )}
+        </p>
+      )}
+      {startRefused && (
+        <p className="error issues-hive-refused" role="alert">
+          {startRefused}
+        </p>
+      )}
       {offer.blocked === 'hive-off' && (
         <p className="issues-hive-note">
           Hive mode is off: its past decisions show, and Classify needs it on.

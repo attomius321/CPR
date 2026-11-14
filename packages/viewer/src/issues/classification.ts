@@ -10,6 +10,7 @@ import type {
   IssueRecord,
   IssueSnapshot,
   IssueSnapshotFlag,
+  WorkspaceSummary,
 } from '@symbiote/core';
 import type { StatusTone } from '../ui/StatusLabel.js';
 import { plural } from '../ui/plural.js';
@@ -17,6 +18,8 @@ import { plural } from '../ui/plural.js';
 export const DECISIONS_ADDRESS = '/api/issues/classifications';
 export const classificationAddress = (number: number) => `/api/issues/${number}/classification`;
 export const classifyAddress = (number: number) => `/api/issues/${number}/classify`;
+/** Start in Hive (HV10b): the person's click, a write with the page key. */
+export const startAddress = (number: number) => `/api/issues/${number}/start`;
 
 /** The words of a list, the last one joined by "and". */
 function joined(words: readonly string[]): string {
@@ -256,4 +259,79 @@ export function cardOffer({
     };
   }
   return { show: true, action: null };
+}
+
+type Step = NonNullable<WorkspaceSummary['hive']>['step'];
+
+/** Hive's step in a word and its tone (V88: amber while Hive works, red stopped, green done). */
+const STEPS: Record<Step, { step: string; tone: StatusTone }> = {
+  writing: { step: 'Writing', tone: 'run' },
+  checking: { step: 'Checking', tone: 'run' },
+  reviewing: { step: 'Reviewing', tone: 'run' },
+  landing: { step: 'Landing', tone: 'run' },
+  stuck: { step: 'Stopped', tone: 'error' },
+  landed: { step: 'Landed', tone: 'ok' },
+  answered: { step: 'Answered', tone: 'ok' },
+};
+
+/** A Hive workspace's step for an issue's row and card (HV10b); none without Hive's record. */
+export function hiveStepChip(
+  workspace: WorkspaceSummary,
+): { step: string; tone: StatusTone } | undefined {
+  return workspace.hive ? STEPS[workspace.hive.step] : undefined;
+}
+
+/**
+ * Each issue's open workspace on `forge` (HV10b, decisions 1013, 1014): started from it, not
+ * merged; the newest when several are listed. None without a forge.
+ */
+export function issueWorkspaces(
+  workspaces: readonly WorkspaceSummary[],
+  forge: { kind: string; host: string; project: string } | undefined,
+): Map<number, WorkspaceSummary> {
+  const found = new Map<number, WorkspaceSummary>();
+  if (!forge) return found;
+  for (const w of workspaces) {
+    const issue = w.issue;
+    if (!issue || w.merged || w.finished) continue;
+    if (issue.forge !== forge.kind || issue.host !== forge.host || issue.project !== forge.project)
+      continue;
+    const kept = found.get(issue.number);
+    if (!kept || kept.created < w.created) found.set(issue.number, w);
+  }
+  return found;
+}
+
+/** What the Hive card offers to start (HV10b): Start in Hive, or the workspace already open. */
+export interface StartOffer {
+  start: boolean;
+  /** A held take (decision 1034): the click is the person's, and why it waits for it. */
+  held?: string;
+  workspace?: { branch: string; step?: string; tone?: StatusTone };
+}
+
+/**
+ * Start in Hive (decision 1011): with Hive on, for a take on the issue's current text (its hash
+ * read and the record's), when the issue has no workspace open (1014); that workspace instead.
+ */
+export function startOffer({
+  hive,
+  record,
+  snapshot,
+  workspace,
+}: {
+  hive: boolean;
+  record: IssueRecord | null;
+  snapshot: string | undefined;
+  workspace: WorkspaceSummary | undefined;
+}): StartOffer {
+  if (workspace && workspace.hive?.step !== 'landed') {
+    return { start: false, workspace: { branch: workspace.branch, ...hiveStepChip(workspace) } };
+  }
+  if (!hive || record?.decision !== 'take' || !snapshot || snapshot !== record.snapshot?.hash) {
+    return { start: false };
+  }
+  return record.held?.length
+    ? { start: true, held: `Held for your click: ${holdWords(record.held)}.` }
+    : { start: true };
 }

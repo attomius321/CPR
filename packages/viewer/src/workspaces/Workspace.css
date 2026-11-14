@@ -16,6 +16,13 @@
 }
 
 /* The open workspace's kind (V61, the mockup): the current one's, in a wash of the accent. */
+/* HV10b: the issue a workspace was started from, before its name; a link to the Issues page. */
+.workspace-top .workspace-issue {
+  margin-right: 8px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
 .workspace-top .kind-tag,
 .workspace-about[aria-current] + .kind-tag {
   background: color-mix(in srgb, var(--accent) 14%, transparent);

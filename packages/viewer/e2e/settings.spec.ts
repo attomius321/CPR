@@ -967,7 +967,7 @@ test('in Hive mode, the same list: the check under This repository, Alpha Ceph a
   // The prompts' groups folded, Hive's first; the open entry's group opens with it.
   const prompts = list(page).getByRole('region', { name: 'Prompts' });
   const heads = prompts.locator('.settings-fold-head');
-  await expect(heads).toHaveText(['Hive10', 'Workspaces8', 'Reviews5']);
+  await expect(heads).toHaveText(['Hive11', 'Workspaces8', 'Reviews5']);
   await expect(heads.first()).toHaveAttribute('aria-expanded', 'false');
   await heads.first().click();
   await expect(heads.first()).toHaveAttribute('aria-expanded', 'true');

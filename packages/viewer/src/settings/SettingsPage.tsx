@@ -113,6 +113,8 @@ const ICONS: Partial<Record<EntryKey, () => ReactNode>> = {
   // HV9b: the classifier reads an issue, the Issues page's icon.
   'hive.classify': IssuesIcon,
   'hive.start': HexagonIcon,
+  // HV10: a start from an issue, the Issues page's icon.
+  'hive.issue': IssuesIcon,
   'hive.check': ChecksIcon,
   'hive.review': BugIcon,
   'hive.commit': CommitIcon,

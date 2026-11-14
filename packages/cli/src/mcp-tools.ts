@@ -37,7 +37,14 @@ export class ToolProblem extends Error {
 
 /** The services a tool needs; without one it is left out. */
 export type Need =
-  'workspaces' | 'reviews' | 'merges' | 'usage' | 'monitor' | 'marks' | 'issueClassifier';
+  | 'workspaces'
+  | 'reviews'
+  | 'merges'
+  | 'usage'
+  | 'monitor'
+  | 'marks'
+  | 'issueClassifier'
+  | 'issueStart';
 
 /**
  * What a tool is, for its client (fix-mcp-annotations, MC3 decision 997): whether it only reads;
@@ -258,6 +265,29 @@ export const MCP_TOOLS: readonly ToolSpec[] = [
       ['number'],
     ),
     needs: ['issueClassifier'],
+  },
+  {
+    name: 'start_from_issue',
+    annotations: ACTS,
+    description:
+      "Starts a Hive workspace from an issue the classifier took on its current text, as Start in Hive on the Issues page: Symbiote builds the brief, the branch (<kind>/<number>-<slug>), the model and the effort from the classifier's decision, classifying the issue again first if it changed. Refused with Hive off, for an issue not taken, held for the person, or with a workspace open. Use it for any work from an issue: never copy an issue's text into start_workspace." +
+      ASKS,
+    inputSchema: object(
+      {
+        number: {
+          type: 'integer',
+          minimum: 1,
+          description: "The issue's number, as the Issues page shows it (#12)",
+        },
+        from: {
+          type: 'string',
+          description: 'The branch to start from and land in, when not the default branch',
+        },
+      },
+      ['number'],
+    ),
+    needs: ['issueStart'],
+    asks: true,
   },
   {
     name: 'reply',

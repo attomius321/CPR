@@ -634,6 +634,7 @@ describe("Nucleus's prompt (V35, NU1)", () => {
       'library',
       'hive.classify',
       'hive.start',
+      'hive.issue',
       'hive.check',
       'hive.review',
       'hive.commit',
@@ -793,6 +794,8 @@ describe("Hive's prompts (HV2, decision 657)", () => {
       // HV9b: the classifier, the first step of Hive's loop from an issue.
       ['hive.classify', 'Classifier'],
       ['hive.start', 'Start'],
+      // HV10: added after Start for a workspace from an issue.
+      ['hive.issue', 'Start from an issue'],
       ['hive.check', 'Check failed'],
       ['hive.review', 'Defects proven'],
       ['hive.commit', 'Not committed'],
@@ -811,6 +814,7 @@ describe("Hive's prompts (HV2, decision 657)", () => {
     const without = withConfig({ prompts: { hive: { review: 'Fix it.' } } });
     expect(readPrompts(without).text['hive.review']).toBe(DEFAULT_PROMPTS['hive.review']);
     expect(of('hive.start')?.placeholders.map((p) => p.name)).toEqual(['check', 'rounds']);
+    expect(of('hive.issue')?.placeholders.map((p) => p.name)).toEqual(['number', 'url']);
     // V86: what Alpha Ceph is told of Hive, in a project's config as `prompts.hive.nucleus`.
     expect(of('hive.nucleus')?.placeholders.map((p) => p.name)).toEqual(['rounds']);
     expect(

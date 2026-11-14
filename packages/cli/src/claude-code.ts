@@ -328,6 +328,8 @@ export interface ClaudeCode {
     addDir: string;
     /** Symbiote's settings file (V18c): the hooks that record the thread. */
     settings?: string;
+    /** No MCP server of the person's (HV10, decision 1054): an issue's writer. */
+    strictMcpConfig?: boolean;
     /** Its effort level (V30b, `--effort`): the session keeps it, through a resume too. */
     effort?: string;
     /** Its model (V47, `--model`), over the project's: the session keeps it, as its level. */
@@ -494,6 +496,7 @@ export function claudeCode(
         '--add-dir',
         request.addDir,
         ...(request.settings ? ['--settings', request.settings] : []),
+        ...(request.strictMcpConfig ? ['--strict-mcp-config'] : []),
         ...(await permission(request.permissionMode)),
         ...choose(request.model, model),
         ...(request.effort ? ['--effort', request.effort] : []),
@@ -542,6 +545,7 @@ export function claudeCode(
       return { ok: false, error: wordsOf(result) || `could not stop ${id}` };
     },
     async resume(request) {
+      // No flag: the session keeps the options it started with; a flag starts a copy (2.1.325).
       const args = ['--bg', '--resume', request.sessionId, '--', request.text];
       const result = await run(command, args, { cwd: request.cwd, timeoutMs: 60_000 });
       sessions = null;

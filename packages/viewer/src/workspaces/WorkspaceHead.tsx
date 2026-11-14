@@ -25,6 +25,26 @@ import { useWorkspaces } from './useWorkspaces.js';
 import { tip } from '../ui/tip.js';
 import { Loading } from '../ui/Loading.js';
 import { startedAt } from './workspace-words.js';
+import { useShell } from '../shell/shell-context.js';
+
+/** A workspace's issue (HV10b): `#n`, opening it on the Issues page. */
+function IssueLink({ number }: { number: number }) {
+  const shell = useShell();
+  return (
+    <a
+      className="workspace-issue"
+      href={`/issues?number=${number}`}
+      {...tip('Its issue, on the Issues page')}
+      onClick={(event) => {
+        if (!shell) return;
+        event.preventDefault();
+        shell.navigate({ page: 'issues', number });
+      }}
+    >
+      #{number}
+    </a>
+  );
+}
 
 import type { Dispatch, SetStateAction } from 'react';
 
@@ -168,7 +188,13 @@ export function WorkspaceHead({
       <PageHead
         className={`workspace-top tone-${row.next.chip.tone}`}
         icon={(workspace.kind && KIND_ICONS[workspace.kind]) ?? <BranchIcon />}
-        title={<span {...tip(briefTip(workspace.brief))}>{workspaceName(workspace)}</span>}
+        title={
+          <>
+            {/* HV10b: the issue it was started from, on the Issues page. */}
+            {workspace.issue && <IssueLink number={workspace.issue.number} />}
+            <span {...tip(briefTip(workspace.brief))}>{workspaceName(workspace)}</span>
+          </>
+        }
         line={
           <span className="workspace-state-line">
             <span className="workspace-ref">

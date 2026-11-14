@@ -139,3 +139,75 @@ or written. The probes printed variable names, yes or no, `gh`'s account name an
 characters of `origin`'s HEAD. The fake token's value was `hv10a-fake-not-a-secret`. Nothing was
 pushed or posted, and nothing was written to a forge. The scratch folder and its sessions were
 removed after the runs. `pnpm check` passes.
+
+## HV10b, HV10c — the start from an issue, the writer's reach, landing with Closes #n (2026-11-14, branch `feature/hv10-workspace-from-issue`)
+
+Built as the plan says, with decisions 1061–1066 decided before the code and 1067–1070 from the
+real run. `startFromIssue` behind Start in Hive and `start_from_issue`; the issue in the request,
+the record, the summary and the branch `<kind>/<number>-<slug>`; `#n` on the workspace's card and
+head; the row's branch and Hive's step. An issue's writer gets its own settings in Symbiote's
+cache: the variables in `env`, the sandbox on and required with a strict allowlist, the forge's
+credentials hidden, one install cache, no web, claude.ai or other-session tools, no MCP server,
+`hive.issue` after `hive.start`. A host the sandbox refuses stops the workspace. Work from an issue
+lands by `hive.issues.lands` (a request by default), with `Closes #n` in the request and in the
+queue's merge commit. A take is judged right when it lands and wrong when its request is closed.
+
+**Learned**:
+
+- **The classifier's parts are every kind's.** HV9's schema asks for all eleven parts and the
+  model leaves the other kinds' empty; `start()` refuses a part its kind lacks, empty or not. The
+  first test of the start, on HV9a's real answer, caught it: the request keeps only the kind's
+  parts with text.
+- **`TMPDIR` is the sandbox's, not the cache's.** With `TMPDIR` in the writer's `env` (decision
+  1053), every command failed: "Failed to create bridge sockets after 5 attempts". The sandbox
+  makes its Unix sockets there, and a cache path of 83 characters left no room for their names.
+  Two short sessions, one each way, showed it. The installs' caches stay in the folder; `TMPDIR`
+  does not (1070).
+- **A flag at resume starts a copy.** Claude Code 2.1.325 says so itself: "background session
+  e43b1a53 keeps its own saved options, so the flags you passed started a copy as d259a122.
+  Without flags, the same command continues e43b1a53 itself." Giving `--settings` and
+  `--strict-mcp-config` again at each resume (1063) made a copy of the writer at every Hive
+  message, and Hive took the first for an unseen turn. Without them the person's reply continued
+  `f9f663ec`, its settings kept (1069).
+- **A command can widen the sandbox's network unless the allowlist is strict.** 2.1.325's Bash
+  takes `allowed_domains`, "reviewed by the auto-mode classifier", and Hive's writers run in auto
+  mode. Its refusal text pointed there ("re-run the command with this host listed"), and Claude
+  Code's own schema named the setting: `sandbox.network.strictAllowlist`, "deterministically
+  denies hosts not in allowedDomains", settable from `--settings` (1067).
+- **The writer's tools change with Claude Code.** HV10a listed four claude.ai tools; the writer
+  of 2.1.325 listed `Artifact`, `ArtifactData`, `DesignSync`, `SendToProjectContext`, and
+  `ListAgents` and `SendMessage`, which reach the person's other sessions, Nucleus among them.
+  All are denied (1068). A deny list needs reading again on each version: the probe that lists
+  every tool, deferred ones too, is the way.
+- **An Edit deny is a write deny in the sandbox.** A deny on `Edit(//<cache>/writers/**)`, meant
+  to keep the writer off its settings file, made its install cache read-only: npm "Log files were
+  not written due to an error writing to the directory". Only its own settings file is denied now.
+- **The sandbox's placeholders are the same 23 on 2.1.325**, and `git add -A` still fails on
+  them; the exclude stays. A scratch repository under `~/.claude/` gets no writable git folder at
+  all: the sandbox protects that folder. Real runs go under `/tmp` (the repository) and the home
+  folder's `.cache` (Symbiote's cache): `/tmp` inside the sandbox is its own, so a cache there is
+  not found (npm's `ENOENT`).
+- **A host the writer refers to in its own words** (`(sandbox: deny network-outbound
+  github.com:22)`) made the parser take the bracket; it reads a host's characters only now.
+
+**Verification**: tests first, red for the right reason: `startFromIssue` (10, each guard removed
+fails its own), the merge commit's body (3), `start_from_issue` (4), the writer's settings,
+hosts, cache and exclude (13), an issue's workspace under Hive (7, five red), the start's and
+resume's arguments, `hive.issues.lands`, the request's description, `judgeTake`, Start in Hive's
+route, the card's offer and the row's step (3). e2e `issues-start.spec.ts` (2) on the fake forge
+and the fake agent: Classify, Start in Hive, the card's and row's branch and step, `#1` on the
+sidenav and the head, the writer's arguments and settings, Settings' two rows. Screenshots of
+each new part in both themes at 1440×900. `pnpm check` (3,800 tests), `pnpm build`, `pnpm
+test:e2e` (493 viewer and 32 nexus tests) pass. The real run: five runs of the built view, Claude Code
+2.1.325, a scratch repository with `origin` on the fake forge; the fifth reached none of the
+forge's variables or files, no SSH, no web page, no web, claude.ai or other-session tool, and
+`registry.npmjs.org` only; its install passed; a command's own `allowed_domains` was refused;
+Hive stopped it naming both refused hosts; the reply continued the same session. The probes
+printed names, yes or no, exit codes and the first 12 characters of a line, never a value; the
+fake token was `hv10b-fake-not-a-secret`. Nothing was pushed or posted; the scratch folders, the
+caches and the sessions were removed.
+
+Not verified: a real landing (the scratch check was `false`), `Closes #n` on a real forge, the
+`judged` lines outside the tests, a judged "stopped by the person" (not built: Hive does not
+record who stopped an agent), and Maven, Gradle, Bundler, NuGet, Composer, uv and Deno's hosts
+(HV10a's documentation, not measured).

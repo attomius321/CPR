@@ -3101,6 +3101,7 @@ describe('symbiote view: the Issues page (IS1)', () => {
     why: 'Claude Code is not found',
   } satisfies ClassifierSettings;
   const changed: unknown[] = [];
+  const started: unknown[] = [];
   const source = {
     forge: { kind: 'github', host: 'github.com', project: 'acme/app' },
     token: true,
@@ -3135,6 +3136,21 @@ describe('symbiote view: the Issues page (IS1)', () => {
           one: (number) => {
             asked.push(number);
             return Promise.resolve({ ...source, forge: { ...source.forge, kind: 'github' } });
+          },
+        },
+        // HV10b: Start in Hive, its refusals the service's words.
+        issueStart: {
+          start: (number, how) => {
+            started.push([number, how]);
+            if (number === 4) {
+              return Promise.reject(
+                new IssueRefused('Issue #4 is not taken: the classifier refused it', 409),
+              );
+            }
+            return Promise.resolve({
+              workspace: { branch: 'fix/3-x' } as WorkspaceSummary,
+              prompt: '',
+            });
           },
         },
         // HV9b: the classifier, its refusals the service's words.
@@ -3237,6 +3253,30 @@ describe('symbiote view: the Issues page (IS1)', () => {
     expect((await get('/api/issues/5/classification')).status).toBe(404);
     expect((await get('/api/issues/x/classification')).status).toBe(400);
     expect((await classify('/api/issues/3/classification')).status).toBe(405);
+  });
+
+  it("starts a Hive workspace from an issue on the page's write: the person's click (HV10b)", async () => {
+    const start = (path: string, headers: Record<string, string> = PAGE) =>
+      get(path, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', ...headers },
+        body: '{}',
+      });
+    const done = await start('/api/issues/3/start');
+    expect(done.status).toBe(200);
+    expect(await done.json()).toMatchObject({ workspace: { branch: 'fix/3-x' } });
+    const refused = await start('/api/issues/4/start');
+    expect(refused.status).toBe(409);
+    expect(await refused.json()).toEqual({
+      error: 'Issue #4 is not taken: the classifier refused it',
+    });
+    expect((await start('/api/issues/3/start', { 'x-symbiote': '1' })).status).toBe(403);
+    expect((await get('/api/issues/3/start')).status).toBe(405);
+    expect((await start('/api/issues/0/start')).status).toBe(400);
+    expect(started).toEqual([
+      [3, { by: 'page' }],
+      [4, { by: 'page' }],
+    ]);
   });
 
   it("lists the records' decisions for the rows (HV9c, decision 1055)", async () => {

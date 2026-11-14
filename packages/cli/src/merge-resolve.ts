@@ -28,7 +28,7 @@ import {
   type MergerInput,
 } from './merge-agent.js';
 import { readPrompts } from './prompts.js';
-import { type MergerContext, short, plural } from './merge-context.js';
+import { type MergerContext, mergeMessage, short, plural } from './merge-context.js';
 import type { MergeTargetSteps } from './merge-targets.js';
 import { readMergeConfig, MERGER_CLAUDE_MODEL, modelOf } from './merge-config.js';
 
@@ -249,7 +249,7 @@ export function mergeResolve(
     const regions = await writeAnswer(worktree, perFile, answer);
     let merged: string;
     try {
-      merged = await commitResolution(worktree, conflicts, entry.title);
+      merged = await commitResolution(worktree, conflicts, mergeMessage(entry));
     } catch (error) {
       if (error instanceof MergeStepRefused) return stop(error.message);
       throw error;

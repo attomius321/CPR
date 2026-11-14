@@ -1,6 +1,6 @@
 // HV9c: the classifier on the Issues page, its words: a row's chip (decision 1055), the Hive
 // card's lines and what it offers (1056, 1057), in both modes.
-import type { IssueRecord } from '@symbiote/core';
+import type { IssueRecord, WorkspaceSummary } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import {
   cardOffer,
@@ -9,10 +9,13 @@ import {
   decisionWords,
   failureWords,
   flagWords,
+  hiveStepChip,
   holdWords,
+  issueWorkspaces,
   modelWords,
   readWords,
   refusalWords,
+  startOffer,
   timeWords,
   writerWords,
 } from '../src/issues/classification.js';
@@ -211,5 +214,95 @@ describe('what the card offers (decision 1056)', () => {
       action: null,
       blocked: 'hive-off',
     });
+  });
+});
+
+describe('Start in Hive and the workspace of an issue (HV10b, decisions 1011, 1013, 1014)', () => {
+  const ISSUE = {
+    forge: 'github' as const,
+    host: 'github.com',
+    project: 'acme/app',
+    number: 12,
+    url: 'https://github.com/acme/app/issues/12',
+    title: 'The search ignores case',
+    hash: 'a'.repeat(64),
+  };
+  const workspace = (over: Partial<WorkspaceSummary> = {}): WorkspaceSummary => ({
+    branch: 'fix/12-the-search-ignores-case',
+    base: 'b'.repeat(40),
+    created: '2026-11-14T11:00:00.000Z',
+    planFirst: false,
+    brief: '',
+    worktree: { path: '/w', exists: true },
+    tip: null,
+    ahead: 0,
+    merged: false,
+    agent: { state: 'working' },
+    hive: { step: 'checking', round: 1, rounds: 3 },
+    issue: ISSUE,
+    ...over,
+  });
+  const FORGE = { kind: 'github' as const, host: 'github.com', project: 'acme/app' };
+
+  it('finds each issue its open workspace, the newest; none landed, merged or of another forge', () => {
+    const older = workspace({ created: '2026-11-13T00:00:00.000Z', branch: 'fix/12-old' });
+    const found = issueWorkspaces(
+      [
+        older,
+        workspace(),
+        workspace({ branch: 'fix/13-x', issue: { ...ISSUE, number: 13 }, merged: true }),
+        workspace({ branch: 'fix/14-x', issue: { ...ISSUE, number: 14, project: 'o/r' } }),
+        workspace({ branch: 'feature/x', issue: undefined }),
+      ],
+      FORGE,
+    );
+    expect([...found.keys()]).toEqual([12]);
+    expect(found.get(12)?.branch).toBe('fix/12-the-search-ignores-case');
+    expect(issueWorkspaces([workspace()], undefined).size).toBe(0);
+  });
+
+  it("offers Start in Hive for a take on the issue's current text, with Hive on and no workspace open", () => {
+    const now = TAKE.snapshot.hash;
+    expect(startOffer({ hive: true, record: TAKE, snapshot: now, workspace: undefined })).toEqual({
+      start: true,
+    });
+    expect(
+      startOffer({
+        hive: true,
+        record: { ...TAKE, held: ['new-dependency'] },
+        snapshot: now,
+        workspace: undefined,
+      }),
+    ).toEqual({ start: true, held: 'Held for your click: it adds or replaces a dependency.' });
+    for (const offer of [
+      startOffer({ hive: false, record: TAKE, snapshot: now, workspace: undefined }),
+      startOffer({
+        hive: true,
+        record: { ...TAKE, decision: 'refuse' },
+        snapshot: now,
+        workspace: undefined,
+      }),
+      startOffer({ hive: true, record: TAKE, snapshot: 'c'.repeat(64), workspace: undefined }),
+      startOffer({ hive: true, record: TAKE, snapshot: undefined, workspace: undefined }),
+      startOffer({ hive: true, record: null, snapshot: now, workspace: undefined }),
+    ]) {
+      expect(offer).toEqual({ start: false });
+    }
+    expect(startOffer({ hive: true, record: TAKE, snapshot: now, workspace: workspace() })).toEqual(
+      {
+        start: false,
+        workspace: { branch: 'fix/12-the-search-ignores-case', step: 'Checking', tone: 'run' },
+      },
+    );
+  });
+
+  it("says Hive's step in a word and a tone", () => {
+    expect(hiveStepChip(workspace({ hive: undefined }))).toBeUndefined();
+    const step = (s: NonNullable<WorkspaceSummary['hive']>['step']) =>
+      hiveStepChip(workspace({ hive: { step: s, round: 1, rounds: 3 } }));
+    expect(step('writing')).toEqual({ step: 'Writing', tone: 'run' });
+    expect(step('landing')).toEqual({ step: 'Landing', tone: 'run' });
+    expect(step('stuck')).toEqual({ step: 'Stopped', tone: 'error' });
+    expect(step('landed')).toEqual({ step: 'Landed', tone: 'ok' });
   });
 });

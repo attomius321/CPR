@@ -1,6 +1,6 @@
 // An issue's record (HV9b, decision 1007): `symbiote/issues/<number>.json`, the classifier's last
 // decision on it, and each step an event in `<number>.jsonl` (`classified`, `failed`,
-// `classified-again`; HV10's and HV11's after). Kept beside Hive's switch (`repositorySwitch`):
+// `classified-again`; HV10's `started` and `judged`; HV11's after). Kept beside Hive's switch (`repositorySwitch`):
 // the main checkout's `symbiote/`, which git ignores, or Symbiote's cache. A record of another
 // origin is never read.
 import { appendFile, mkdir, readdir, readFile } from 'node:fs/promises';
@@ -37,10 +37,33 @@ export interface JudgedEvent {
   right: boolean;
   /** How it ended, in a word: `landed`, `declined`, `closed`, `stopped`. */
   why: string;
+  /** The workspace judged (HV10, decision 1066): each is judged once. */
+  branch?: string;
+}
+
+/**
+ * A workspace started from the take (HV10, decision 1013): its branch, and the identity of the
+ * classifier that took it, for the take to be judged under it (1066).
+ */
+export interface StartedEvent {
+  event: 'started';
+  at: string;
+  branch: string;
+  identity?: string;
 }
 
 /** A line of `<number>.jsonl`. */
-export type IssueEvent = ClassifiedEvent | JudgedEvent;
+export type IssueEvent = ClassifiedEvent | JudgedEvent | StartedEvent;
+
+/** Appends one of HV10's events to issue `number`'s `<number>.jsonl`. */
+export async function appendIssueEvent(
+  folder: string,
+  number: number,
+  event: StartedEvent | JudgedEvent,
+): Promise<void> {
+  await mkdir(join(folder, 'issues'), { recursive: true });
+  await appendFile(fileOf(folder, number, 'jsonl'), `${JSON.stringify(event)}\n`);
+}
 
 const fileOf = (folder: string, number: number, ext: 'json' | 'jsonl') =>
   join(folder, 'issues', `${number}.${ext}`);
@@ -118,4 +141,30 @@ export async function readIssueEvents(folder: string, number: number): Promise<I
         return [];
       }
     });
+}
+
+/**
+ * Judges the take behind `branch`'s workspace (HV10, decision 1066): under the identity its
+ * `started` event recorded, once per workspace; nothing for a workspace no start recorded.
+ */
+export async function judgeTake(
+  folder: string,
+  number: number,
+  branch: string,
+  { right, why, at }: { right: boolean; why: string; at: string },
+): Promise<void> {
+  const events = await readIssueEvents(folder, number);
+  if (events.some((e) => e.event === 'judged' && e.branch === branch)) return;
+  const started = events.findLast(
+    (e): e is StartedEvent => e.event === 'started' && e.branch === branch,
+  );
+  if (!started?.identity) return;
+  await appendIssueEvent(folder, number, {
+    event: 'judged',
+    at,
+    identity: started.identity,
+    right,
+    why,
+    branch,
+  });
 }

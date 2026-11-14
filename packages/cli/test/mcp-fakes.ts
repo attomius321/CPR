@@ -10,6 +10,7 @@ import type {
   MergeEntry,
   SuggestRequest,
   WorkspaceRequest,
+  WorkspaceStart,
   WorkspaceSuggestion,
   WorkspaceSummary,
 } from '@symbiote/core';
@@ -147,6 +148,8 @@ export function fakes(
     };
     /** Branches a review resolves, beside fix/a: none approved, at TIP (MC3). */
     reviewable?: string[];
+    /** A start from an issue, or its refusal (HV10b). */
+    startFromIssue?: (number: number) => Promise<WorkspaceStart>;
     /** The classifier's record of an issue, or its refusal (HV9c). */
     classify?: (number: number) => Promise<IssueRecord>;
   } = {},
@@ -380,6 +383,28 @@ export function fakes(
         ),
     },
     usage: { report: () => Promise.resolve({ subscriptions: [] }) },
+    issueStart: {
+      start: (number, how) => {
+        calls.push(['startFromIssue', number, how]);
+        if (options.startFromIssue) return options.startFromIssue(number);
+        const branch = `fix/${number}-the-search-ignores-case`;
+        return Promise.resolve({
+          workspace: workspace(branch, 'working', {
+            hive: { step: 'writing' } as WorkspaceSummary['hive'],
+            issue: {
+              forge: 'github',
+              host: 'github.com',
+              project: 'acme/app',
+              number,
+              url: `https://github.com/acme/app/issues/${number}`,
+              title: 'The search ignores case',
+              hash: 'f'.repeat(64),
+            },
+          }),
+          prompt: '',
+        });
+      },
+    },
     issueClassifier: {
       classify: (number) => {
         calls.push(['classify', number]);

@@ -9,6 +9,8 @@ import type {
   IssueRecord,
   IssueSource,
   IssueSummary,
+  WorkspaceStart,
+  WorkspaceSummary,
 } from '@symbiote/core';
 import { Help } from '../ui/Help.js';
 import { PageHead } from '../ui/PageHead.js';
@@ -23,7 +25,17 @@ import { longDate } from '../history/commits.js';
 import { useShell } from '../shell/shell-context.js';
 import { useHive } from '../shell/hive.js';
 import { DecisionChip, HiveCard } from './HiveCard.js';
-import { DECISIONS_ADDRESS, classificationAddress, classifyAddress } from './classification.js';
+import {
+  DECISIONS_ADDRESS,
+  classificationAddress,
+  classifyAddress,
+  hiveStepChip,
+  issueWorkspaces,
+  startAddress,
+  startOffer,
+} from './classification.js';
+import { StatusLabel } from '../ui/StatusLabel.js';
+import { useWorkspaces } from '../workspaces/useWorkspaces.js';
 import { issueTokens } from './issue-text.js';
 import {
   authorName,
@@ -73,6 +85,7 @@ export function IssuesPage({ number }: { number?: number | undefined }) {
   const [resizing, setResizing] = useState(false);
   const asked = useRef(0);
   const classifier = useClassifier(round);
+  const listed = useWorkspaces().list;
 
   // The search asks once typing rests.
   useEffect(() => {
@@ -132,6 +145,11 @@ export function IssuesPage({ number }: { number?: number | undefined }) {
   const source = list.source;
   const forge = source?.forge;
   const problem = source?.problem;
+  // HV10b: each issue's open workspace, this page's starts first until the list has them.
+  const opened = issueWorkspaces(
+    [...(listed?.workspaces ?? []), ...Object.values(classifier.started)],
+    forge,
+  );
   const now = Date.now();
   const note = source ? tokenNote(source) : undefined;
 
@@ -247,6 +265,7 @@ export function IssuesPage({ number }: { number?: number | undefined }) {
               now={now}
               decided={classifier.decided}
               running={classifier.running}
+              opened={opened}
               onPick={pick}
               onMore={more}
               onRetry={() => setRound((n) => n + 1)}
@@ -262,7 +281,12 @@ export function IssuesPage({ number }: { number?: number | undefined }) {
             onResize={resize}
             onDrag={setResizing}
           />
-          <IssueCard number={number} round={round} classifier={classifier} />
+          <IssueCard
+            number={number}
+            round={round}
+            classifier={classifier}
+            workspace={number ? opened.get(number) : undefined}
+          />
         </div>
       )}
     </div>
@@ -278,6 +302,7 @@ function IssueRows({
   now,
   decided,
   running,
+  opened,
   onPick,
   onMore,
   onRetry,
@@ -290,6 +315,8 @@ function IssueRows({
   /** Each classified issue's decision (decision 1055). */
   decided: ReadonlyMap<number, IssueDecision>;
   running: ReadonlySet<number>;
+  /** Each issue's open workspace (HV10b, decision 1013). */
+  opened: ReadonlyMap<number, WorkspaceSummary>;
   onPick: (number: number) => void;
   onMore: () => void;
   onRetry: () => void;
@@ -338,6 +365,7 @@ function IssueRows({
                 </span>
                 {issue.labels.length > 0 && <Labels labels={issue.labels} max={4} />}
                 <span className="issues-row-meta">{issueLine(issue, now)}</span>
+                <RowWorkspace workspace={opened.get(issue.number)} />
               </span>
             </button>
           </li>
@@ -406,6 +434,22 @@ function Labels({ labels, max }: { labels: IssueSummary['labels']; max?: number 
   );
 }
 
+/** A row's workspace (HV10b): its branch and Hive's step. */
+function RowWorkspace({ workspace }: { workspace: WorkspaceSummary | undefined }) {
+  if (!workspace) return null;
+  const step = hiveStepChip(workspace);
+  return (
+    <span className="issues-row-workspace">
+      <span className="issues-row-branch">{workspace.branch}</span>
+      {step && (
+        <StatusLabel tone={step.tone} className="issues-row-step">
+          {step.step}
+        </StatusLabel>
+      )}
+    </span>
+  );
+}
+
 /** The classifier's part of the page (HV9c): the rows' decisions, Classify and its answers. */
 export interface ClassifierState {
   /** What `/api/issues/classifications` said: null until read, or when it could not be. */
@@ -417,6 +461,11 @@ export interface ClassifierState {
   /** A Classify the server refused: its words. */
   refused: Readonly<Record<number, string>>;
   classify: (number: number) => void;
+  /** Start in Hive (HV10b): the issues being started, those this page started, its refusals. */
+  starting: ReadonlySet<number>;
+  started: Readonly<Record<number, WorkspaceSummary>>;
+  startRefused: Readonly<Record<number, string>>;
+  start: (number: number) => void;
 }
 
 /**
@@ -428,6 +477,9 @@ function useClassifier(round: number): ClassifierState {
   const [running, setRunning] = useState<ReadonlySet<number>>(new Set());
   const [fresh, setFresh] = useState<Record<number, IssueRecord>>({});
   const [refused, setRefused] = useState<Record<number, string>>({});
+  const [starting, setStarting] = useState<ReadonlySet<number>>(new Set());
+  const [started, setStarted] = useState<Record<number, WorkspaceSummary>>({});
+  const [startRefused, setStartRefused] = useState<Record<number, string>>({});
 
   useEffect(() => {
     let live = true;
@@ -455,6 +507,22 @@ function useClassifier(round: number): ClassifierState {
       .finally(() => setRunning((was) => new Set([...was].filter((n) => n !== number))));
   }, []);
 
+  // Start in Hive (HV10b): the person's click; the server classifies a changed issue first.
+  const start = useCallback((number: number) => {
+    setStarting((was) => new Set([...was, number]));
+    setStartRefused((was) => {
+      const rest = { ...was };
+      delete rest[number];
+      return rest;
+    });
+    postJson<WorkspaceStart>(startAddress(number), {})
+      .then(({ workspace }) => setStarted((was) => ({ ...was, [number]: workspace })))
+      .catch((failed: unknown) =>
+        setStartRefused((was) => ({ ...was, [number]: (failed as Error).message })),
+      )
+      .finally(() => setStarting((was) => new Set([...was].filter((n) => n !== number))));
+  }, []);
+
   const decided = new Map((read?.decisions ?? []).map((d) => [d.number, d]));
   for (const record of Object.values(fresh)) {
     decided.set(record.number, {
@@ -465,7 +533,18 @@ function useClassifier(round: number): ClassifierState {
       at: record.run.at,
     });
   }
-  return { read, decided, running, fresh, refused, classify };
+  return {
+    read,
+    decided,
+    running,
+    fresh,
+    refused,
+    classify,
+    starting,
+    started,
+    startRefused,
+    start,
+  };
 }
 
 /** The issue's record (HV9b), or null when it was never classified (404). */
@@ -481,10 +560,13 @@ function IssueCard({
   number,
   round,
   classifier,
+  workspace,
 }: {
   number: number | undefined;
   round: number;
   classifier: ClassifierState;
+  /** The issue's open workspace (HV10b). */
+  workspace: WorkspaceSummary | undefined;
 }) {
   const [answer, setAnswer] = useState<{ number: number; read?: IssueAnswer; error?: string }>();
   const [kept, setKept] = useState<{ number: number; record: IssueRecord | null }>();
@@ -580,6 +662,15 @@ function IssueCard({
                 text={text}
                 now={now}
                 onClassify={() => classifier.classify(number)}
+                offer={startOffer({
+                  hive,
+                  record,
+                  snapshot: answer?.read?.snapshot,
+                  workspace,
+                })}
+                starting={classifier.starting.has(number)}
+                startRefused={classifier.startRefused[number]}
+                onStart={() => classifier.start(number)}
               />
             )}
             <h3 className="issues-title">{issue.title}</h3>

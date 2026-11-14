@@ -113,6 +113,11 @@ export interface MergeEntry {
   into: string;
   /** The merge commit's subject: `Merge <branch>: <title>`. */
   title: string;
+  /**
+   * The merge commit's body (HV10, decision 1065): `Closes #n` for a workspace started from an
+   * issue; absent: none.
+   */
+  body?: string;
   /** `fast-forward` (V67); absent: a merge commit. */
   strategy?: 'fast-forward';
   /**

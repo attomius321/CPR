@@ -109,3 +109,7 @@ export function briefOf(kind: WorkKind, title: string, parts: BriefParts): strin
   }
   return `${sections.join('\n\n')}\n`;
 }
+
+/** A brief's first line for a workspace from an issue (HV10): where it came from, as 1004's. */
+export const issueOrigin = (issue: { number: number; url: string }) =>
+  `From issue #${issue.number} (${issue.url}).`;

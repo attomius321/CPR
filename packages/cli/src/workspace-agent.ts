@@ -42,6 +42,7 @@ import {
 import { workspacePrompt } from './workspace-start.js';
 import type { ReviewPlace } from './reviews.js';
 import { writeFileWhole } from './file-write.js';
+import { prepareWriter } from './writer-reach.js';
 import type { WorkspacesContext } from './workspace-context.js';
 
 /** An agent found for a workspace: Claude Code or Codex (V20a). */
@@ -68,6 +69,7 @@ export function workspaceAgent({
   claude,
   codex,
   config,
+  env,
   hook,
   launches,
   node,
@@ -84,6 +86,7 @@ export function workspaceAgent({
   | 'claude'
   | 'codex'
   | 'config'
+  | 'env'
   | 'hook'
   | 'launches'
   | 'node'
@@ -131,18 +134,49 @@ export function workspaceAgent({
   }
 
   /**
+   * The settings a session of `workspace` gets, written when they differ or are gone: an issue's
+   * writer its own (HV10, decisions 1050–1054, 1063), with `--strict-mcp-config`; any other the
+   * shared file.
+   */
+  async function sessionSettings(
+    where: ReviewPlace,
+    workspace: WorkspaceFile,
+  ): Promise<{ settings: string; strictMcpConfig?: true }> {
+    const shared = await settingsFile(where);
+    if (!workspace.issue || !workspace.hive) return { settings: shared };
+    const hooks = JSON.parse(await readFile(shared, 'utf8')) as { hooks?: unknown };
+    const settings = await prepareWriter({
+      cacheDir,
+      worktree: workspace.worktree,
+      commonDir: repo.commonDir,
+      root,
+      hooks,
+      env,
+      protect: [shared],
+    });
+    return { settings, strictMcpConfig: true };
+  }
+
+  /**
    * What `{hive}` becomes for a workspace Hive drives (HV2): Hive's start text with the check it
    * will run, from the commit the workspace started at.
    */
   async function hiveText(workspace: WorkspaceFile): Promise<string | undefined> {
     if (!workspace.hive) return undefined;
     const check = await projectCheck(repo, root, workspace.base).catch(() => null);
-    return fillPrompt(readPrompts(root).text['hive.start'], {
+    const start = fillPrompt(readPrompts(root).text['hive.start'], {
       check: check
         ? check.commands.map((command) => `\`${command}\``).join(', then ')
         : 'none is set or found, so the person checks it',
       rounds: String(HIVE_ROUNDS),
     });
+    if (!workspace.issue) return start;
+    // A workspace from an issue (HV10): where its brief came from, what its sandbox reaches.
+    const issue = fillPrompt(readPrompts(root).text['hive.issue'], {
+      number: String(workspace.issue.number),
+      url: workspace.issue.url,
+    });
+    return `${start}\n\n${issue}`;
   }
 
   /** The prompt a workspace's agent is given. */
@@ -253,7 +287,7 @@ export function workspaceAgent({
           prompt,
           permissionMode,
           addDir: symbioteFolder(where),
-          settings: await settingsFile(where),
+          ...(await sessionSettings(where, workspace)),
           ...level,
         });
         workspace.agent = result.ok
@@ -312,6 +346,7 @@ export function workspaceAgent({
 
   return {
     settingsFile,
+    sessionSettings,
     found,
     defaultAgent,
     modelFor,

@@ -54,6 +54,34 @@ export function readLandsBy(root: string): HiveLandsBy {
   }
 }
 
+/**
+ * `hive.issues.lands` (HV10c, decision 1016): how a workspace from an issue lands; a request
+ * unless the person set `queue`, whatever `hive.lands` says.
+ */
+export function readIssueLandsBy(root: string): HiveLandsBy {
+  const file = CONFIG_FILES.find((name) => existsSync(join(root, name)));
+  if (!file) return 'request';
+  try {
+    const value = JSON.parse(readFileSync(join(root, file), 'utf8')) as {
+      hive?: { issues?: { lands?: unknown } };
+    } | null;
+    return value?.hive?.issues?.lands === 'queue' ? 'queue' : 'request';
+  } catch {
+    return 'request';
+  }
+}
+
+/** Sets `hive.issues.lands` (Settings); the default, a request, is written as no key. */
+export async function setIssueLandsBy(root: string, by: unknown): Promise<void> {
+  if (by !== 'queue' && by !== 'request') {
+    throw new PromptRefused(
+      `Work from an issue lands by "queue" or "request", not ${JSON.stringify(by)}`,
+      400,
+    );
+  }
+  await writeConfig(root, ['hive', 'issues', 'lands'], by === 'queue' ? 'queue' : undefined);
+}
+
 /** Sets `hive.lands` (Settings); the default, the queue, is written as no key. */
 export async function setLandsBy(root: string, by: unknown): Promise<void> {
   if (by !== 'queue' && by !== 'request') {
@@ -128,6 +156,7 @@ export async function landingSetting(
     : undefined;
   return {
     by: readLandsBy(root),
+    issues: readIssueLandsBy(root),
     ...(forge ? { forge } : {}),
     token: 'why' in found ? false : true,
     ...('why' in found ? { why: found.why } : {}),
@@ -138,6 +167,8 @@ export async function landingSetting(
 export interface HiveLandingService {
   read(): Promise<HiveLandingSetting>;
   set(by: HiveLandsBy): Promise<HiveLandingSetting>;
+  /** `hive.issues.lands` (HV10c). */
+  setIssues(by: HiveLandsBy): Promise<HiveLandingSetting>;
 }
 
 /** The setting of the project at `root`, `origin` read in `repo`. */
@@ -149,13 +180,20 @@ export function hiveLandingService(repo: GitRepo, root: string, env: Env): HiveL
       await setLandsBy(root, by);
       return read();
     },
+    async setIssues(by) {
+      await setIssueLandsBy(root, by);
+      return read();
+    },
   };
 }
 
 /** What the runner asks of the forge (HV8): the setting, `origin`'s forge, the graph review. */
 export interface HiveRequests {
-  /** How Hive lands now: read at each landing. */
-  by(): HiveLandsBy;
+  /**
+   * How Hive lands now, read at each landing: `hive.lands`, or for a workspace from an issue
+   * `hive.issues.lands` (HV10c).
+   */
+  by(issue: boolean): HiveLandsBy;
   /** `origin`'s forge with a token, or why not. */
   forge(): Promise<{ forge: Forge } | { why: string }>;
   /** Symbiote's graph review of `base..head`, its new findings posted on `request` (790). */
@@ -179,7 +217,7 @@ export function hiveRequests(
   },
 ): HiveRequests {
   return {
-    by: () => readLandsBy(root),
+    by: (issue) => (issue ? readIssueLandsBy(root) : readLandsBy(root)),
     forge: () => originForge(repo, env, make),
     async review(forge, request, base, head) {
       const graph = await graphOf({ base, head });
@@ -195,12 +233,18 @@ const short = (sha: string) => sha.slice(0, 7);
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /**
- * The request's description (decision 790): the brief, then what Hive ran, round by round, and its
+ * The request's description (decision 790): `Closes #n.` first for a workspace from an issue
+ * (HV10c, decision 1017), the brief, then what Hive ran, round by round, and its
  * approval; how the person lands or stops it.
  */
 export function requestBody(
   record: Pick<HiveFile, 'checks' | 'reviews'>,
-  { brief, approval, kind }: { brief: string; approval: string; kind: ForgeKind },
+  {
+    brief,
+    approval,
+    kind,
+    issue,
+  }: { brief: string; approval: string; kind: ForgeKind; issue?: { number: number } },
 ): string {
   const ran: string[] = [];
   for (const check of record.checks) {
@@ -225,6 +269,8 @@ export function requestBody(
   }
   const { request } = FORGE_WORDS[kind];
   const text = [
+    // A workspace from an issue closes it once merged into the default branch (HV10c, 1017).
+    ...(issue ? [`Closes #${issue.number}.`] : []),
     brief.trim(),
     '---',
     '**What Hive ran**',

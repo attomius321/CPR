@@ -96,6 +96,7 @@ export function hiveForge(
       brief: summary.brief,
       approval: approvalOf(record, tip),
       kind: forge.kind,
+      ...(summary.issue ? { issue: summary.issue } : {}),
     });
     let request;
     let opened = false;

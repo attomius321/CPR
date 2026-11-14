@@ -34,6 +34,8 @@ export type PromptKey =
   | 'hive.classify'
   /** What `{hive}` becomes in a Hive workspace's start prompt (HV2). */
   | 'hive.start'
+  /** What an issue's writer is told after `hive.start` (HV10). */
+  | 'hive.issue'
   /** What Hive sends the writer when the check fails (HV2). */
   | 'hive.check'
   /** What Hive sends the writer when it ended a turn with work not committed, or none (HV2). */
@@ -76,6 +78,7 @@ export const PROMPT_KEYS: readonly PromptKey[] = [
   'library',
   'hive.classify',
   'hive.start',
+  'hive.issue',
   'hive.check',
   'hive.review',
   'hive.commit',

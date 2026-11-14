@@ -214,6 +214,23 @@
   font-size: var(--size-small);
 }
 
+/* HV10b: the issue's workspace, its branch and Hive's step. */
+.issues-row-workspace {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: var(--size-small);
+}
+
+.issues-row-branch {
+  overflow: hidden;
+  color: var(--muted);
+  font-family: var(--mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Labels: quiet chips, the forge's colour a dot only. */
 .issues-labels {
   display: flex;
@@ -408,6 +425,26 @@
   display: flex;
   gap: 8px;
   margin-left: auto;
+}
+
+/* HV10b: the workspace started from the issue, linked, and Hive's step. */
+.issues-hive-workspace {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 8px 0 0;
+  font-size: var(--size-small);
+}
+
+.issues-hive-workspace .issues-hive-label {
+  display: inline;
+  margin: 0;
+}
+
+.issues-hive-workspace a {
+  color: var(--text);
+  font-family: var(--mono);
 }
 
 .issues-hive-note {
