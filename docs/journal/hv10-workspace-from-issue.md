@@ -197,7 +197,8 @@ resume's arguments, `hive.issues.lands`, the request's description, `judgeTake`,
 route, the card's offer and the row's step (3). e2e `issues-start.spec.ts` (2) on the fake forge
 and the fake agent: Classify, Start in Hive, the card's and row's branch and step, `#1` on the
 sidenav and the head, the writer's arguments and settings, Settings' two rows. Screenshots of
-each new part in both themes at 1440×900. The real run: five runs of the built view, Claude Code
+each new part in both themes at 1440×900. `pnpm check` (3,800 tests), `pnpm build`, `pnpm
+test:e2e` (493 viewer and 32 nexus tests) pass. The real run: five runs of the built view, Claude Code
 2.1.325, a scratch repository with `origin` on the fake forge; the fifth reached none of the
 forge's variables or files, no SSH, no web page, no web, claude.ai or other-session tool, and
 `registry.npmjs.org` only; its install passed; a command's own `allowed_domains` was refused;

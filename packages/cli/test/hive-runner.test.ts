@@ -3091,8 +3091,8 @@ describe('A Hive workspace from an issue (HV10b, decisions 1013, 1050–1054, 10
     await until(() => s.fake.resume.mock.calls.length > 0, 'the check sent');
     const resumed = s.fake.resume.mock.calls.at(-1)?.[0];
     expect(resumed?.text).toContain('`test -f two.txt` failed');
-    expect(resumed?.settings).toBeUndefined();
-    expect(resumed?.strictMcpConfig).toBeUndefined();
+    // The text alone: a flag at resume would start a copy.
+    expect(Object.keys(resumed ?? {}).sort()).toEqual(['cwd', 'sessionId', 'text']);
     // Its settings file is there for the wake to read.
     expect(existsSync(s.fake.start.mock.calls[0]?.[0].settings ?? '')).toBe(true);
   });
