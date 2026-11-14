@@ -67,3 +67,22 @@ export function labelOf(label: { name?: string; color?: string | null } | string
     ...(/^[0-9a-f]{6}$/i.test(color) ? { color: `#${color.toLowerCase()}` } : {}),
   };
 }
+
+/**
+ * Labels known to exist, by API and project (HV11, decision 1018): each is made once a project,
+ * whichever forge object a call makes.
+ */
+const knownLabels = new Set<string>();
+
+/** Whether `name` is known to exist in `project` at `api`. */
+export const labelKnown = (api: string, project: string, name: string) =>
+  knownLabels.has(`${api}\n${project}\n${name}`);
+
+export function knowLabel(api: string, project: string, name: string): void {
+  knownLabels.add(`${api}\n${project}\n${name}`);
+}
+
+/** Forgets the labels known (tests). */
+export function clearKnownLabels(): void {
+  knownLabels.clear();
+}

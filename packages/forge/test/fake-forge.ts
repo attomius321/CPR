@@ -31,6 +31,19 @@ export interface FakeIssue {
   comments?: { author: string; body: string; role?: string }[];
   /** ISO; issues are listed most recently updated first. */
   updated: string;
+  /** Its conversation locked (HV11). */
+  locked?: boolean;
+  /** Who closed it (HV11): through the API, or a request's `Closes #n` merged into `main`. */
+  closedBy?: 'api' | 'keyword';
+  /** GitHub's `state_reason` of a close through the API. */
+  stateReason?: string;
+}
+
+/** A label of the fake project (HV11). */
+export interface FakeLabel {
+  name: string;
+  color: string;
+  description?: string;
 }
 
 export interface FakeForge {
@@ -44,6 +57,10 @@ export interface FakeForge {
   issues: FakeIssue[];
   /** A status every issue read answers with, while set (IS1: the forge's error). */
   issuesFail?: number;
+  /** The project's labels (HV11). */
+  labels: FakeLabel[];
+  /** A status every write to an issue answers with, while set (HV11: a refused write). */
+  writesFail?: number;
   /** Every call the forge got. */
   calls: Recorded[];
   /** The reviews posted: their event and summary. */
@@ -145,6 +162,8 @@ export async function fakeForge(kind: FakeForgeKind, remote = ''): Promise<FakeF
     updated_at: i.updated,
     author_association: i.role ?? 'NONE',
     body: i.body,
+    locked: i.locked ?? false,
+    state_reason: i.stateReason ?? null,
   });
   const gitlabIssue = (i: FakeIssue) => ({
     iid: i.number,
@@ -157,6 +176,7 @@ export async function fakeForge(kind: FakeForgeKind, remote = ''): Promise<FakeF
     created_at: '2026-11-01T10:00:00Z',
     updated_at: i.updated,
     description: i.body,
+    discussion_locked: i.locked ?? null,
   });
   const byUpdate = (list: FakeIssue[]) =>
     [...list].sort((a, b) => b.updated.localeCompare(a.updated) || b.number - a.number);
@@ -278,10 +298,131 @@ export async function fakeForge(kind: FakeForgeKind, remote = ''): Promise<FakeF
     };
   };
 
+  const labels: FakeLabel[] = [];
+  /** The token's account (HV11): Symbiote's comments are by it. */
+  const ACCOUNT = 'ada';
+  const labelOn = (issue: FakeIssue, name: string) => {
+    const known = labels.find((l) => l.name === name) ?? { name, color: 'ededed' };
+    issue.labels = [
+      ...(issue.labels ?? []).filter((l) => l.name !== name),
+      { name, color: known.color.replace(/^#/, '') },
+    ];
+  };
+  const labelOff = (issue: FakeIssue, name: string) => {
+    const had = (issue.labels ?? []).some((l) => l.name === name);
+    issue.labels = (issue.labels ?? []).filter((l) => l.name !== name);
+    return had;
+  };
+  const closeIssue = (issue: FakeIssue, by: 'api' | 'keyword', reason?: string) => {
+    issue.state = 'closed';
+    issue.closedBy = by;
+    if (reason) issue.stateReason = reason;
+  };
+
+  /**
+   * Writes to issues and the project's labels (HV11), and the token's account: GitHub's comments,
+   * edits, labels and `/user` with its scopes; GitLab's notes, edits, labels, `/user` and the
+   * token's own scopes.
+   */
+  const issueWrite = (
+    request: Recorded,
+    path: string,
+    body: Record<string, unknown>,
+  ): Reply | undefined => {
+    if (request.method === 'GET' && path === '/user') {
+      return kind === 'github'
+        ? {
+            body: { login: ACCOUNT, type: 'User' },
+            headers: { 'x-oauth-scopes': 'repo, read:org' },
+          }
+        : { body: { id: 1, username: ACCOUNT } };
+    }
+    if (kind === 'gitlab' && request.method === 'GET' && path === '/personal_access_tokens/self')
+      return { body: { id: 1, name: 'symbiote', scopes: ['api'], active: true } };
+    const project =
+      kind === 'github' ? `/repos/${PROJECT}` : `/projects/${encodeURIComponent(PROJECT)}`;
+    const label = new RegExp(`^${project}/labels(?:/(.+))?$`).exec(path);
+    if (label) {
+      const name = label[1] ? decodeURIComponent(label[1]) : undefined;
+      if (request.method === 'GET' && name) {
+        const found = labels.find((l) => l.name === name);
+        return found ? { body: found } : { status: 404, body: { message: 'Not Found' } };
+      }
+      if (request.method === 'POST' && !name) {
+        const made = body as unknown as FakeLabel;
+        if (labels.some((l) => l.name === made.name))
+          return kind === 'github'
+            ? {
+                status: 422,
+                body: { message: 'Validation Failed', errors: [{ code: 'already_exists' }] },
+              }
+            : { status: 409, body: { message: 'Label already exists' } };
+        labels.push({ name: made.name, color: made.color, description: made.description ?? '' });
+        return { status: 201, body: made };
+      }
+      return undefined;
+    }
+    if (request.method === 'GET') return undefined;
+    const one = new RegExp(`^${project}/issues/(\\d+)(/comments|/notes|/labels(?:/(.+))?)?$`).exec(
+      path,
+    );
+    const issue = one ? issues.find((i) => i.number === Number(one[1])) : undefined;
+    if (!one || !issue) return undefined;
+    if (fake.writesFail) {
+      return {
+        status: fake.writesFail,
+        body: { message: 'Resource not accessible by integration' },
+      };
+    }
+    const rest = one[2] ?? '';
+    if (request.method === 'POST' && (rest === '/comments' || rest === '/notes')) {
+      issue.comments = [...(issue.comments ?? []), { author: ACCOUNT, body: String(body.body) }];
+      const id = issue.comments.length;
+      return kind === 'github'
+        ? {
+            status: 201,
+            body: {
+              id,
+              html_url: `https://github.com/${PROJECT}/issues/${issue.number}#issuecomment-${id}`,
+            },
+          }
+        : { status: 201, body: { id, body: body.body, noteable_iid: issue.number } };
+    }
+    if (kind === 'github' && rest === '/labels' && request.method === 'POST') {
+      for (const name of (body.labels as string[] | undefined) ?? []) labelOn(issue, name);
+      return { body: issue.labels };
+    }
+    if (kind === 'github' && rest.startsWith('/labels/') && request.method === 'DELETE') {
+      return labelOff(issue, decodeURIComponent(one[3] ?? ''))
+        ? { body: issue.labels }
+        : { status: 404, body: { message: 'Label does not exist' } };
+    }
+    if (rest === '' && kind === 'github' && request.method === 'PATCH') {
+      if (body.state === 'closed')
+        closeIssue(
+          issue,
+          'api',
+          typeof body.state_reason === 'string' ? body.state_reason : undefined,
+        );
+      return { body: githubIssue(issue) };
+    }
+    if (rest === '' && kind === 'gitlab' && request.method === 'PUT') {
+      if (body.state_event === 'close') closeIssue(issue, 'api');
+      const names = (value: unknown) =>
+        typeof value === 'string' && value ? value.split(',') : [];
+      for (const name of names(body.add_labels)) labelOn(issue, name);
+      for (const name of names(body.remove_labels)) labelOff(issue, name);
+      return { body: gitlabIssue(issue) };
+    }
+    return undefined;
+  };
+
   const answer = (request: Recorded): Reply | undefined => {
     const [path = '', query = ''] = request.path.split('?');
     const params = new URLSearchParams(query);
     const body = (request.body ?? {}) as Record<string, string | boolean>;
+    const wrote = issueWrite(request, path, request.body as Record<string, unknown>);
+    if (wrote) return wrote;
     const read = issueAnswer(request, path, params);
     if (read) return read;
     if (kind === 'github') {
@@ -374,6 +515,7 @@ export async function fakeForge(kind: FakeForgeKind, remote = ''): Promise<FakeF
     remote,
     requests,
     issues,
+    labels,
     calls: api.requests,
     reviews,
     merge(number) {
@@ -397,6 +539,13 @@ export async function fakeForge(kind: FakeForgeKind, remote = ''): Promise<FakeF
       gitIn(fake.remote, 'update-ref', `refs/heads/${r.base}`, merge, base);
       r.state = 'merged';
       r.merge = merge;
+      // Merged into the default branch, its `Closes #n` closes the issue (HV11), as both forges do.
+      if (r.base === gitIn(fake.remote, 'symbolic-ref', '--short', 'HEAD')) {
+        for (const [, n] of r.body.matchAll(/\bCloses #(\d+)/g)) {
+          const issue = issues.find((i) => i.number === Number(n));
+          if (issue?.state === 'open') closeIssue(issue, 'keyword');
+        }
+      }
       return merge;
     },
     close(number) {
