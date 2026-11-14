@@ -61,6 +61,8 @@ export interface FakeForge {
   labels: FakeLabel[];
   /** A status every write to an issue answers with, while set (HV11: a refused write). */
   writesFail?: number;
+  /** The project's default branch (HV11): a request merged into it closes the issues it names. */
+  defaultBranch: string;
   /** Every call the forge got. */
   calls: Recorded[];
   /** The reviews posted: their event and summary. */
@@ -516,6 +518,7 @@ export async function fakeForge(kind: FakeForgeKind, remote = ''): Promise<FakeF
     requests,
     issues,
     labels,
+    defaultBranch: 'main',
     calls: api.requests,
     reviews,
     merge(number) {
@@ -540,7 +543,7 @@ export async function fakeForge(kind: FakeForgeKind, remote = ''): Promise<FakeF
       r.state = 'merged';
       r.merge = merge;
       // Merged into the default branch, its `Closes #n` closes the issue (HV11), as both forges do.
-      if (r.base === gitIn(fake.remote, 'symbolic-ref', '--short', 'HEAD')) {
+      if (r.base === fake.defaultBranch) {
         for (const [, n] of r.body.matchAll(/\bCloses #(\d+)/g)) {
           const issue = issues.find((i) => i.number === Number(n));
           if (issue?.state === 'open') closeIssue(issue, 'keyword');
