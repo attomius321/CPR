@@ -51,6 +51,8 @@ the merger, Nucleus and Scribe, and leaves the rest of the file as it is.
 | `hive.classifier.model` | `opus` | The model [the classifier](#classifying-an-issue) runs on, if Claude Code lists it. Set it in Settings' **Hive mode** page, under **Issues**. |
 | `hive.classifier.effort` | `high` | The effort level the classifier runs at, if its model takes it. |
 | `hive.issues.lands` | `request` | How a workspace [started from an issue](#starting-work-from-an-issue) lands, whatever `hive.lands` says: `request`, through a pull or merge request that you merge; or `queue`, through the merge queue. Set it in Settings' **Hive mode** page, row **Work from an issue**. |
+| `hive.issues.answer` | `true` | Whether Hive [answers the issue](#answering-the-issue) it works from on GitHub or GitLab: a comment and a label at each step, closed once landed. `false` writes nothing to issues; requests still say `Closes #n`. Set it in Settings' **Hive mode** page, row **Answers on the issue**. |
+| `hive.issues.labels` | the four below | The labels' names, by role: `working`, `question`, `declined`, `stopped` (`symbiote: working`…). A name has 1 to 50 characters and no comma; any other keeps its default. |
 | `hive.sandbox.allowedDomains` | none | Hosts an issue's writer may reach beyond its ecosystems' registries: a private registry, a git dependency's host, a toolchain's downloads. A host, `*.` before one, or a host and a port. See [The writer's reach](#the-writers-reach). Set it in Settings' **Hive mode** page, row **The writer's network**. |
 | `prompts` | Symbiote's text | The text Symbiote gives its agents. See [Prompts](#prompts). |
 
@@ -591,6 +593,52 @@ description starts with `Closes #n.`. Through the merge queue, its merge commit 
 workspace does, yours too. GitHub and GitLab close the issue when that reaches the default
 branch. A fast-forward makes no merge commit and closes nothing, and neither does a landing into
 another branch.
+
+#### Answering the issue
+
+While Hive works from an issue, it tells the issue's author what it did, at each step that
+matters. Hive's runner writes it at its next look, while Hive is on:
+
+| Step | Comment | Label |
+|---|---|---|
+| A workspace starts | "Symbiote's Hive is working on this in `<branch>`." | `symbiote: working` |
+| The classifier asks | "Before Symbiote can work on this, it needs an answer: <question>" | `symbiote: question` |
+| The classifier refuses | "Symbiote will not work on this: <why>." | `symbiote: declined` |
+| A request opens | "A pull request is open: <link>." (a merge request on GitLab) | unchanged |
+| Landed through the merge queue | "Landed in `<branch>` at `<commit>`." | removed |
+| Landed through a request | none | removed |
+| Hive stops the workspace | "Symbiote stopped work on this: <why>." | `symbiote: stopped` |
+
+Each step adds its label and removes the other three. Symbiote makes the four labels in the
+project the first time it sets one. A landed issue is closed: through the merge queue, by
+Symbiote, as completed; through a request, by the request's `Closes #n` once it merges into the
+default branch. A minute later, Symbiote closes it if it is still open. A refused issue is
+labelled and left open: the project's people decide.
+
+Only Symbiote's own sentences are posted, filled with its own values: a branch, a commit, a link,
+the kind of a refusal or a stop. The classifier's question is the one exception. It is posted as
+plain text, on one line, at most 500 characters, without HTML, images, links, addresses,
+@-mentions, or references to other issues and requests. A question that holds your email or a
+folder of this machine is not posted: the issue gets the label only. The classifier's reasons,
+the brief, the writer's report and Hive's notes stay in Symbiote's records.
+
+The limits:
+
+- **One comment a step, 6 an issue.** After the sixth, labels and closing still go; comments do
+  not.
+- **Nothing on a closed or locked issue.** The one exception is a landing on an issue that its own
+  `Closes #n` already closed: it gets its comment and its labels removed. A locked issue gets
+  nothing.
+- **A failed write is tried again** a minute later, 3 times at most, then given up. It never
+  stops or holds the workspace.
+
+Everything is written with the token Symbiote already reads (`GITHUB_TOKEN`, `GH_TOKEN` or `gh`'s
+login; `GITLAB_TOKEN` with the `api` scope), so it appears under your account. Settings'
+**Posted as** row names that account and says whether the token may write. A classic GitHub token
+needs `repo` (or `public_repo`); a fine-grained one does not list its permissions, so the row says
+"not known until the first write". Each write is an event in the issue's `<number>.jsonl`:
+`due`, `answered` (with the comment's link), `labelled`, `closed` (by Symbiote or by the forge),
+`write-failed` (with the forge's answer), and `not-written` (with why).
 
 A take is judged once its workspace ends, for Settings' standing: right when it landed, wrong when
 its request was closed without a merge. Each is a `judged` line in the issue's events, under the

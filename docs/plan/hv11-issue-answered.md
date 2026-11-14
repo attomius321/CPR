@@ -5,7 +5,8 @@
 
 **Status:** planned (2026-11-12) by the chore `chore/hive-issue-loop-gaps` (from `main` at
 `a47dda3`). HV11a and HV11b in progress on `feature/hv11-issue-answered` (from `main` at
-`d8193b4`, 2026-11-14), with the details the person agreed (decisions 1071–1077). It needs
+`d8193b4`, 2026-11-14), with the details the person agreed (decisions 1071–1077); ready for
+review (2026-11-14). It needs
 [HV10](hv10-workspace-from-issue.md), whose record links a workspace to its issue, and
 [HV9](hv9-issue-classifier.md), whose decisions it answers.
 
@@ -180,6 +181,58 @@ both.
 | 1075 | When is a failed write tried again? (details 1023) | **At the first tick at least 60 s after it failed; 3 tries, then given up and recorded** | Ticks are 2 s apart: three tries would be spent on one short outage |
 | 1076 | A question 1037's check holds? | **Not posted: the question's label only, and the record says why** | 1037: the question holds the person's email or a folder of this machine |
 | 1077 | How does Settings name the account? | **A fifth read, `tokenAccount`: GitHub's `/user` and its `x-oauth-scopes`, GitLab's `/user` and `/personal_access_tokens/self`; read at most every 10 minutes** | The four methods do not say who writes |
+
+## As built (2026-11-14)
+
+As planned and agreed, with these differences:
+
+- **Where the code is.** The forge's methods in `packages/forge/src/github.ts` and `gitlab.ts`;
+  `ForgeError` (the status and the forge's answer, cut to 300 characters) in `http.ts`, which every
+  refusal now throws with the same message as before. The text in
+  `packages/cli/src/issue-answer.ts` (the steps, the sentences, `cleanQuestion`, the settings);
+  the outbox, the writer and Settings' service in `issue-answering.ts`; the stop kinds,
+  `HIVE_STOPS`, in `hive-record.ts`. Hive's events become steps in `event()` of `hive-round.ts`,
+  beside HV10's `judged`; the runner ticks the writer after each look (`hive-runner.ts`), with
+  `origin`'s forge from `lander.requests`, so a runner without one writes nothing.
+- **The refusals' and stops' sentences** (1072): `not-a-change` "it does not ask for a change to
+  the code", `out-of-scope` "it is outside what this project's maintainers set Symbiote to take
+  on", `too-large` "it is too large for one change", `unsafe` "it asks for something Symbiote does
+  not do on its own". Stops: rounds "its rounds of checks and reviews ran out", budget "it reached
+  its budget", asked "the writer asked for a person too often", failed "the writer failed twice"
+  (also an agent that could not be started), request-closed "its pull request was closed without
+  a merge", landing "the change could not be landed" (not pushed, no branch to land in, no forge,
+  a request not opened, taken out of the queue, 3 failed landings or a diverged target), unseen
+  "the writer's work could not be followed", sandbox "the writer needed a host it may not reach".
+- **The question, cleaned** (1019): plain text, one line. Unicode's format characters (zero-width,
+  bidirectional) are dropped; HTML and comments, images whole, links but their text, addresses
+  (`scheme://`, `www.`, `javascript:`…, e-mail), @-mentions and teams, references (`#12`, `!12`,
+  `&12`, `owner/repo#12`, `GH-12`, `~label`, `%milestone`, `$12`) and Markdown's marks (headings,
+  quotes, lists, rules, tables, emphasis, code) go; cut at a word to 500 characters with its
+  ellipsis. Nothing left: not posted (`held: 'empty'`).
+- **Who writes when a forge cannot be read.** A step waits, not counted as a try, while `origin`'s
+  forge cannot be found; with no token, or an issue on another forge than `origin`'s, it is
+  recorded as not written.
+- **The label calls.** A label to remove is removed only if the issue has it (the state read
+  before the writes says), and a step whose labels need no change makes no call. GitHub's adds are
+  one call, its removals one each; GitLab's are one edit.
+- **The fake forge** answers the writes, the project's labels and the account, and closes an issue
+  named by `Closes #n` when a request merges into its `defaultBranch` (`main`): the bare
+  repository's HEAD named `master`.
+- **Settings' labels row** shows the names and says they are renamed in `hive.issues.labels`; no
+  editor, as agreed.
+
+## Results (2026-11-14)
+
+- **Tests, red first**: the forge 19 (17 on hand-made answers in each API's documented shape, 2 of
+  both adapters against the fake forge; red on the missing methods); the text 20; the writer and
+  Settings' service 21; the start and the classifier 2. Four mutations of the writer (7 comments,
+  no landing exception, no retry wait, no lock check) were each caught.
+- **e2e** (`issues-answered.spec.ts`, 3 tests, 24 s): through the queue on GitHub, the issue
+  commented when taken and when landed, labelled, then closed as completed by Symbiote; through a
+  merge request on GitLab, commented when taken and when the request opened, closed by its
+  `Closes #1` and recorded as closed by the forge, never closed twice; Settings' rows.
+- **Not verified here**: a real forge. HV12 runs it on private scratch repositories, as planned;
+  nothing in this branch wrote to GitHub or GitLab.
 
 **Not in HV11 (later)**: a bot account or GitHub App in place of the person's token; answering
 in the issue's language; reactions in place of comments; reopening an issue whose change is
